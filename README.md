@@ -25,7 +25,7 @@ make
 ```
 
 #### Export environment variables
-A wallet address is a must for sending deals to miner. You can change it via setting environment variable `filw_wallet`.
+A wallet address is a must for sending deals to miner. You can change it via setting environment variable `fil_wallet`.
 ``` bash 
 # export wallet address
 export fil_wallet=MY_WALLET_ADDRESS 

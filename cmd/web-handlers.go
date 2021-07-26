@@ -2571,12 +2571,232 @@ func ExecCommand(strCommand string) (string, error) {
 	return string(out_bytes), nil
 }
 
-// SendDeal - send deal to filecoin network.
-func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
+func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebAuth")
+
+	claims, owner, authErr := webRequestAuthenticate(r)
+	fmt.Println("hello1")
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+	object, err := unescapePath(vars["object"])
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				writeWebErrorResponse(w, errAuthentication)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			writeWebErrorResponse(w, authErr)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+			writeWebErrorResponse(w, errAuthentication)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
 
 	decoder := json.NewDecoder(r.Body)
 	var onlineDealRequest OnlineDealRequest
-	err := decoder.Decode(&onlineDealRequest)
+	err = decoder.Decode(&onlineDealRequest)
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+	bodyByte, err := json.Marshal(onlineDealRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return
+	}
+	w.Write(bodyByte)
+	return
+}
+
+// SendDeal - send deal to filecoin network.
+func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebSendDeal")
+
+	claims, owner, authErr := webRequestAuthenticate(r)
+
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+	object, err := unescapePath(vars["object"])
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				writeWebErrorResponse(w, errAuthentication)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			writeWebErrorResponse(w, authErr)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+			writeWebErrorResponse(w, errAuthentication)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var onlineDealRequest OnlineDealRequest
+	err = decoder.Decode(&onlineDealRequest)
 	if err != nil && err != io.EOF {
 		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
 		return
@@ -2601,13 +2821,6 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fs3VolumeAddress := GlobalVolumeAddress
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
-
-	object, err := unescapePath(vars["object"])
-	if err != nil {
-		return
-	}
 
 	//sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
 	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
