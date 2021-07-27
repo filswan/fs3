@@ -2571,11 +2571,19 @@ func ExecCommand(strCommand string) (string, error) {
 	return string(out_bytes), nil
 }
 
+type SendRequest struct {
+	Data   OnlineDealRequest `json:"data"`
+	Status string            `json:"status"`
+}
+
+type SendResponse struct {
+	Data   OnlineDealResponse `json:"data"`
+	Status string             `json:"status"`
+}
+
 func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 	ctx := newContext(r, w, "WebAuth")
-
 	claims, owner, authErr := webRequestAuthenticate(r)
-	fmt.Println("hello1")
 	defer logger.AuditLog(ctx, w, r, claims.Map())
 
 	objectAPI := web.ObjectAPI()
@@ -2603,7 +2611,10 @@ func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 				IsOwner:         false,
 				ObjectName:      object,
 			}) {
-				writeWebErrorResponse(w, errAuthentication)
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := SendResponse{Status: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
 				return
 			}
 			if globalPolicySys.IsAllowed(policy.Args{
@@ -2625,7 +2636,10 @@ func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 
 			}
 		} else {
-			writeWebErrorResponse(w, authErr)
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := SendResponse{Status: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
 			return
 		}
 	}
@@ -2641,7 +2655,10 @@ func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 			ObjectName:      object,
 			Claims:          claims.Map(),
 		}) {
-			writeWebErrorResponse(w, errAuthentication)
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := SendResponse{Status: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
 			return
 		}
 		if globalIAMSys.IsAllowed(iampolicy.Args{
@@ -2674,6 +2691,19 @@ func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	getObjectNInfo := objectAPI.GetObjectNInfo
+	if web.CacheAPI() != nil {
+		getObjectNInfo = web.CacheAPI().GetObjectNInfo
+	}
+
+	var opts ObjectOptions
+	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+	defer gr.Close()
+
 	decoder := json.NewDecoder(r.Body)
 	var onlineDealRequest OnlineDealRequest
 	err = decoder.Decode(&onlineDealRequest)
@@ -2681,7 +2711,11 @@ func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
 		return
 	}
-	bodyByte, err := json.Marshal(onlineDealRequest)
+	sendRequest := SendRequest{
+		Data:   onlineDealRequest,
+		Status: "success",
+	}
+	bodyByte, err := json.Marshal(sendRequest)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return
@@ -2695,7 +2729,6 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	ctx := newContext(r, w, "WebSendDeal")
 
 	claims, owner, authErr := webRequestAuthenticate(r)
-
 	defer logger.AuditLog(ctx, w, r, claims.Map())
 
 	objectAPI := web.ObjectAPI()
@@ -2723,7 +2756,10 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 				IsOwner:         false,
 				ObjectName:      object,
 			}) {
-				writeWebErrorResponse(w, errAuthentication)
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := SendResponse{Status: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
 				return
 			}
 			if globalPolicySys.IsAllowed(policy.Args{
@@ -2745,7 +2781,10 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 
 			}
 		} else {
-			writeWebErrorResponse(w, authErr)
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := SendResponse{Status: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
 			return
 		}
 	}
@@ -2761,7 +2800,10 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 			ObjectName:      object,
 			Claims:          claims.Map(),
 		}) {
-			writeWebErrorResponse(w, errAuthentication)
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := SendResponse{Status: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
 			return
 		}
 		if globalIAMSys.IsAllowed(iampolicy.Args{
@@ -2856,13 +2898,18 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		Duration:      onlineDealRequest.Duration,
 		DealCid:       dealCIDStr,
 	}
-
-	bodyByte, err := json.Marshal(onlineDealResponse)
+	sendResponse := SendResponse{
+		Data:   onlineDealResponse,
+		Status: "success",
+	}
+	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return
 	}
 	w.Write(bodyByte)
+	return
+
 	return
 }
 
