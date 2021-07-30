@@ -18,7 +18,7 @@
             <transition name="move" mode="out-in">
                 <router-view
                 :aboutServer="aboutServer" :aboutListObjects="aboutListObjects"
-                :slideListClick="slideListClick"
+                :slideListClick="slideListClick" :addFileClick="addFileClick" :uploadClick="uploadClick"
                 :dialogFormVisible="dialogFormVisible" :currentBucket="currentBucket" :userd="userd"
                 @getDialogClose="getDialogClose"
                 @getaboutServer="getMakeBucket"
@@ -78,7 +78,7 @@
 
         <share-dialog
           :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
-          :shareFileShow="shareFileShow" :postAdress="currentBucket"
+          :shareFileShow="shareFileShow" :postAdress="currentBucket" :sendApi="sendApi"
           @getshareDialog="getshareDialog">
         </share-dialog>
     </div>
@@ -138,7 +138,10 @@ export default {
             shareDialog: false,
             shareObjectShow: true,
             shareFileShow: false,
-            slideListClick: 0
+            slideListClick: 0,
+            addFileClick: 0,
+            uploadClick: 0,
+            sendApi: 1
         }
     },
     components: {
@@ -283,14 +286,19 @@ export default {
                 }
                 _this.aboutListObjects = result
                 //console.log(json)
+                //_this.slideListClick += 1
 
             }).catch(function (error) {
                 console.log(error);
                 // console.log(error.message, error.request, error.response.headers);
             });
         },
-        getDialogClose(dialogFormVisible) {
+        getDialogClose(dialogFormVisible, closeModule) {
             this.dialogFormVisible = dialogFormVisible
+            if(!closeModule){
+              this.addFileShow = false
+              this.homeClick = false
+            }
         },
         getMakeBucket(name, dialogFormVisible, prefix, oldName) {
             let _this = this
@@ -303,7 +311,6 @@ export default {
                 }
             }
             _this.dialogFormVisible = dialogFormVisible
-            _this.currentBucket = name
             axios.post(_this.postUrl, dataMakeBucket, {headers: {
                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
@@ -318,6 +325,7 @@ export default {
                     }
                     return false
                 }
+                _this.currentBucket = name
                 if(_this.minioListBuckets && _this.minioListBuckets.buckets) {
                   _this.minioListBuckets.buckets.map(item => {
                     if(item.name.indexOf(name) >= 0){
@@ -350,6 +358,8 @@ export default {
         },
         addToggle() {
            this.addFileShow = !this.addFileShow
+           this.homeClick = false
+           this.addFileClick += 1
         },
         slideBtn() {
             this.slideShow = !this.slideShow
@@ -361,6 +371,7 @@ export default {
         },
         homeClickFun(now) {
             this.homeClick = now
+            this.addFileShow = false
         },
 
 
@@ -434,6 +445,7 @@ export default {
                     });
 
                     _this.getListObjects(_this.currentBucket, _this.prefixData)
+                    _this.uploadClick += 1
                 }
 
                 xhr.upload.addEventListener("error", event => {

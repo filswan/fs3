@@ -134,7 +134,7 @@
           </el-table-column>
           <el-table-column label="" width="80">
             <template slot-scope="scope">
-              <span class="point el-icon-more" @click.stop="actClient(scope.$index, 1)"></span>
+              <span class="point el-icon-more" @click.stop="actClient(scope.$index, 1)" v-if="drawIndex<1"></span>
 
               <ul class="dropdown-menu" :class="{'dropdown-show': tableData[scope.$index].dropShow}">
                 <a href="javascript:;" class="fiad-action" @click="deleteBtn(tableData[scope.$index].name)"><i class="el-icon-delete"></i></a>
@@ -195,7 +195,7 @@
 
 
       <el-dialog title="" custom-class="customStyle" :before-close="getDialogClose" :visible.sync="dialogFormVisible">
-          <el-input v-model="form.name" placeholder="Bucket Name"></el-input>
+          <el-input v-model="form.name" placeholder="Bucket Name" ref="bucketNameRef"></el-input>
       </el-dialog>
 
       <el-dialog
@@ -215,7 +215,7 @@
       <share-dialog
         :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
         :shareFileShow="shareFileShow" :num="num" :share_input="share_input"
-        :postAdress="postAdress"
+        :postAdress="postAdress" :sendApi="sendApi"
         @getshareDialog="getshareDialog" @getShareGet="getPresignedGet">
       </share-dialog>
   </div>
@@ -275,13 +275,14 @@ export default {
               num_Hours: 0,
               num_Minutes: 0,
             },
-            postAdress: ''
+            postAdress: '',
+            sendApi: 2
     }
   },
   components: {
       shareDialog
   },
-  props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick'],
+  props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick'],
   methods: {
     buckerAdress(index) {
       let _this = this
@@ -341,6 +342,10 @@ export default {
         if(now){
           _this.tableData[index].dropShow = !active;
         }
+      }
+      if(now){
+        _this.drawPlayClose()
+        _this.$emit('getDialogClose', false, false);
       }
       _this.signShow = false;
     },
@@ -523,26 +528,11 @@ export default {
       });
     },
     drawPlay(index, now) {
-      let _this = this;
-      _this.tableData[index].drawShow = !now;
-      if(!now){
-        let i = 0;
+        let _this = this;
+        _this.tableData[index].drawShow = !now;
         if(_this.tableData) {
-          _this.tableData.map(item => {
-            if(!item.drawShow){
-              i += 1;
-              _this.drawIndex -= 1;
-            }
-          })
-        }
-        if(i<1){
-          _this.drawer = false;
-          return false
-        }
-      }else{
-        _this.drawIndex = 0;
-        _this.deleteDialogIndex = [];
-        if(_this.tableData) {
+          _this.drawIndex = 0;
+          _this.deleteDialogIndex = [];
           _this.tableData.map(item => {
             if(!item.drawShow){
               _this.drawIndex += 1;
@@ -550,8 +540,12 @@ export default {
             }
           })
         }
-        _this.drawer = true;
-      }
+        if(_this.drawIndex < 1){
+          _this.drawPlayClose()
+        }else{
+          _this.drawer = true;
+        }
+
     },
     drawPlayClose() {
       let _this = this;
@@ -609,6 +603,7 @@ export default {
         let _this = this;
         _this.$emit('getaboutServer', _this.form.name, false);
         _this.form.name = ''
+        _this.drawPlayClose()
     },
     aboutListData(){
       let _this = this
@@ -638,6 +633,22 @@ export default {
       let _this = this
       _this.currentBucketAll = _this.currentBucket.split('/')
       _this.prefixName = ''
+      _this.drawPlayClose()
+      _this.actClient(0)
+    },
+    addFileClick: function(){
+      this.actClient(0)
+    },
+    uploadClick: function(){
+       this.drawPlayClose()
+    },
+    dialogFormVisible: function(){
+      let _this = this
+      if(_this.dialogFormVisible){
+        _this.$nextTick(() => {
+          _this.$refs.bucketNameRef.$el.querySelector('input').focus()
+        })
+      }
     }
   },
   filters: {

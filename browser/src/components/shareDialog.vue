@@ -3,7 +3,8 @@
           <div class="shareContent">
               <el-row class="share_left" v-if="shareObjectShow">
                 <!--el-button class="shareFileCoin" @click="shareFileShowFun">Share to Filecoin >></el-button-->
-                <el-col :span="24">
+                <div class="qrcode" id="qrcode" ref="qrCodeUrl"></div>
+                <el-col :span="24" style="margin-bottom: 0.45rem;">
                   <h4>Share Object</h4>
                 </el-col>
                 <el-col :span="24">
@@ -95,6 +96,7 @@
 
 <script>
 import axios from 'axios'
+import QRCode from 'qrcodejs2'
 export default {
     data() {
         return {
@@ -122,7 +124,7 @@ export default {
             },
         }
     },
-    props: ['shareDialog','shareObjectShow','shareFileShow', 'num', 'share_input', 'postAdress'],
+    props: ['shareDialog','shareObjectShow','shareFileShow', 'num', 'share_input', 'postAdress', 'sendApi'],
     watch: {
       'shareDialog': function(){
         let _this = this
@@ -136,9 +138,27 @@ export default {
               dealCID: ''
           }
         }
-      }
+      },
+      share_input: function(){
+         let _this = this
+          this.$nextTick(function () {
+            _this.creatQrCode();
+          })
+      },
     },
     methods: {
+      creatQrCode() {
+          let _this = this
+          document.getElementById("qrcode").innerHTML = ''
+          let qrcode = new QRCode(_this.$refs.qrCodeUrl, {
+              text: _this.share_input, // 需要转换为二维码的内容
+              width: 100,
+              height: 100,
+              colorDark: '#000000',
+              colorLight: '#ffffff',
+              correctLevel: QRCode.CorrectLevel.L
+          })
+      },
       copyDealCid() {
 
       },
@@ -151,6 +171,9 @@ export default {
           if (valid) {
 
             let _this = this
+            if(_this.sendApi == 1){
+              return false
+            }
             let postUrl01 = _this.data_api + `/minio/deal/` + _this.postAdress
             let postUrl = `http://192.168.88.41:9000/minio/deal/` + _this.postAdress
             let minioDeal = {
@@ -224,8 +247,7 @@ export default {
       },
 
     },
-    mounted() {
-    },
+    mounted() {},
 };
 </script>
 
@@ -278,6 +300,19 @@ export default {
             .el-row{
               position: relative;
               width: 400px;
+              .qrcode{
+                  display: inline-block;
+                  position: absolute;
+                  right: 0.2rem;
+                  top: 0.2rem;
+                  img {
+                      width: 100px;
+                      height: 100px;
+                      background-color: #fff; //设置白色背景色
+                      padding: 0; // 利用padding的特性，挤出白边
+                      box-sizing: border-box;
+                  }
+              }
               .el-col{
                 padding: 0 0.2rem;
                 margin-bottom: 0.25rem;
