@@ -24,6 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/minio/minio/logs"
+	oshomedir "github.com/mitchellh/go-homedir"
 	//"github.com/filedrive-team/go-graphsplit"
 	"io"
 	"net"
@@ -2572,17 +2573,19 @@ func ExecCommand(strCommand string) (string, error) {
 }
 
 type SendRequest struct {
-	Data   OnlineDealRequest `json:"data"`
-	Status string            `json:"status"`
+	Data    OnlineDealRequest `json:"data"`
+	Status  string            `json:"status"`
+	Message string            `json:"message"`
 }
 
 type SendResponse struct {
-	Data   OnlineDealResponse `json:"data"`
-	Status string             `json:"status"`
+	Data    OnlineDealResponse `json:"data"`
+	Status  string             `json:"status"`
+	Message string             `json:"message"`
 }
 
-func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
-	ctx := newContext(r, w, "WebAuth")
+func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRetrieveDeal")
 	claims, owner, authErr := webRequestAuthenticate(r)
 	defer logger.AuditLog(ctx, w, r, claims.Map())
 
@@ -2612,7 +2615,7 @@ func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 				ObjectName:      object,
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := SendResponse{Status: "Authentication failed, FS3 token missing"}
+				sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -2637,7 +2640,7 @@ func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := SendResponse{Status: "Authentication failed, check your FS3 token"}
+			sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 			errJson, _ := json.Marshal(sendResponse)
 			w.Write(errJson)
 			return
@@ -2656,7 +2659,7 @@ func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := SendResponse{Status: "Authentication failed, check your FS3 token"}
+			sendResponseIam := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -2704,23 +2707,38 @@ func (web *webAPIHandlers) Auth(w http.ResponseWriter, r *http.Request) {
 	}
 	defer gr.Close()
 
-	decoder := json.NewDecoder(r.Body)
-	var onlineDealRequest OnlineDealRequest
-	err = decoder.Decode(&onlineDealRequest)
 	if err != nil && err != io.EOF {
 		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
 		return
 	}
-	sendRequest := SendRequest{
-		Data:   onlineDealRequest,
-		Status: "success",
+
+	expandedDir, err := JsonPath(bucket, object)
+	file, err := ioutil.ReadFile(expandedDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
 	}
-	bodyByte, err := json.Marshal(sendRequest)
+
+	data := ManifestJson{}
+	json.Unmarshal(file, &data)
+
+	fileIndex := 0
+	for i, v := range data.FileList {
+		if v.FileName == object {
+			fileIndex = i
+		}
+	}
+	fileDeals := data.FileList[fileIndex]
+	retrieveResponse := RetrieveResponse{
+		Data:    fileDeals,
+		Status:  "success",
+		Message: "success",
+	}
+	dataBytes, err := json.Marshal(retrieveResponse)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return
 	}
-	w.Write(bodyByte)
+	w.Write(dataBytes)
 	return
 }
 
@@ -2757,7 +2775,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 				ObjectName:      object,
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := SendResponse{Status: "Authentication failed, FS3 token missing"}
+				sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -2782,7 +2800,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := SendResponse{Status: "Authentication failed, check your FS3 token"}
+			sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 			errJson, _ := json.Marshal(sendResponse)
 			w.Write(errJson)
 			return
@@ -2801,7 +2819,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := SendResponse{Status: "Authentication failed, check your FS3 token"}
+			sendResponseIam := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -2866,7 +2884,6 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 
 	//sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
 	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
-
 	// send online deal to lotus
 	filWallet := os.Getenv("fil_wallet")
 
@@ -2899,8 +2916,9 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		DealCid:       dealCIDStr,
 	}
 	sendResponse := SendResponse{
-		Data:   onlineDealResponse,
-		Status: "success",
+		Data:    onlineDealResponse,
+		Status:  "success",
+		Message: "success",
 	}
 	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
@@ -2908,9 +2926,93 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(bodyByte)
-	return
+	SaveToJson(bucket, object, sendResponse)
 
 	return
+}
+
+func JsonPath(bucket string, object string) (string, error) {
+
+	fs3VolumeAddress := GlobalVolumeAddress
+	bucketJson := "." + bucket + ".json"
+	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
+	expandedDir, err := oshomedir.Expand(bucketJsonPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return expandedDir, nil
+}
+
+type RetrieveResponse struct {
+	Data    BucketFileList `json:"data"`
+	Status  string         `json:"status"`
+	Message string         `json:"status"`
+}
+
+type ManifestJson struct {
+	BucketName string           `json:"bucket_name"`
+	FileList   []BucketFileList `json:"file_list"`
+}
+
+type BucketFileList struct {
+	FileName string         `json:"file_name"`
+	Deals    []SendResponse `json:"deals"`
+}
+
+func SaveToJson(bucket string, object string, response SendResponse) error {
+	expandedDir, _ := JsonPath(bucket, object)
+	_, err := os.OpenFile(expandedDir, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0660)
+	file, err := ioutil.ReadFile(expandedDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	data := ManifestJson{}
+	json.Unmarshal(file, &data)
+	dealBucketName := bucket
+	dealFileName := object
+	if data.BucketName == "" {
+		newDeals := []SendResponse{}
+		newDeals = append(newDeals, response)
+		newBucketFileList := BucketFileList{
+			FileName: dealFileName,
+			Deals:    newDeals,
+		}
+		newFileList := []BucketFileList{}
+		newFileList = append(newFileList, newBucketFileList)
+		newManifestJson := ManifestJson{
+			BucketName: dealBucketName,
+			FileList:   newFileList,
+		}
+		dataBytes, err := json.Marshal(newManifestJson)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+	} else {
+		fileIndex := 0
+		for i, v := range data.FileList {
+			if v.FileName == object {
+				fileIndex = i
+			}
+		}
+		data.FileList[fileIndex].Deals = append(data.FileList[fileIndex].Deals, response)
+		dataBytes, err := json.Marshal(data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+
+		err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+		return err
+	}
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
 }
 
 type DealResponseVo struct {

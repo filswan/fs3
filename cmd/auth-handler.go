@@ -493,9 +493,10 @@ func setAuthHandler(h http.Handler) http.Handler {
 			return
 		} else if aType == authTypeJWT {
 			// Validate Authorization header if its valid for JWT request.
+			// return response when FS3 token is missing or No Auth
 			if _, _, authErr := webRequestAuthenticate(r); authErr != nil {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := SendResponse{Status: "Authentication failed, check your FS3 token"}
+				sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return

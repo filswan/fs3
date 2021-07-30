@@ -1,0 +1,1 @@
+{"data":{"verifiedDeal":"false","fastRetrieval":"true","minerid":"t03354","price":"0.000005","duration":"1036800"},"status":"success","message":"success"}
