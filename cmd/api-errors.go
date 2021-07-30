@@ -572,7 +572,7 @@ var errorCodes = errorCodeMap{
 	},
 	ErrNoSuchKey: {
 		Code:           "NoSuchKey",
-		Description:    "The specified key does not exist.",
+		Description:    "The specified object does not exist.",
 		HTTPStatusCode: http.StatusNotFound,
 	},
 	ErrNoSuchUpload: {

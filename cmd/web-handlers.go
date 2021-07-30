@@ -2488,7 +2488,9 @@ func writeWebErrorResponse(w http.ResponseWriter, err error) {
 	ctx := logger.SetReqInfo(GlobalContext, reqInfo)
 	apiErr := toWebAPIError(ctx, err)
 	w.WriteHeader(apiErr.HTTPStatusCode)
-	w.Write([]byte(apiErr.Description))
+	sendResponse := SendResponse{Status: "fail", Message: apiErr.Description}
+	errJson, _ := json.Marshal(sendResponse)
+	w.Write(errJson)
 }
 
 type DealVo struct {
@@ -2502,23 +2504,24 @@ type DealVo struct {
 }
 
 type OnlineDealRequest struct {
-	VerifiedDeal  string `json:"verifiedDeal,omitempty"`
-	FastRetrieval string `json:"fastRetrieval,omitempty"`
-	MinerId       string `json:"minerid,omitempty"`
-	Price         string `json:"price,omitempty"`
-	Duration      string `json:"duration,omitempty"`
+	VerifiedDeal  string `json:"verifiedDeal"`
+	FastRetrieval string `json:"fastRetrieval"`
+	MinerId       string `json:"minerId"`
+	Price         string `json:"price"`
+	Duration      string `json:"duration"`
 }
 
 type OnlineDealResponse struct {
-	Filename      string `json:"filename,omitempty"`
-	WalletAddress string `json:"walletAddress,omitempty"`
-	VerifiedDeal  string `json:"verifiedDeal,omitempty"`
-	FastRetrieval string `json:"fastRetrieval,omitempty"`
-	DataCid       string `json:"dataCid,omitempty"`
-	MinerId       string `json:"minerId,omitempty"`
-	Price         string `json:"price,omitempty"`
-	Duration      string `json:"duration,omitempty"`
-	DealCid       string `json:"dealCid,omitempty"`
+	Filename      string `json:"filename"`
+	WalletAddress string `json:"walletAddress"`
+	VerifiedDeal  string `json:"verifiedDeal"`
+	FastRetrieval string `json:"fastRetrieval"`
+	DataCid       string `json:"dataCid"`
+	MinerId       string `json:"minerId"`
+	Price         string `json:"price"`
+	Duration      string `json:"duration"`
+	DealCid       string `json:"dealCid"`
+	TimeStamp     string `json:"timeStamp"`
 }
 
 func (d *DealVo) setDefault() {
@@ -2904,6 +2907,9 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	dealCIDStr := string(dealCID)
 	dealCIDStr = strings.TrimSuffix(dealCIDStr, "\n")
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+
 	onlineDealResponse := OnlineDealResponse{
 		Filename:      sourceFilePath,
 		WalletAddress: filWallet,
@@ -2914,6 +2920,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		Price:         onlineDealRequest.Price,
 		Duration:      onlineDealRequest.Duration,
 		DealCid:       dealCIDStr,
+		TimeStamp:     timestamp,
 	}
 	sendResponse := SendResponse{
 		Data:    onlineDealResponse,
@@ -2947,7 +2954,7 @@ func JsonPath(bucket string, object string) (string, error) {
 type RetrieveResponse struct {
 	Data    BucketFileList `json:"data"`
 	Status  string         `json:"status"`
-	Message string         `json:"status"`
+	Message string         `json:"message"`
 }
 
 type ManifestJson struct {
