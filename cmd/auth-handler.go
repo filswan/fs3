@@ -496,7 +496,7 @@ func setAuthHandler(h http.Handler) http.Handler {
 			// return response when FS3 token is missing or No Auth
 			if _, _, authErr := webRequestAuthenticate(r); authErr != nil {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return

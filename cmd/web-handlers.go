@@ -2581,6 +2581,12 @@ type SendRequest struct {
 	Message string            `json:"message"`
 }
 
+type AuthToken struct {
+	Data    string `json:"data"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
 type SendResponse struct {
 	Data    OnlineDealResponse `json:"data"`
 	Status  string             `json:"status"`
@@ -2618,7 +2624,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 				ObjectName:      object,
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -2643,7 +2649,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 			errJson, _ := json.Marshal(sendResponse)
 			w.Write(errJson)
 			return
@@ -2662,7 +2668,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -2716,7 +2722,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	}
 
 	//get datacid through importing from lotus
-	fs3VolumeAddress := GlobalVolumeAddress
+	fs3VolumeAddress := auth.DefaultVolumeAddress
 	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
 	commandLine := "lotus " + "client " + "import " + sourceFilePath
 	dataCID, err := ExecCommand(commandLine)
@@ -2762,7 +2768,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 		w.Write(dataBytes)
 		return
 	} else {
-		retrieveResponse := SendResponse{Status: "fail", Message: "The specified object does not have deals"}
+		retrieveResponse := RetrieveResponse{Status: "fail", Message: "The specified object does not have deals"}
 		dataBytes, err := json.Marshal(retrieveResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
@@ -2806,7 +2812,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 				ObjectName:      object,
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -2831,7 +2837,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 			errJson, _ := json.Marshal(sendResponse)
 			w.Write(errJson)
 			return
@@ -2850,7 +2856,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := SendResponse{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -2928,12 +2934,12 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fs3VolumeAddress := GlobalVolumeAddress
+	fs3VolumeAddress := auth.DefaultVolumeAddress
 
 	//sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
 	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
 	// send online deal to lotus
-	filWallet := os.Getenv("fil_wallet")
+	filWallet := auth.DefaultWalletAddress
 
 	verifiedDeal := "--verified-deal=" + onlineDealRequest.VerifiedDeal
 	fastRetrieval := "--fast-retrieval=" + onlineDealRequest.FastRetrieval
@@ -2985,7 +2991,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 
 func JsonPath(bucket string, object string) (string, error) {
 
-	fs3VolumeAddress := GlobalVolumeAddress
+	fs3VolumeAddress := auth.DefaultVolumeAddress
 	bucketJson := "." + bucket + ".json"
 	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
 	expandedDir, err := oshomedir.Expand(bucketJsonPath)
