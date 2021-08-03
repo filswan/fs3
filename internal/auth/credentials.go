@@ -77,17 +77,6 @@ const (
 	DefaultSecretKey = "minioadmin"
 )
 
-// Default wallet address
-const (
-	//DefaultWalletAddress = "YOUR_WALLET_ADDRESS"
-	DefaultWalletAddress = "t3u7pumush376xbytsgs5wabkhtadjzfydxxda2vzyasg7cimkcphswrq66j4dubbhwpnojqd3jie6ermpwvvq"
-)
-
-// Default fs3 volume address
-const (
-	DefaultVolumeAddress = "~/minio-data"
-)
-
 // Default access credentials
 var (
 	DefaultCredentials = Credentials{

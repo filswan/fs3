@@ -23,6 +23,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/minio/minio/internal/config"
 	"github.com/minio/minio/logs"
 	oshomedir "github.com/mitchellh/go-homedir"
 	//"github.com/filedrive-team/go-graphsplit"
@@ -2722,7 +2723,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	}
 
 	//get datacid through importing from lotus
-	fs3VolumeAddress := auth.DefaultVolumeAddress
+	fs3VolumeAddress := config.Fs3VolumeAddress
 	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
 	commandLine := "lotus " + "client " + "import " + sourceFilePath
 	dataCID, err := ExecCommand(commandLine)
@@ -2755,11 +2756,15 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 				fileDeals.Deals = append(fileDeals.Deals[:i], fileDeals.Deals[i+1:]...)
 			}
 		}
+		if len(fileDeals.Deals) == 0 {
+			fileDeals = BucketFileList{}
+		}
 		retrieveResponse := RetrieveResponse{
 			Data:    fileDeals,
 			Status:  "success",
 			Message: "success",
 		}
+
 		dataBytes, err := json.Marshal(retrieveResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
@@ -2768,7 +2773,8 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 		w.Write(dataBytes)
 		return
 	} else {
-		retrieveResponse := RetrieveResponse{Status: "fail", Message: "The specified object does not have deals"}
+		blankDeals := BucketFileList{}
+		retrieveResponse := RetrieveResponse{Data: blankDeals, Status: "success", Message: "The specified object does not have deals"}
 		dataBytes, err := json.Marshal(retrieveResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
@@ -2934,12 +2940,12 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fs3VolumeAddress := auth.DefaultVolumeAddress
+	fs3VolumeAddress := config.Fs3VolumeAddress
 
 	//sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
 	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
 	// send online deal to lotus
-	filWallet := auth.DefaultWalletAddress
+	filWallet := config.Fs3WalletAddress
 
 	verifiedDeal := "--verified-deal=" + onlineDealRequest.VerifiedDeal
 	fastRetrieval := "--fast-retrieval=" + onlineDealRequest.FastRetrieval
@@ -2991,7 +2997,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 
 func JsonPath(bucket string, object string) (string, error) {
 
-	fs3VolumeAddress := auth.DefaultVolumeAddress
+	fs3VolumeAddress := config.Fs3VolumeAddress
 	bucketJson := "." + bucket + ".json"
 	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
 	expandedDir, err := oshomedir.Expand(bucketJsonPath)
