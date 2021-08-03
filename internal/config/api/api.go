@@ -93,6 +93,10 @@ var (
 			Key:   apiReplicationWorkers,
 			Value: "250",
 		},
+		config.KV{
+			Key:   apiReplicationFailedWorkers,
+			Value: "8",
+		},
 	}
 )
 
