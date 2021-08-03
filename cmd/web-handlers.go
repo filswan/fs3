@@ -2756,9 +2756,6 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 				fileDeals.Deals = append(fileDeals.Deals[:i], fileDeals.Deals[i+1:]...)
 			}
 		}
-		if len(fileDeals.Deals) == 0 {
-			fileDeals = BucketFileList{}
-		}
 		retrieveResponse := RetrieveResponse{
 			Data:    fileDeals,
 			Status:  "success",
@@ -2773,7 +2770,10 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 		w.Write(dataBytes)
 		return
 	} else {
-		blankDeals := BucketFileList{}
+		blankDeals := BucketFileList{
+			FileName: object,
+			Deals:    []SendResponse{},
+		}
 		retrieveResponse := RetrieveResponse{Data: blankDeals, Status: "success", Message: "The specified object does not have deals"}
 		dataBytes, err := json.Marshal(retrieveResponse)
 		if err != nil {
