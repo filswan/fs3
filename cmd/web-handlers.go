@@ -2715,6 +2715,18 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	//get datacid through importing from lotus
+	fs3VolumeAddress := GlobalVolumeAddress
+	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
+	commandLine := "lotus " + "client " + "import " + sourceFilePath
+	dataCID, err := ExecCommand(commandLine)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return
+	}
+	outStr := strings.Fields(string(dataCID))
+	dataCIDStr := outStr[len(outStr)-1]
+
 	expandedDir, err := JsonPath(bucket, object)
 	file, err := ioutil.ReadFile(expandedDir)
 	if err != nil {
@@ -2724,25 +2736,41 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	data := ManifestJson{}
 	json.Unmarshal(file, &data)
 
-	fileIndex := 0
+	fileIndex := -1
 	for i, v := range data.FileList {
 		if v.FileName == object {
 			fileIndex = i
 		}
 	}
-	fileDeals := data.FileList[fileIndex]
-	retrieveResponse := RetrieveResponse{
-		Data:    fileDeals,
-		Status:  "success",
-		Message: "success",
-	}
-	dataBytes, err := json.Marshal(retrieveResponse)
-	if err != nil {
-		logs.GetLogger().Error(err)
+	if fileIndex != -1 {
+		fileDeals := data.FileList[fileIndex]
+		for i := len(fileDeals.Deals) - 1; i >= 0; i-- {
+			if fileDeals.Deals[i].Data.DataCid != dataCIDStr {
+				fileDeals.Deals = append(fileDeals.Deals[:i], fileDeals.Deals[i+1:]...)
+			}
+		}
+		retrieveResponse := RetrieveResponse{
+			Data:    fileDeals,
+			Status:  "success",
+			Message: "success",
+		}
+		dataBytes, err := json.Marshal(retrieveResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	} else {
+		retrieveResponse := SendResponse{Status: "fail", Message: "The specified object does not have deals"}
+		dataBytes, err := json.Marshal(retrieveResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(dataBytes)
 		return
 	}
-	w.Write(dataBytes)
-	return
 }
 
 // SendDeal - send deal to filecoin network.
@@ -2854,6 +2882,23 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	// Check if bucket is a reserved bucket name or invalid.
 	if isReservedOrInvalidBucket(bucket, false) {
 		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	getObjectNInfo := objectAPI.GetObjectNInfo
+	if web.CacheAPI() != nil {
+		getObjectNInfo = web.CacheAPI().GetObjectNInfo
+	}
+	var opts ObjectOptions
+	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+	defer gr.Close()
+
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
 		return
 	}
 
@@ -2998,27 +3043,51 @@ func SaveToJson(bucket string, object string, response SendResponse) error {
 			return err
 		}
 		err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
 	} else {
-		fileIndex := 0
+		fileIndex := -1
 		for i, v := range data.FileList {
 			if v.FileName == object {
 				fileIndex = i
 			}
 		}
-		data.FileList[fileIndex].Deals = append(data.FileList[fileIndex].Deals, response)
-		dataBytes, err := json.Marshal(data)
-		if err != nil {
-			logs.GetLogger().Error(err)
-			return err
+		if fileIndex != -1 {
+			data.FileList[fileIndex].Deals = append(data.FileList[fileIndex].Deals, response)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+			err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+		} else {
+			newDeal := []SendResponse{}
+			newDeal = append(newDeal, response)
+			newBucketFileList := BucketFileList{
+				FileName: dealFileName,
+				Deals:    newDeal,
+			}
+			data.FileList = append(data.FileList, newBucketFileList)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+			err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
 		}
 
-		err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
-		return err
 	}
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
+
 	return err
 }
 
