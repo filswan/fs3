@@ -1,5 +1,11 @@
 # FS3 Quickstart Guide
 
+## How to use
+### Prepare your environment
+- A Golang environment at local. Minimum version required is go1.13.
+- A running lotus node at local.
+- A npm environment at local.
+
 
 # Install from Source
 ## Build the Source Code
