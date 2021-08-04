@@ -61,7 +61,7 @@ const (
 
 	// Customized FS3 volume address and wallet address
 	Fs3VolumeAddress = "~/minio-data"
-	Fs3WalletAddress = "t3u7pumush376xbytsgs5wabkhtadjzfydxxda2vzyasg7cimkcphswrq66j4dubbhwpnojqd3jie6ermpwvvq"
+	Fs3WalletAddress = "MY_WALLET_ADDRESS"
 )
 
 // Top level config constants.
