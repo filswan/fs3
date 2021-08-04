@@ -48,7 +48,63 @@
           :data="tableData"
           stripe
           style="width: 100%"
+          :row-key="getRowKeys"
+          :expand-row-keys="expands"
+          @expand-change="exChange"
           >
+          <el-table-column type="expand">
+            <template slot-scope="props">
+              <el-table :data="exChangeList" stripe style="width: 100%" class="demo-table-expand">
+                  <el-table-column prop="data.timeStamp" label="Date">
+                    <template slot-scope="scope">
+                      {{exChangeList[scope.$index].data.timeStamp}}
+                      <!-- {{ props.row.date }} -->
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="data.minerId" label="W3SS ID"></el-table-column>
+                  <el-table-column prop="data.price" label="Price">
+                    <template slot-scope="scope">
+                      {{exChangeList[scope.$index].data.price}} FIL
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="data.dealCid" label="Deal CID">
+                    <template slot-scope="scope">
+                      <div class="hot-cold-box">
+                          <el-popover
+                              placement="top"
+                              trigger="hover"
+                              v-model="exChangeList[scope.$index].data.visible">
+                              <div class="upload_form_right">
+                                  <p>{{exChangeList[scope.$index].data.dealCid}}</p>
+                              </div>
+                              <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dealCid)">
+                                  <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dealCid}}</p>
+                              </el-button>
+                          </el-popover>
+                      </div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="data.dataCid" label="Data CID">
+                    <template slot-scope="scope">
+                      <div class="hot-cold-box">
+                          <el-popover
+                              placement="top"
+                              trigger="hover"
+                              v-model="exChangeList[scope.$index].data.visibleDataCid">
+                              <div class="upload_form_right">
+                                  <p>{{exChangeList[scope.$index].data.dataCid}}</p>
+                              </div>
+                              <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dataCid)">
+                                  <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dataCid}}</p>
+                              </el-button>
+                          </el-popover>
+                      </div>
+                    </template>
+                  </el-table-column>
+                  <el-table-column prop="data.duration" label="Duration"></el-table-column>
+              </el-table>
+            </template>
+          </el-table-column>
           <el-table-column
             prop="name"
             sortable
@@ -265,18 +321,26 @@ export default {
       },
       prefixName: '',
       browserNameChange: '',
-            shareDialog: false,
-            shareObjectShow: true,
-            shareFileShow: false,
-            share_now: null,
-            share_input: '',
-            num: {
-              num_Day: 5,
-              num_Hours: 0,
-              num_Minutes: 0,
-            },
-            postAdress: '',
-            sendApi: 2
+      shareDialog: false,
+      shareObjectShow: true,
+      shareFileShow: false,
+      share_now: null,
+      share_input: '',
+      num: {
+        num_Day: 5,
+        num_Hours: 0,
+        num_Minutes: 0,
+      },
+      postAdress: '',
+      sendApi: 2,
+      //设置row-key只展示一行
+      expands: [],//只展开一行放入当前行id
+      getRowKeys: (row) => {
+        //获取当前行id
+        //console.log('获取当前行id', row, row.eqId)
+        return row.name   //这里看这一行中需要根据哪个属性值是id
+      },
+      exChangeList: []
     }
   },
   components: {
@@ -284,6 +348,80 @@ export default {
   },
   props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick'],
   methods: {
+    exChange(row, rowList) {
+      var that = this
+      if (rowList.length) {
+        that.expands = []
+        if (row) {
+          that.expands.push(row.name)
+          //console.log('只展开当前行id')
+        }
+        that.tableJson(row.name)
+      } else {
+        that.expands = []
+        //console.log('收起了')
+      }
+    },
+    tableJson(name) {
+        let _this = this
+        _this.exChangeList = []
+
+        let postUrl = _this.data_api + `/minio/retrieve/` + _this.currentBucket + `/` + name
+        axios.get(postUrl, {
+           headers: {
+                'Authorization':"Bearer "+ _this.$store.getters.accessToken
+           }
+        }).then((response) => {
+            let json = response.data
+            if(json.status == 'success'){
+              let dataAll = json.data
+              if(dataAll.deals && dataAll.deals.length>0){
+                dataAll.deals.map(item => {
+                  if(item.data){
+                    item.data.visible = false
+                    item.data.visibleDataCid = false
+                    item.data.timeStamp = Moment(new Date(item.data.timeStamp/1000)).format('YYYY-MM-DD HH:mm:ss')
+                  }
+                })
+              }
+              _this.exChangeList = dataAll.deals
+            }else{
+                _this.$message.error(json.message);
+                return false
+            }
+        }).catch(function (error) {
+            console.log(error);
+            // console.log(error.message, error.request, error.response.headers);
+        });
+    },
+    copyLink(text){
+      let _this = this
+      var txtArea = document.createElement("textarea");
+      txtArea.id = 'txt';
+      txtArea.style.position = 'fixed';
+      txtArea.style.top = '0';
+      txtArea.style.left = '0';
+      txtArea.style.opacity = '0';
+      txtArea.value = text;
+      document.body.appendChild(txtArea);
+      txtArea.select();
+
+      try {
+          var successful = document.execCommand('copy');
+          var msg = successful ? 'Link copied to clipboard!' : 'copy failed!';
+          console.log('Copying text command was ' + msg);
+          if (successful) {
+              _this.$message({
+                  message: msg,
+                  type: 'success'
+              });
+          }
+      } catch (err) {
+          console.log('Oops, unable to copy');
+      } finally {
+          document.body.removeChild(txtArea);
+      }
+    },
     buckerAdress(index) {
       let _this = this
       if(index){
@@ -469,9 +607,10 @@ export default {
           }
         }
         xhr.send(JSON.stringify(objZip))
+        console.log('xiazai:', JSON.stringify(objZip));
       }else{
         var a = document.createElement("a");
-        a.download = _this.currentBucketAll[0] + ".csv";
+        a.download = _this.currentBucketAll[0];
         a.href = requestUrl;
         $("body").append(a); // 修复firefox中无法触发click
         a.click();
@@ -713,7 +852,7 @@ export default {
 
 <style lang="scss" scoped>
 .landing{
-  height: 100%;
+  padding: 0 0 0.4rem;
   .fe-header {
     position: relative;
     padding: 0.4rem 0.4rem 0.4rem 0.45rem;
@@ -772,6 +911,7 @@ export default {
             font-size: 0.15rem;
             line-height: 1.42857143;
             color: #8e8e8e;
+            overflow: hidden;
             li{
               float: left;
               padding-right: 0;
@@ -875,6 +1015,8 @@ export default {
   }
   .table{
     width: 100%;
+    margin: 0 0 .2rem;
+    padding: 0 0 .2rem;
     // overflow-x: scroll;
     .el-table /deep/{
       // min-width: 500px;
@@ -1001,6 +1143,68 @@ export default {
               font-size: 0.16rem;
             }
           }
+        }
+      }
+
+      .el-table__expanded-cell{
+        padding: 0 !important;
+      }
+      .demo-table-expand {
+        .el-table__header-wrapper{
+          margin-bottom: 0;
+        }
+        th, td{
+          &:first-child{
+            padding-left: 0;
+          }
+        }
+        .cell{
+          cursor: default;
+          text-align: center;
+          word-break: break-word;
+          line-height: 0.25rem;
+          .hot-cold-box{
+              .el-button{
+                  width: 100%;
+                  border: 0;
+                  padding: 0;
+                  background-color: transparent;
+                  word-break: break-word;
+                  text-align: center;
+                  line-height: 0.25rem;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: normal;
+                  display: -webkit-box;
+                  -webkit-line-clamp: 2;
+                  -webkit-box-orient: vertical;
+                  span{
+                      line-height: 0.25rem;
+                      overflow: hidden;
+                      text-overflow: ellipsis;
+                      white-space: normal;
+                      display: -webkit-box;
+                      -webkit-line-clamp: 2;
+                      -webkit-box-orient: vertical;
+                      font-weight: normal;
+                      word-break: break-all;
+                  }
+                  i, img{
+                      display: none;
+                      float: left;
+                      margin: 0 0.03rem;
+                      font-size: 0.17rem;
+                      line-height: 0.25rem;
+                  }
+              }
+              .el-button:hover{
+                  color: inherit;
+                  i, img{
+                      display: inline-block;
+                  }
+              }
+          }
+
         }
       }
     }

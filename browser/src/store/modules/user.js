@@ -34,7 +34,7 @@ const user = {
                 duration: 5 * 1000
               })
               sessionStorage.oaxRegisterMail = userInfo.username
-              _this.$router.push("/asset_management")
+              _this.$router.push("/minio")
               return false
             }
             _this.loginLoad = false
@@ -42,24 +42,11 @@ const user = {
               sessionStorage.oaxLoginUserId = response.data.userId
               sessionStorage.oaxMinioLoginAccessToken = response.data.accessToken
               sessionStorage.oaxLoginName = response.data.name
-              sessionStorage.oaxShowName = response.data.showName
               sessionStorage.oaxLoginEmail = response.data.email
-              sessionStorage.oaxLoginPhone = response.data.phone
-              sessionStorage.oaxLoginCheckStatus = response.data.checkStatus
-              sessionStorage.oaxLoginLevel = response.data.level
-              sessionStorage.oaxLoginRegisterTypee = response.data.registerType
-              sessionStorage.oaxLoginSource = response.data.source
               const data = response.data
               commit('SET_NAME', data.name)
-              commit('SET_SHOWNAME', data.showName)
-              commit('SET_EMAIL', data.email)
-              commit('SET_PHONE', data.phone)
               commit('SET_USERID', data.userId)
               commit('SET_ACCESSTOKEN', data.accessToken)
-              commit('SET_CHECKSTATUS', data.checkStatus)
-              commit('SET_LEVEL', data.level)
-              commit('SET_REGISTERTYPE', data.registerType)
-              commit('SET_SOURCE', data.source)
               newFunction(data)
               resolve()
             } else {
@@ -89,43 +76,6 @@ const user = {
         commit('SET_LINKTIME', time)
       })
     },
-    // 登出
-    LogOut({ commit, state }) {
-      // var _this = this
-      return new Promise((resolve, reject) => {
-        logout(state.enable)
-          .then(() => {
-            sessionStorage.removeItem('oaxLoginUserId')
-            sessionStorage.removeItem('oaxMinioLoginAccessToken')
-            sessionStorage.removeItem('oaxLoginName')
-            sessionStorage.removeItem('oaxShowName')
-            sessionStorage.removeItem('oaxLoginEmail')
-            sessionStorage.removeItem('oaxLoginPhone')
-            sessionStorage.removeItem('oaxLoginCheckStatus')
-            sessionStorage.removeItem('oaxLoginLevel')
-            sessionStorage.removeItem('oaxLoginRegisterTypee')
-            sessionStorage.removeItem('oaxLoginSource')
-            sessionStorage.removeItem('oaxLoginpassword')
-            commit('SET_USERID', '')
-            commit('SET_SHOWNAME', '')
-            commit('SET_EMAIL', '')
-            commit('SET_PHONE', '')
-            commit('SET_CHECKSTATUS', '')
-            commit('SET_LEVEL', '')
-            commit('SET_REGISTERTYPE', '')
-            commit('SET_SOURCE', '')
-            commit('SET_ACCESSTOKEN', '')
-            commit('SET_PERMISSIONS', [])
-            sessionStorage.removeItem('login')
-            commit('SET_MENUS', [])
-            resolve()
-          })
-          .catch(error => {
-            reject(error)
-          })
-      })
-    },
-
     // 前端 登出
     FedLogOut({ commit }) {
       // var _this = this
@@ -133,25 +83,8 @@ const user = {
         sessionStorage.removeItem('oaxLoginUserId')
         sessionStorage.removeItem('oaxMinioLoginAccessToken')
         sessionStorage.removeItem('oaxLoginName')
-        sessionStorage.removeItem('oaxShowName')
         sessionStorage.removeItem('oaxLoginEmail')
-        sessionStorage.removeItem('oaxLoginPhone')
-        sessionStorage.removeItem('oaxLoginCheckStatus')
-        sessionStorage.removeItem('oaxLoginLevel')
-        sessionStorage.removeItem('oaxLoginRegisterTypee')
-        sessionStorage.removeItem('oaxLoginSource')
-        commit('SET_USERID', '')
-        commit('SET_SHOWNAME', '')
-        commit('SET_EMAIL', '')
-        commit('SET_PHONE', '')
-        commit('SET_CHECKSTATUS', '')
-        commit('SET_LEVEL', '')
-        commit('SET_REGISTERTYPE', '')
-        commit('SET_SOURCE', '')
         commit('SET_ACCESSTOKEN', '')
-        commit('SET_PERMISSIONS', [])
-        sessionStorage.removeItem('login')
-        commit('SET_MENUS', [])
         resolve()
       })
     }

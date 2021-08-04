@@ -204,7 +204,12 @@ export default {
                 //console.log('minioListBuckets home', _this.minioListBuckets)
 
             }).catch(function (error) {
-                console.log(error);
+                console.log(error.request.status);
+                if(error.request.status == '401'){
+                  _this.$store.dispatch("FedLogOut").then(() => {
+                    _this.$router.push("/minio/login")
+                  })
+                }
                 // console.log(error.message, error.request, error.response.headers);
             });
         },
@@ -477,6 +482,7 @@ export default {
                   //$(".progressStyle").append('<el-progress :percentage="percentage_new" id="progressBar" value="0" max="100" style="width: 100%;"></el-progress><progress id="progressBar01" value="0" max="100" style="width: 100%;"></progress><div class="speed"><span id="time"></span>(<span id="percentage"></span>)</div>')
              };
              xhr.send(file.raw)
+             console.log('shangchuan:', file.raw)
 
           /*
           axios.put(postUrl, formData, {headers: {
