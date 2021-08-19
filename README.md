@@ -18,7 +18,7 @@ cd fs3
 cd browser
 npm install
 npm run release
-
+```
 #### Install Filecoin dependency
 ```bash
 sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
