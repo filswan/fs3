@@ -2738,15 +2738,11 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	dataCIDStr := outStr[len(outStr)-1]
 
 	expandedDir, err := JsonPath(bucket, object)
-	if err != nil {
-		writeWebErrorResponse(w, err)
-		return
-	}
 	file, err := ioutil.ReadFile(expandedDir)
 	if err != nil {
-		writeWebErrorResponse(w, err)
-		return
+		logs.GetLogger().Error(err)
 	}
+
 	data := ManifestJson{}
 	json.Unmarshal(file, &data)
 
@@ -2993,7 +2989,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
-		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
 		return
 	}
 	w.Write(bodyByte)
