@@ -2738,11 +2738,15 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	dataCIDStr := outStr[len(outStr)-1]
 
 	expandedDir, err := JsonPath(bucket, object)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
 	file, err := ioutil.ReadFile(expandedDir)
 	if err != nil {
-		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
 	}
-
 	data := ManifestJson{}
 	json.Unmarshal(file, &data)
 
