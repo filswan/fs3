@@ -30,8 +30,8 @@ make ffi
 make 
 ```
 
-#### Set up wallet addrees as  environment variables
-A wallet address is a must for sending deals to miner. You can set it up via environment variable `Fs3WalletAddress`, which can be changed in `fs3/internal/config/config.go`.
+#### Set up wallet address 
+A wallet address is a must for sending deals to miner. You can set it up via variable `Fs3WalletAddress`, which can be changed in `fs3/internal/config/config.go`.
 
 
 ## Run a Standalone FS3 Server
@@ -52,7 +52,7 @@ You can also connect using any S3-compatible tool, such as the FS3 `mc` commandl
 
 ## FS3 API
 ### Get FS3 API Token
-FS3 APIs are designed to do verification before performing any actions for safety consideration. An FS3 API is generated from FS3 login API.
+FS3 APIs are designed to do verification before performing any actions for safety consideration. An FS3 API token is generated from FS3 login API.
 
 POST `minio/webrpc`
 #### Example:
