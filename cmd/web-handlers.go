@@ -2993,7 +2993,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
-		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
 		return
 	}
 	w.Write(bodyByte)
