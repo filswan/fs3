@@ -8,6 +8,12 @@
 
 
 # Install from Source
+## Checkout source code
+```
+git clone https://github.com/filswan/fs3
+cd fs
+```
+
 ## Build the Source Code
 #### Build UI
 ```bash
