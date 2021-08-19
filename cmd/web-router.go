@@ -95,6 +95,7 @@ func registerWebRouter(router *mux.Router) error {
 	webBrowserRouter.Methods(http.MethodPost).Path("/webrpc").Handler(webRPC)
 	webBrowserRouter.Methods(http.MethodPut).Path("/upload/{bucket}/{object:.+}").HandlerFunc(httpTraceHdrs(web.Upload))
 	webBrowserRouter.Methods(http.MethodPost).Path("/deal/{bucket}/{object:.+}").HandlerFunc(httpTraceHdrs(web.SendDeal))
+	webBrowserRouter.Methods(http.MethodPost).Path("/deals/{bucket}").HandlerFunc(httpTraceHdrs(web.SendDeals))
 	webBrowserRouter.Methods(http.MethodGet).Path("/retrieve/{bucket}/{object}").HandlerFunc(httpTraceHdrs(web.RetrieveDeal))
 
 	// These methods use short-expiry tokens in the URLs. These tokens may unintentionally

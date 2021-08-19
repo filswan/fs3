@@ -25,6 +25,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"github.com/minio/minio/logs"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -497,7 +498,10 @@ func setAuthHandler(h http.Handler) http.Handler {
 			if _, _, authErr := webRequestAuthenticate(r); authErr != nil {
 				w.WriteHeader(http.StatusUnauthorized)
 				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
-				errJson, _ := json.Marshal(sendResponse)
+				errJson, error := json.Marshal(sendResponse)
+				if error != nil {
+					logs.GetLogger().Error(error)
+				}
 				w.Write(errJson)
 				return
 			}
