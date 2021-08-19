@@ -1,28 +1,24 @@
 # FS3 Quickstart Guide
 
 ## How to use
-### Prepare your environment
-- A Golang environment at local. Minimum version required is go1.13.
-- A running lotus node at local.
-- A npm environment at local.
-
+### Prerequisite
+- Golang 1.15+.
+- Node Js 14.0+.
 
 # Install from Source
 ## Checkout source code
 ```
 git clone https://github.com/filswan/fs3
-cd fs
+cd fs3
 ```
 
 ## Build the Source Code
 #### Build UI
 ```bash
 cd browser
-npm install chalk
+npm install
 npm run release
-# back to repository 
-cd ..
-```
+
 #### Install Filecoin dependency
 ```bash
 sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
