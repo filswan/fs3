@@ -25,7 +25,7 @@ import * as filters from './filters'
 import '@/permission' // 登陆控制
 
 Vue.config.productionTip = false
-Vue.prototype.data_api=process.env.NODE_ENV === 'production' ? `${window.location.protocol}//${window.location.host}` : 'https://85109788-c976-4e21-824a-018ef4517631.cygnus.filswan.com';
+Vue.prototype.data_api=process.env.NODE_ENV === 'production' ? `${window.location.protocol}//${window.location.host}` : 'http://192.168.88.41:9000';
 
 Vue.use(Router);
 Vue.use(ElementUI, { locale })
@@ -65,7 +65,7 @@ router.beforeEach((to, from, next) => {
   } else {
       next() // 确保一定要调用 next()
   }
-  
+
   window.scrollTo(0,0);
 })
 

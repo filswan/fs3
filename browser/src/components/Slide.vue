@@ -127,9 +127,6 @@ export default {
         'minioListBuckets': function (to, from) {
             this.getMinioData()
         },
-        'homeClick': function (to, from) {
-           console.log('homeClick change:', this.homeClick);
-        },
     },
     methods: {
       getshareDialog(shareDialog) {
@@ -370,7 +367,7 @@ export default {
             })
             _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
 
-            console.log('minioListBucketsAll', _this.minioListBucketsAll);
+            //console.log('minioListBucketsAll', _this.minioListBucketsAll);
         }else{
           _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
         }

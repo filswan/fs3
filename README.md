@@ -1,5 +1,11 @@
 # FS3 Quickstart Guide
 
+## How to use
+### Prepare your environment
+- A Golang environment at local. Minimum version required is go1.13.
+- A running lotus node at local.
+- A npm environment at local.
+
 
 # Install from Source
 ## Build the Source Code
@@ -24,19 +30,16 @@ make ffi
 make 
 ```
 
-#### Export environment variables
-A wallet address is a must for sending deals to miner. You can change it via setting environment variable `filw_wallet`.
-``` bash 
-# export wallet address
-export fil_wallet=MY_WALLET_ADDRESS 
-```
+#### Set up wallet addrees as  environment variables
+A wallet address is a must for sending deals to miner. You can set it up via environment variable `Fs3WalletAddress`, which can be changed in `fs3/internal/config/config.go`.
+
 
 ## Run a Standalone FS3 Server
 ``` bash
  ./minio server ~/minio-data
 ```
 
-The default FS3 volume address `GlobalVolumeAddress` is set as `~/minio-data`, which can be changed in `fs3/cmd/globals.go`. See more details in Pre-existing data.
+The default FS3 volume address `Fs3VolumeAddress` is set as `~/minio-data`, which can be changed in `fs3/internal/config/config.go`. See more details in Pre-existing data.
 
 
 
@@ -48,8 +51,44 @@ You can also connect using any S3-compatible tool, such as the FS3 `mc` commandl
 
 
 ## FS3 API
+### Get FS3 API Token
+FS3 APIs are designed to do verification before performing any actions for safety consideration. An FS3 API is generated from FS3 login API.
+
+POST `minio/webrpc`
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+# Body
+{
+    "id": 1,
+    "jsonrpc": "2.0",
+    "method": "web.Login",
+    "params":{
+        "username": "minioadmin", 
+        "password": "minioadmin"
+    }
+}
+```
+Response from POSTMAN
+```bash
+{
+    "jsonrpc": "2.0",
+    "result": {
+        "token": "eyJhbGc5cCI6IkpXVCJ9.eyJhY2Nlc3NLIiwiZXhwIjoxMJEuksJBALDYXbw9K",
+        "uiVersion": "2021-07-31T03:07:17Z"
+    },
+    "id": 1
+}
+```
+
 ### Send Online Deals (single file)
-POST`minio/deal/{bucket}/{object}`
+POST `minio/deal/{bucket}/{object}`
 
 #### Example: 
 
@@ -58,7 +97,10 @@ Send request using POSTMAN
 ``` bash
 # Headers
 ## Use a new User-Agent instead of the default User-Agent in Postman
-User-Agent    Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
 
 # Body
 {
@@ -72,17 +114,84 @@ User-Agent    Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36
 Response from POSTMAN
 ```bash
 {
-    "filename": "~/minio-data/test/test.zip",
-    "walletAddress": "nvauebtbb3kthiqbnaksb3gfkbaskrt4kwh3er",
-    "verifiedDeal": "false",
-    "fastRetrieval": "true",
-    "dataCid": "bafyktrevft2ar7hmifqw5krqunu4zx76vaqpcjyxcmsbamc3547nyzvtuggg",
-    "minerId": "t03354",
-    "price": "0.000005",
-    "duration": "1038500",
-    "dealCid": "bafyreic5jfcksvii7pzv5zpszxw5hxtl7yuioppe5qoeruzp5ql5p6jsy"
+    "data": {
+        "filename": "~/minio-data/test/waymo.zip",
+        "walletAddress": "wabkhtadjzfydxxda2vzyasg7cimd3jie6ermpw",
+        "verifiedDeal": "false",
+        "fastRetrieval": "true",
+        "dataCid": "bafykbzaceb5cfdrbg45khvhk4mza6",
+        "minerId": "t03354",
+        "price": "0.000005",
+        "duration": "1036700",                    //epochs
+        "dealCid": "bafyreicmqtttadqdksrqvunxhcgvfvb47m",
+        "timeStamp": "1628025191856290"           //miliseconds
+    },
+    "status": "success",
+    "message": "success"
 }
 ```
+
+### Retrieve Online Deals (single file)
+GET `minio/retrieve/{bucket}/{object}`
+
+#### Example: 
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+```
+
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "file_name": "waymo.zip",
+        "deals": [
+            {
+                "data": {
+                    "filename": "~/minio-data/test/waymo.zip",
+                    "walletAddress": "5wabkhtadjzfydxxdq66j4dubbhwpnojqd3jmpw",
+                    "verifiedDeal": "false",
+                    "fastRetrieval": "true",
+                    "dataCid": "bafykbzaceb5cfdpdupjd4mza6",
+                    "minerId": "t03354",
+                    "price": "0.000005",
+                    "duration": "1036700",
+                    "dealCid": "bafyreicmm2g654",
+                    "timeStamp": "1628025191856290"
+                },
+                "status": "success",
+                "message": "success"
+            },
+            {
+                "data": {
+                    "filename": "~/minio-data/testre/waymo.zip",
+                    "walletAddress": "5wabkhtadjzfydxxda2vzyasg7cimkcphswrq66j4dubbhwpnoj",
+                    "verifiedDeal": "false",
+                    "fastRetrieval": "true",
+                    "dataCid": "bafykbzaceb5cfdpdupjd4mza6",
+                    "minerId": "t03354",
+                    "price": "0.000005",
+                    "duration": "1036700",
+                    "dealCid": "bafyreijg227wlo4bge76bcxk7cw",
+                    "timeStamp": "1628026238100552"
+                },
+                "status": "success",
+                "message": "success"
+            }
+        ]
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
 
 
 # Deployment Recommendations

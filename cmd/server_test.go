@@ -827,7 +827,7 @@ func (s *TestSuiteCommon) TestMultipleObjects(c *check) {
 	response, err = s.client.Do(request)
 	c.Assert(err, nil)
 	// Asserting the error response with the expected values.
-	verifyError(c, response, "NoSuchKey", "The specified key does not exist.", http.StatusNotFound)
+	verifyError(c, response, "NoSuchKey", "The specified object does not exist.", http.StatusNotFound)
 
 	objectName = "testObject1"
 	// content for the object to be uploaded.
