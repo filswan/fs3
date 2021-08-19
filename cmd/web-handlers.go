@@ -2490,7 +2490,10 @@ func writeWebErrorResponse(w http.ResponseWriter, err error) {
 	apiErr := toWebAPIError(ctx, err)
 	w.WriteHeader(apiErr.HTTPStatusCode)
 	sendResponse := SendResponse{Status: "fail", Message: apiErr.Description}
-	errJson, _ := json.Marshal(sendResponse)
+	errJson, error := json.Marshal(sendResponse)
+	if error != nil {
+		logs.GetLogger().Error(error)
+	}
 	w.Write(errJson)
 }
 
