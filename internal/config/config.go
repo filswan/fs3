@@ -58,6 +58,10 @@ const (
 	RegionName = "name"
 	AccessKey  = "access_key"
 	SecretKey  = "secret_key"
+
+	// Customized FS3 volume address and wallet address
+	Fs3VolumeAddress = "~/minio-data"
+	Fs3WalletAddress = ""
 )
 
 // Top level config constants.

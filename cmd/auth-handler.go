@@ -23,7 +23,9 @@ import (
 	"crypto/subtle"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"github.com/minio/minio/logs"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -492,9 +494,15 @@ func setAuthHandler(h http.Handler) http.Handler {
 			return
 		} else if aType == authTypeJWT {
 			// Validate Authorization header if its valid for JWT request.
+			// return response when FS3 token is missing or No Auth
 			if _, _, authErr := webRequestAuthenticate(r); authErr != nil {
 				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte(authErr.Error()))
+				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+				errJson, error := json.Marshal(sendResponse)
+				if error != nil {
+					logs.GetLogger().Error(error)
+				}
+				w.Write(errJson)
 				return
 			}
 			h.ServeHTTP(w, r)

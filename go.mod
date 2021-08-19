@@ -24,7 +24,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.3.0
 	github.com/elastic/go-elasticsearch/v7 v7.12.0
 	github.com/fatih/color v1.12.0
-    github.com/filedrive-team/go-graphsplit v0.4.1 // indirect
+	github.com/filedrive-team/go-graphsplit v0.4.1 // indirect
 	github.com/go-ldap/ldap/v3 v3.2.4
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gomodule/redigo v2.0.0+incompatible
@@ -87,6 +87,7 @@ require (
 	golang.org/x/sys v0.0.0-20210510120138-977fb7262007
 	golang.org/x/tools v0.1.1 // indirect
 	google.golang.org/api v0.31.0
+	gopkg.in/ini.v1 v1.57.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )
 
