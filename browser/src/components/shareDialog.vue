@@ -185,7 +185,9 @@ export default {
                 "Duration": String(_this.ruleForm.duration*24*60*2)   //（UI上用户输入天数，需要转化成epoch给后端。例如10天, 就是 10*24*60*2）
             }
 
-            axios.post(postUrl01, minioDeal, {}).then((response) => {
+            axios.post(postUrl01, minioDeal, {headers: {
+                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
+            }}).then((response) => {
                 let json = response.data
                 let error = json.error
                 let result = json.result
