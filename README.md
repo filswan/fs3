@@ -31,7 +31,7 @@ make ffi
 ```
 
 #### Set up wallet address 
-A wallet address is a must for sending deals to miner. You can set it up via variable `Fs3WalletAddress`, which can be changed in `fs3/internal/config/config.go`.
+A wallet address is a must for sending deals to miner. You can set it up via variable `Fs3WalletAddress`, which can be changed in `fs3/internal/config/config.go`. If the wallet address is changed in the future, build up the FS3 server again to make the changes take effect.
 ``` bash
  vim internal/config/config.go
 ```
@@ -46,7 +46,7 @@ make
  ./minio server ~/minio-data
 ```
 
-The default FS3 volume address `Fs3VolumeAddress` is set as `~/minio-data`, which can be changed in `fs3/internal/config/config.go`. See more details in Pre-existing data.
+The default FS3 volume address `Fs3VolumeAddress` is set as `~/minio-data`, which can be changed in `fs3/internal/config/config.go`. If the volume address is changed in the future, build up the FS3 server again to make the changes take effect.
 
 
 

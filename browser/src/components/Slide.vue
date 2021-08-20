@@ -21,7 +21,7 @@
 
                     <ul v-if="item.show && homeClick">
                         <li @click.stop="dialogFun(item.name, index)">Edit policy</li>
-                        <li @click="backupFun">Backup to Filecoin</li>
+                        <!--li @click="backupFun">Backup to Filecoin</li-->
                         <li @click.stop="dialogDeleteFun(item.name, index)">Delete</li>
                     </ul>
                 </el-col>

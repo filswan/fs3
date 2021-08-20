@@ -189,18 +189,16 @@ export default {
                  'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
                 let json = response.data
-                let error = json.error
-                let result = json.result
-                if (error) {
-                    _this.$message.error(error.message);
+                if (json.status == 'success') {
+                  _this.ruleForm.dealCID = json.data.dealCid
+                  _this.$message({
+                    message: 'Transaction has been successfully sent.',
+                    type: 'success'
+                  });
+                }else{
+                    _this.$message.error(json.message);
                     return false
                 }
-
-                _this.ruleForm.dealCID = json.dealCid
-                _this.$message({
-                  message: 'Transaction has been successfully sent.',
-                  type: 'success'
-                });
 
             }).catch(function (error) {
                 console.log(error);
