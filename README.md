@@ -25,23 +25,28 @@ sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config cu
 ```
 #### Install go module dependency
 ``` bash 
-# get submodules
+cd ..
 git submodule update --init --recursive
-# build filecoin-ffi
 make ffi
-make 
 ```
 
 #### Set up wallet address 
-A wallet address is a must for sending deals to miner. You can set it up via variable `Fs3WalletAddress`, which can be changed in `fs3/internal/config/config.go`.
+A wallet address is a must for sending deals to miner. You can set it up via variable `Fs3WalletAddress`, which can be changed in `fs3/internal/config/config.go`. If the wallet address is changed in the future, build up the FS3 server again to make the changes take effect.
+``` bash
+ vim internal/config/config.go
+```
 
+#### Build up FS3 server
+``` bash
+make
+```
 
 ## Run a Standalone FS3 Server
 ``` bash
  ./minio server ~/minio-data
 ```
 
-The default FS3 volume address `Fs3VolumeAddress` is set as `~/minio-data`, which can be changed in `fs3/internal/config/config.go`. See more details in Pre-existing data.
+The default FS3 volume address `Fs3VolumeAddress` is set as `~/minio-data`, which can be changed in `fs3/internal/config/config.go`. If the volume address is changed in the future, build up the FS3 server again to make the changes take effect.
 
 
 
