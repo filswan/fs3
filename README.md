@@ -25,16 +25,21 @@ sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config cu
 ```
 #### Install go module dependency
 ``` bash 
-# get submodules
+cd ..
 git submodule update --init --recursive
-# build filecoin-ffi
 make ffi
-make 
 ```
 
 #### Set up wallet address 
 A wallet address is a must for sending deals to miner. You can set it up via variable `Fs3WalletAddress`, which can be changed in `fs3/internal/config/config.go`.
+``` bash
+ vim internal/config/config.go
+```
 
+#### Build up FS3 server
+``` bash
+make
+```
 
 ## Run a Standalone FS3 Server
 ``` bash
