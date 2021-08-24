@@ -2738,7 +2738,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	dataCIDStr := outStr[len(outStr)-1]
 
 	expandedDir, err := JsonPath(bucket, object)
-	file, err := ioutil.ReadFile(expandedDir)
+	file, err := ioioutil.ReadFile(expandedDir)
 	if err != nil {
 		logs.GetLogger().Error(err)
 	}
@@ -2885,6 +2885,12 @@ func (web *webAPIHandlers) RetrieveBucketDeal(w http.ResponseWriter, r *http.Req
 		}) {
 
 		}
+	}
+
+	_, err := objectAPI.GetBucketInfo(ctx, bucket)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
 	}
 
 	// Check if bucket is a reserved bucket name or invalid.
@@ -3266,6 +3272,13 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	_, err := objectAPI.GetBucketInfo(ctx, bucket)
+	if err != nil {
+		//writeErrorResponse(ctx, w, toAPIError(ctx, err), r.URL, guessIsBrowserReq(r))
+		writeWebErrorResponse(w, err)
+		return
+	}
+
 	// Check if bucket is a reserved bucket name or invalid.
 	if isReservedOrInvalidBucket(bucket, false) {
 		writeWebErrorResponse(w, errInvalidBucketName)
@@ -3274,7 +3287,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 
 	decoder := json.NewDecoder(r.Body)
 	var onlineDealRequest OnlineDealRequest
-	err := decoder.Decode(&onlineDealRequest)
+	err = decoder.Decode(&onlineDealRequest)
 	if err != nil && err != io.EOF {
 		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
 		return
@@ -3549,7 +3562,6 @@ func addFiles(w *zip.Writer, basePath, baseInZip string) {
 	}
 
 	for _, file := range files {
-		logs.GetLogger().Info(expandedDir + "/" + file.Name())
 		if !file.IsDir() {
 			dat, err := ioioutil.ReadFile(expandedDir + "/" + file.Name())
 			if err != nil {
@@ -3568,8 +3580,6 @@ func addFiles(w *zip.Writer, basePath, baseInZip string) {
 		} else if file.IsDir() {
 			// Recurse
 			newBase := basePath + file.Name() + "/"
-			logs.GetLogger().Info("Recursing and Adding SubDir: " + file.Name())
-			logs.GetLogger().Info("Recursing and Adding SubDir: " + newBase)
 
 			addFiles(w, newBase, baseInZip+file.Name()+"/")
 		}
@@ -3589,7 +3599,7 @@ type BucketDealList struct {
 func BucketSaveToJson(bucket string, response SendResponse) error {
 	expandedDir, _ := BucketJsonPath()
 	_, err := os.OpenFile(expandedDir, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0660)
-	file, err := ioutil.ReadFile(expandedDir)
+	file, err := ioioutil.ReadFile(expandedDir)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
