@@ -199,7 +199,110 @@ Response from POSTMAN
 }
 ```
 
+### Send Bucket Online Deals (bucket zip file)
+POST `minio/deals/{bucket}`
 
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+    "VerifiedDeal":"false",
+    "FastRetrieval":"true",
+    "MinerId":"t00000",
+    "Price": "0.000005",
+    "Duration":"1036800"
+}
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "filename": "~/minio-data/test_deals.zip",
+        "walletAddress": "h376xbytsd3jie6ermpw",
+        "verifiedDeal": "false",
+        "fastRetrieval": "true",
+        "dataCid": "bafk2bza5dgw6pubjodkscqpg",
+        "minerId": "t03354",
+        "price": "0.000005",
+        "duration": "518800",
+        "dealCid": "bafyreicvqh7krdhdnpkqwokze",
+        "timeStamp": "1629835134146540"
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Retrieve Bucket Online Deals (bucket zip file)
+GET `minio/bucket/retrieve/{bucket}`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+```
+
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "bucket_name": "20210824",
+        "deals": [
+            {
+                "data": {
+                    "filename": "~/minio-data/test_deals.zip",
+                    "walletAddress": "t3u7pum2vzyasg7cimkpnojqd3jie6erm",
+                    "verifiedDeal": "false",
+                    "fastRetrieval": "true",
+                    "dataCid": "bafykbvgxdpej7neeoqsnvuzppme",
+                    "minerId": "t03354",
+                    "price": "0.000005",
+                    "duration": "518700",
+                    "dealCid": "bafyrekm3lmusljgmvyriqid6kcaoed5kni",
+                    "timeStamp": "1629816006709676"
+                },
+                "status": "success",
+                "message": "success"
+            },
+            {
+                "data": {
+                    "filename": "~/minio-data/test_deals.zip",
+                    "walletAddress": "t3u7khtadjzfydxxdanojqd3jie6ermpw",
+                    "verifiedDeal": "false",
+                    "fastRetrieval": "true",
+                    "dataCid": "bafykbnvz5rgs7obwbfztqrr4ahwjue",
+                    "minerId": "t03354",
+                    "price": "0.000005",
+                    "duration": "518800",
+                    "dealCid": "bafyrgigdm4ppqzwt4vufm4m3pmuvolnfe",
+                    "timeStamp": "1629833844752891"
+                },
+                "status": "success",
+                "message": "success"
+            }
+        ]
+    },
+    "status": "success",
+    "message": "success"
+}
+```
 
 # Deployment Recommendations
 
