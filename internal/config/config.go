@@ -30,6 +30,12 @@ import (
 	"github.com/minio/pkg/env"
 )
 
+// Customized FS3 volume address and wallet address
+const (
+	Fs3VolumeAddress = "~/minio-data"
+	Fs3WalletAddress = "MYWALLETADDRESS"
+)
+
 // Error config error type
 type Error struct {
 	Err string
@@ -58,10 +64,6 @@ const (
 	RegionName = "name"
 	AccessKey  = "access_key"
 	SecretKey  = "secret_key"
-
-	// Customized FS3 volume address and wallet address
-	Fs3VolumeAddress = "~/minio-data"
-	Fs3WalletAddress = ""
 )
 
 // Top level config constants.
