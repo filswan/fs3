@@ -12,7 +12,7 @@
                 @input="searchBucketFun">
             </el-input>
             <el-row>
-                <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket && allActive}" @click.native="getListBucket(item.name, true)">
+                <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket}" @click.native="getListBucket(item.name)">
                     <div>
                         <i class="iconfont icon-harddriveyingpan"></i>
                         {{item.name}}
@@ -21,15 +21,9 @@
 
                     <ul v-if="item.show && homeClick">
                         <li @click.stop="dialogFun(item.name, index)">Edit policy</li>
-                        <li @click="backupFun">Backup to Filecoin</li>
-                        <li @click="retrievalFun">Retrieval</li>
+                        <!--li @click="backupFun">Backup to Filecoin</li-->
                         <li @click.stop="dialogDeleteFun(item.name, index)">Delete</li>
                     </ul>
-                </el-col>
-
-                <el-col :span="24" :class="{'active': !allActive}"
-                  style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false)">
-                  All Deals
                 </el-col>
             </el-row>
         </div>
@@ -71,10 +65,15 @@
         </el-dialog>
 
 
+        <!--share-dialog
+          :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
+          :shareFileShow="shareFileShow" @getshareDialog="getshareDialog">
+        </share-dialog-->
     </div>
 </template>
 <script>
 import axios from 'axios'
+import shareDialog from '@/components/shareDialog.vue';
 export default {
     data() {
         return {
@@ -107,13 +106,12 @@ export default {
             shareDialog: false,
             shareObjectShow: true,
             shareFileShow: false,
-            sendApi: 1,
-            retrievalDialog: false,
-            allActive: true
         };
     },
     props: ['minioListBuckets', 'currentBucket', 'homeClick'],
-    components: {},
+    components: {
+        shareDialog
+    },
     computed: {
         email() {
             return this.$store.state.user.email
@@ -134,17 +132,11 @@ export default {
       getshareDialog(shareDialog) {
         this.shareDialog = shareDialog
       },
-      getretrievalDialog(retrievalDialog) {
-        this.retrievalDialog = retrievalDialog
-      },
       backupFun() {
         this.shareDialog = true
         this.shareObjectShow = false
         this.shareFileShow = true
         this.$emit('getshareHome', true, false, true);
-      },
-      retrievalFun(){
-        this.$emit('getretrievalDialog', true);
       },
       removePolicies(content) {
         let _this = this
@@ -346,7 +338,7 @@ export default {
            }
         })
         if(name){
-            _this.getListBucket(name, true)
+            _this.getListBucket(name)
         }
       },
       searchBucketFun() {
@@ -364,9 +356,8 @@ export default {
               _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
           }
       },
-      getListBucket(name, allDeal) {
-          this.$emit('getminioListBucket', name, allDeal);
-          this.allActive = allDeal ? true : false
+      getListBucket(name) {
+          this.$emit('getminioListBucket', name);
       },
       getMinioData() {
         let _this = this;
