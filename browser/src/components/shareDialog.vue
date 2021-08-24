@@ -1,5 +1,5 @@
 <template>
-      <el-dialog title="" :visible.sync="shareDialog" :custom-class="{'ShareObjectMobile': shareFileShowMobile, 'ShareObject': 1 === 1}" :before-close="getDiglogChange">
+      <el-dialog title="" top="50px" :visible.sync="shareDialog" :custom-class="{'ShareObjectMobile': shareFileShowMobile, 'ShareObject': 1 === 1}" :before-close="getDiglogChange">
           <div class="shareContent">
               <el-row class="share_left" v-if="shareObjectShow">
                 <!--el-button class="shareFileCoin" @click="shareFileShowFun">Share to Filecoin >></el-button-->
@@ -45,7 +45,7 @@
                 </el-col>
                 <el-col :span="24">
                   <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="110px" class="demo-ruleForm">
-                    <el-form-item label="Miner ID:" prop="minerId">
+                    <el-form-item label="Provider ID:" prop="minerId">
                       <el-input v-model="ruleForm.minerId"></el-input>
                     </el-form-item>
                     <el-form-item label="Price:" prop="price">
@@ -172,6 +172,7 @@ export default {
 
             let _this = this
             if(_this.sendApi == 1){
+              console.log('backup to filecoin');
               return false
             }
 

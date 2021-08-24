@@ -2,7 +2,7 @@
     <div class="wrapper" @click="wrapperClick">
         <v-slide :class="{'sliMobile': slideShow}"
             :minioListBuckets="minioListBuckets" :currentBucket="currentBucket"
-            :homeClick="homeClick" @homeClickFun="homeClickFun" @getshareHome="getshareHome"
+            :homeClick="homeClick" @homeClickFun="homeClickFun" @getshareHome="getshareHome" @getretrievalDialog="getretrievalDialog"
             @getminioListBucket="getminioListBucket" @getListBuckets="getListBuckets"></v-slide>
         <div class="content">
             <el-row class="headStyle">
@@ -19,7 +19,7 @@
                 <router-view
                 :aboutServer="aboutServer" :aboutListObjects="aboutListObjects"
                 :slideListClick="slideListClick" :addFileClick="addFileClick" :uploadClick="uploadClick"
-                :dialogFormVisible="dialogFormVisible" :currentBucket="currentBucket" :userd="userd"
+                :dialogFormVisible="dialogFormVisible" :currentBucket="currentBucket" :userd="userd" :allDealShow="allDealShow"
                 @getDialogClose="getDialogClose"
                 @getaboutServer="getMakeBucket"
                 @getRemoveObject="getRemoveObject"
@@ -81,6 +81,10 @@
           :shareFileShow="shareFileShow" :postAdress="currentBucket" :sendApi="sendApi"
           @getshareDialog="getshareDialog">
         </share-dialog>
+
+        <retrieval-dialog
+          :retrievalDialog="retrievalDialog" @getretrievalDialog="getretrievalDialog">
+        </retrieval-dialog>
     </div>
 </template>
 
@@ -89,6 +93,7 @@ import axios from 'axios'
 import vSlide from './Slide.vue';
 import Moment from "moment"
 import shareDialog from '@/components/shareDialog.vue';
+import retrievalDialog from '@/components/retrievalDialog.vue';
 export default {
     data() {
         return {
@@ -141,12 +146,15 @@ export default {
             slideListClick: 0,
             addFileClick: 0,
             uploadClick: 0,
-            sendApi: 1
+            sendApi: 1,
+            allDealShow: true,
+            retrievalDialog: false
         }
     },
     components: {
         vSlide,
-        shareDialog
+        shareDialog,
+        retrievalDialog
     },
     computed: {
         headertitle() {
@@ -164,6 +172,9 @@ export default {
           this.shareDialog = shareDialog
           this.shareObjectShow = shareObjectShow
           this.shareFileShow = shareFileShow
+        },
+        getretrievalDialog(retrievalDialog) {
+          this.retrievalDialog = retrievalDialog
         },
         getData() {
             this.getListBuckets()
@@ -357,9 +368,12 @@ export default {
             _this.aboutListObjects.objects = JSON.parse(JSON.stringify(data))
             // console.log(_this.aboutListObjects.objects);
         },
-        getminioListBucket(listName) {
+        getminioListBucket(listName, all) {
+          if(listName){
             this.getListObjects(listName)
             this.slideListClick += 1
+          }
+          this.allDealShow = all
         },
         addToggle() {
            this.addFileShow = !this.addFileShow
