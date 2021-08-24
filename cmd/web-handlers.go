@@ -2725,18 +2725,6 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	//get datacid through importing from lotus
-	fs3VolumeAddress := config.Fs3VolumeAddress
-	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
-	commandLine := "lotus " + "client " + "import " + sourceFilePath
-	dataCID, err := ExecCommand(commandLine)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return
-	}
-	outStr := strings.Fields(string(dataCID))
-	dataCIDStr := outStr[len(outStr)-1]
-
 	expandedDir, err := JsonPath(bucket, object)
 	file, err := ioioutil.ReadFile(expandedDir)
 	if err != nil {
@@ -2754,11 +2742,6 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	}
 	if fileIndex != -1 {
 		fileDeals := data.FileList[fileIndex]
-		for i := len(fileDeals.Deals) - 1; i >= 0; i-- {
-			if fileDeals.Deals[i].Data.DataCid != dataCIDStr {
-				fileDeals.Deals = append(fileDeals.Deals[:i], fileDeals.Deals[i+1:]...)
-			}
-		}
 		retrieveResponse := RetrieveResponse{
 			Data:    fileDeals,
 			Status:  "success",
@@ -2899,18 +2882,6 @@ func (web *webAPIHandlers) RetrieveBucketDeal(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	//get datacid through importing from lotus
-	fs3VolumeAddress := config.Fs3VolumeAddress
-	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket+"_deal.zip")
-	commandLine := "lotus " + "client " + "import " + sourceFilePath
-	dataCID, err := ExecCommand(commandLine)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return
-	}
-	outStr := strings.Fields(string(dataCID))
-	dataCIDStr := outStr[len(outStr)-1]
-
 	expandedDir, err := BucketJsonPath()
 	file, err := ioioutil.ReadFile(expandedDir)
 	if err != nil {
@@ -2928,11 +2899,6 @@ func (web *webAPIHandlers) RetrieveBucketDeal(w http.ResponseWriter, r *http.Req
 	}
 	if fileIndex != -1 {
 		bucketDeals := data.BucketDealsList[fileIndex]
-		for i := len(bucketDeals.Deals) - 1; i >= 0; i-- {
-			if bucketDeals.Deals[i].Data.DataCid != dataCIDStr {
-				bucketDeals.Deals = append(bucketDeals.Deals[:i], bucketDeals.Deals[i+1:]...)
-			}
-		}
 		retrieveResponse := RetrieveBucketResponse{
 			Data:    bucketDeals,
 			Status:  "success",
@@ -3123,20 +3089,57 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
 	// send online deal to lotus
 	filWallet := config.Fs3WalletAddress
+	if filWallet == "" {
+		noWalletResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noWalletResponse,
+			Status:  "fail",
+			Message: "Please provide a wallet address for sending deals",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
 
 	verifiedDeal := "--verified-deal=" + onlineDealRequest.VerifiedDeal
 	fastRetrieval := "--fast-retrieval=" + onlineDealRequest.FastRetrieval
 	commandLine := "lotus " + "client " + "import " + sourceFilePath
 	dataCID, err := ExecCommand(commandLine)
 	if err != nil {
-		logs.GetLogger().Error(err)
+		noDataCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDataCidResponse,
+			Status:  "fail",
+			Message: "Sending deal failed during lotus importing",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(bodyByte)
 		return
 	}
 	outStr := strings.Fields(string(dataCID))
 	dataCIDStr := outStr[len(outStr)-1]
 	dealCID, err := exec.Command("lotus", "client", "deal", "--from", filWallet, verifiedDeal, fastRetrieval, dataCIDStr, onlineDealRequest.MinerId, onlineDealRequest.Price, onlineDealRequest.Duration).Output()
 	if err != nil {
-		logs.GetLogger().Error(err)
+		noDealCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDealCidResponse,
+			Status:  "fail",
+			Message: "Sending deal failed during lotus sending deal",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(bodyByte)
 		return
 	}
 	dealCIDStr := string(dealCID)
@@ -3311,27 +3314,63 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// send online deal to lotus
+	filWallet := config.Fs3WalletAddress
+	if filWallet == "" {
+		noWalletResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noWalletResponse,
+			Status:  "fail",
+			Message: "Please provide a wallet address for sending deals",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
 	fs3VolumeAddress := config.Fs3VolumeAddress
 	sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
 	outputBucketZipPath := filepath.Join(fs3VolumeAddress, bucket+"_deals.zip")
 	sourceBucketZipPath := ZipBucket(sourceBucketPath, outputBucketZipPath)
-
-	// send online deal to lotus
-	filWallet := config.Fs3WalletAddress
 
 	verifiedDeal := "--verified-deal=" + onlineDealRequest.VerifiedDeal
 	fastRetrieval := "--fast-retrieval=" + onlineDealRequest.FastRetrieval
 	commandLine := "lotus " + "client " + "import " + sourceBucketZipPath
 	dataCID, err := ExecCommand(commandLine)
 	if err != nil {
-		logs.GetLogger().Error(err)
+		noDataCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDataCidResponse,
+			Status:  "fail",
+			Message: "Sending bucket deal failed during lotus importing",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(bodyByte)
 		return
 	}
 	outStr := strings.Fields(string(dataCID))
 	dataCIDStr := outStr[len(outStr)-1]
 	dealCID, err := exec.Command("lotus", "client", "deal", "--from", filWallet, verifiedDeal, fastRetrieval, dataCIDStr, onlineDealRequest.MinerId, onlineDealRequest.Price, onlineDealRequest.Duration).Output()
 	if err != nil {
-		logs.GetLogger().Error(err)
+		noDealCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDealCidResponse,
+			Status:  "fail",
+			Message: "Sending bucket deal failed during lotus sending deal",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(bodyByte)
 		return
 	}
 	dealCIDStr := string(dealCID)
@@ -3542,13 +3581,13 @@ func ZipBucket(sourceBucketPath string, outputBucketZipPath string) string {
 	addFiles(w, baseFolder, "")
 
 	if err != nil {
-		fmt.Println(err)
+		logs.GetLogger().Error(err)
 	}
 
 	// Make sure to check the error on Close.
 	err = w.Close()
 	if err != nil {
-		fmt.Println(err)
+		logs.GetLogger().Error(err)
 	}
 	return outputBucketZipPath
 }
@@ -3565,22 +3604,21 @@ func addFiles(w *zip.Writer, basePath, baseInZip string) {
 		if !file.IsDir() {
 			dat, err := ioioutil.ReadFile(expandedDir + "/" + file.Name())
 			if err != nil {
-				fmt.Println(err)
+				logs.GetLogger().Error(err)
 			}
 
 			// Add some files to the archive.
 			f, err := w.Create(baseInZip + file.Name())
 			if err != nil {
-				fmt.Println(err)
+				logs.GetLogger().Error(err)
 			}
 			_, err = f.Write(dat)
 			if err != nil {
-				fmt.Println(err)
+				logs.GetLogger().Error(err)
 			}
 		} else if file.IsDir() {
 			// Recurse
 			newBase := basePath + file.Name() + "/"
-
 			addFiles(w, newBase, baseInZip+file.Name()+"/")
 		}
 	}
