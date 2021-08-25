@@ -1,5 +1,5 @@
 <template>
-  <div class="landing" @click="actClient(0)">
+  <div class="landing" @click="actClient(0)" v-if="allDealShow">
       <header class="fe-header">
         <h2>
           <span class="main" v-if="editNameFile" v-for="(item, index) in currentBucketAll" :key="index">
@@ -26,6 +26,13 @@
               <button type="button" class="btn btn-default pcIcon" @click.stop="signBtn"><i class="iconfont icon-ziyuan"></i></button>
               <button type="button" class="btn btn-default mobileIcon" @click.stop="signBtn"><i class="el-icon-more"></i></button>
               <ul class="dropdown-menu" v-show="signShow">
+                <!-- add Change Password page -->
+                <li @click="changePass = true">
+                  <a href="javascript:;">
+                    Change Password <i class="el-icon-s-tools"></i>
+                  </a>
+                </li>
+                <!-- Change Password end -->
                 <li @click="handleFullScreen">
                   <a href="javascript:;">
                     Fullscreen <i class="iconfont icon-fangda"></i>
@@ -274,13 +281,99 @@
         :postAdress="postAdress" :sendApi="sendApi"
         @getshareDialog="getshareDialog" @getShareGet="getPresignedGet">
       </share-dialog>
+
+      <!-- change password dialog box -->
+      <change-password
+        :changePass="changePass"  @getChangePass="getChangePass">
+      </change-password>
   </div>
+
+
+
+  <div class="landing" v-else>
+        <header class="fe-header">
+              <div class="form_top">
+                  <div class="search">
+                      <el-input
+                          placeholder="Search for Deal ID/W3SS ID/Data CID"
+                          prefix-icon="el-icon-search"
+                          v-model="searchValue"
+                      >
+                      </el-input>
+                      <div class="search_right" :style="{'opacity': !searchValue?'0.8':'1'}">
+                          <el-button style="background-color: #ffb822"
+                            :disabled="!searchValue">Search</el-button>
+                          <el-button
+                            type="primary"
+                            style="background-color: #0b318f"
+                            :disabled="!searchValue"
+                          >Clear All</el-button>
+                      </div>
+                  </div>
+              </div>
+        </header>
+        <div class="table">
+          <el-table :data="exChangeList" stripe style="width: 100%" class="demo-table-expand">
+              <el-table-column type="expand"></el-table-column>
+              <el-table-column prop="data.timeStamp" label="Date">
+                <template slot-scope="scope">
+                  {{exChangeList[scope.$index].data.timeStamp}}
+                  <!-- {{ props.row.date }} -->
+                </template>
+              </el-table-column>
+              <el-table-column prop="data.minerId" label="W3SS ID"></el-table-column>
+              <el-table-column prop="data.price" label="Price">
+                <template slot-scope="scope">
+                  {{exChangeList[scope.$index].data.price}} FIL
+                </template>
+              </el-table-column>
+              <el-table-column prop="data.dealCid" label="Deal CID">
+                <template slot-scope="scope">
+                  <div class="hot-cold-box">
+                      <el-popover
+                          placement="top"
+                          trigger="hover"
+                          v-model="exChangeList[scope.$index].data.visible">
+                          <div class="upload_form_right">
+                              <p>{{exChangeList[scope.$index].data.dealCid}}</p>
+                          </div>
+                          <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dealCid)">
+                              <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dealCid}}</p>
+                          </el-button>
+                      </el-popover>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="data.dataCid" label="Data CID">
+                <template slot-scope="scope">
+                  <div class="hot-cold-box">
+                      <el-popover
+                          placement="top"
+                          trigger="hover"
+                          v-model="exChangeList[scope.$index].data.visibleDataCid">
+                          <div class="upload_form_right">
+                              <p>{{exChangeList[scope.$index].data.dataCid}}</p>
+                          </div>
+                          <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dataCid)">
+                              <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dataCid}}</p>
+                          </el-button>
+                      </el-popover>
+                  </div>
+                </template>
+              </el-table-column>
+              <el-table-column prop="data.duration" label="Duration"></el-table-column>
+          </el-table>
+        </div>
+
+
+    </div>
 </template>
 
 <script>
 import axios from 'axios'
 import Moment from 'moment'
 import shareDialog from '@/components/shareDialog.vue';
+import changePassword from '@/components/changePassword.vue';
 let that
 export default {
   name: 'landing',
@@ -340,13 +433,16 @@ export default {
         //console.log('获取当前行id', row, row.eqId)
         return row.name   //这里看这一行中需要根据哪个属性值是id
       },
-      exChangeList: []
+      exChangeList: [],
+      searchValue: '',
+      changePass: false
     }
   },
   components: {
-      shareDialog
+      shareDialog,
+      changePassword
   },
-  props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick'],
+  props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick', 'allDealShow'],
   methods: {
     exChange(row, rowList) {
       var that = this
@@ -700,6 +796,9 @@ export default {
     signBtn() {
       this.signShow = !this.signShow
     },
+    getChangePass(dialog){
+      this.changePass = dialog
+    },
     handleFullScreen(){
       let element = document.documentElement;
       if (this.fullscreen) {
@@ -755,7 +854,8 @@ export default {
           _this.tableData = JSON.parse(JSON.stringify(_this.aboutListObjects.objects))
           //console.log('tableData', _this.tableData)
       }else{
-        _this.tableData = JSON.parse(JSON.stringify(_this.aboutListObjects.objects))
+        _this.tableData = []
+        //_this.tableData = JSON.parse(JSON.stringify(_this.aboutListObjects.objects))
       }
     }
   },
@@ -856,6 +956,88 @@ export default {
   .fe-header {
     position: relative;
     padding: 0.4rem 0.4rem 0.4rem 0.45rem;
+    .form_top {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+
+        .title {
+            width: 100%;
+            text-align: left;
+            font-size: 0.1972rem;
+            color: #000;
+            line-height: 0.42rem;
+            text-indent: 0.08rem;
+        }
+
+        .search {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            height: 0.42rem;
+
+            .search_right {
+                display: flex;
+                align-items: center;
+                // margin-left: 0.3rem;
+            }
+
+            span {
+                margin: auto 0.05rem auto 0.35rem;
+                font-size: 0.1372rem;
+                color: #000;
+                white-space: nowrap;
+            }
+
+            .el-button /deep/ {
+                height: 0.34rem;
+                padding: 0 0.4rem;
+                margin: 0 0.1rem;
+                color: #fff;
+                line-height: 0.34rem;
+                font-size: 0.15rem;
+                border: 0;
+                border-radius: 0.08rem;
+            }
+
+            .el-input /deep/ {
+                float: left;
+                width: 35%;
+
+                .el-input__inner {
+                    width: 100%;
+                    color: #737373;
+                    font-size: 0.12rem;
+                    height: 0.34rem;
+                    line-height: 0.34rem;
+                    padding: 0 0.27rem;
+                }
+
+                .el-input__icon {
+                    line-height: 0.24rem;
+                }
+            }
+
+            .el-select /deep/ {
+            float: right;
+            // width: 30%;
+            .el-input__inner {
+                border-radius: 0.08rem;
+                border: 1px solid #f8f8f8;
+                color: #737373;
+                font-size: 0.12rem;
+                height: 0.24rem;
+                line-height: 0.24rem;
+                padding: 0 0.1rem;
+            }
+
+            .el-input__icon {
+                line-height: 0.24rem;
+            }
+            }
+        }
+    }
     h2 {
       width: calc(100% - 60px);
       font-size: 0.16rem;
@@ -1030,8 +1212,8 @@ export default {
           font-size: 0.15rem;
         }
       }
-      th,td{
-        &:nth-child(1){
+      th, td{
+        &:first-child{
           padding-left: 0.3rem;
         }
       }
@@ -1149,63 +1331,64 @@ export default {
       .el-table__expanded-cell{
         padding: 0 !important;
       }
-      .demo-table-expand {
-        .el-table__header-wrapper{
-          margin-bottom: 0;
-        }
-        th, td{
-          &:first-child{
-            padding-left: 0;
-          }
-        }
-        .cell{
-          cursor: default;
-          text-align: center;
-          word-break: break-word;
-          line-height: 0.25rem;
-          .hot-cold-box{
-              .el-button{
-                  width: 100%;
-                  border: 0;
-                  padding: 0;
-                  background-color: transparent;
-                  word-break: break-word;
-                  text-align: center;
-                  line-height: 0.25rem;
-                  overflow: hidden;
-                  text-overflow: ellipsis;
-                  white-space: normal;
-                  display: -webkit-box;
-                  -webkit-line-clamp: 2;
-                  -webkit-box-orient: vertical;
-                  span{
-                      line-height: 0.25rem;
-                      overflow: hidden;
-                      text-overflow: ellipsis;
-                      white-space: normal;
-                      display: -webkit-box;
-                      -webkit-line-clamp: 2;
-                      -webkit-box-orient: vertical;
-                      font-weight: normal;
-                      word-break: break-all;
-                  }
-                  i, img{
-                      display: none;
-                      float: left;
-                      margin: 0 0.03rem;
-                      font-size: 0.17rem;
-                      line-height: 0.25rem;
-                  }
-              }
-              .el-button:hover{
-                  color: inherit;
-                  i, img{
-                      display: inline-block;
-                  }
-              }
-          }
+    }
 
+    .demo-table-expand /deep/{
+      .el-table__header-wrapper{
+        margin-bottom: 0;
+      }
+      th, td{
+        &:first-child{
+          padding-left: 0;
         }
+      }
+      .cell{
+        cursor: default;
+        text-align: center;
+        word-break: break-word;
+        line-height: 0.25rem;
+        .hot-cold-box{
+            .el-button{
+                width: 100%;
+                border: 0;
+                padding: 0;
+                background-color: transparent;
+                word-break: break-word;
+                text-align: center;
+                line-height: 0.25rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: normal;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                span{
+                    line-height: 0.25rem;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: normal;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    font-weight: normal;
+                    word-break: break-all;
+                }
+                i, img{
+                    display: none;
+                    float: left;
+                    margin: 0 0.03rem;
+                    font-size: 0.17rem;
+                    line-height: 0.25rem;
+                }
+            }
+            .el-button:hover{
+                color: inherit;
+                i, img{
+                    display: inline-block;
+                }
+            }
+        }
+
       }
     }
     // &::-webkit-scrollbar{
@@ -1473,6 +1656,40 @@ export default {
 @media screen and (max-width:999px){
 .landing{
   .fe-header{
+      .form_top {
+         .search {
+           flex-wrap: wrap;
+           height: auto;
+
+           .el-input /deep/ {
+               width: 100%;
+               margin: 0.1rem 0;
+
+               .el-input__inner {
+               width: 100%;
+               font-size: 0.1372rem;
+               }
+           }
+
+           span {
+               margin-left: 0;
+           }
+
+           .search_right {
+
+               .el-select /deep/ {
+               .el-input__inner {
+                   font-size: 0.1372rem;
+               }
+               }
+
+               .el-button /deep/ {
+               padding: 0 0.2rem;
+               font-size: 0.1372rem;
+               }
+           }
+         }
+      }
     .feh-actions{
         top: 0.1rem;
         right: 0;

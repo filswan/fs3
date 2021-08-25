@@ -1,5 +1,5 @@
 <template>
-      <el-dialog title="" :visible.sync="shareDialog" :custom-class="{'ShareObjectMobile': shareFileShowMobile, 'ShareObject': 1 === 1}" :before-close="getDiglogChange">
+      <el-dialog title="" top="50px" :visible.sync="shareDialog" :custom-class="{'ShareObjectMobile': shareFileShowMobile, 'ShareObject': 1 === 1}" :before-close="getDiglogChange">
           <div class="shareContent">
               <el-row class="share_left" v-if="shareObjectShow">
                 <!--el-button class="shareFileCoin" @click="shareFileShowFun">Share to Filecoin >></el-button-->
@@ -45,7 +45,7 @@
                 </el-col>
                 <el-col :span="24">
                   <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="110px" class="demo-ruleForm">
-                    <el-form-item label="Miner ID:" prop="minerId">
+                    <el-form-item label="Provider ID:" prop="minerId">
                       <el-input v-model="ruleForm.minerId"></el-input>
                     </el-form-item>
                     <el-form-item label="Price:" prop="price">
@@ -171,12 +171,17 @@ export default {
           if (valid) {
 
             let _this = this
+            let postUrl = ''
+
             if(_this.sendApi == 1){
-              return false
+              console.log('backup to filecoin', _this.postAdress);
+              postUrl = _this.data_api + `/minio/deals/` + _this.postAdress
+            }else{
+              postUrl = _this.data_api + `/minio/deal/` + _this.postAdress
             }
 
-            let postUrl01 = _this.data_api + `/minio/deal/` + _this.postAdress
-            let postUrl = `http://192.168.88.41:9000/minio/deal/` + _this.postAdress
+            //let postUrl = `http://192.168.88.41:9000/minio/deal/` + _this.postAdress
+
             let minioDeal = {
                 "VerifiedDeal": _this.ruleForm.verified == '2'? 'false' : 'true',
                 "FastRetrieval": _this.ruleForm.fastRetirval == '2'? 'false' : 'true',
@@ -185,7 +190,7 @@ export default {
                 "Duration": String(_this.ruleForm.duration*24*60*2)   //（UI上用户输入天数，需要转化成epoch给后端。例如10天, 就是 10*24*60*2）
             }
 
-            axios.post(postUrl01, minioDeal, {headers: {
+            axios.post(postUrl, minioDeal, {headers: {
                  'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
                 let json = response.data
