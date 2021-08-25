@@ -37,6 +37,8 @@ export default {
         var validateSecretkey = (rule, value, callback) => {
             if (value === '') {
                 callback(new Error('请填写此字段。'));
+            } else if (value.length < 8) {
+                callback(new Error('Length cannot be less than 8.'));
             } else {
                 callback();
             }
@@ -129,6 +131,10 @@ export default {
                         _this.$store.state.user.accessToken = result.token
                         console.log('login token: ', _this.$store.state.user.accessToken)
                         _this.$router.replace({ name: 'minio' })
+
+                        //Storage account
+                        localStorage.removeItem('MinioAccountNumber')
+                        localStorage.setItem('MinioAccountNumber', JSON.stringify(_this.ruleForm))
 
                     }).catch(function (error) {
                         console.log(error);

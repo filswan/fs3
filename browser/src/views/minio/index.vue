@@ -26,6 +26,13 @@
               <button type="button" class="btn btn-default pcIcon" @click.stop="signBtn"><i class="iconfont icon-ziyuan"></i></button>
               <button type="button" class="btn btn-default mobileIcon" @click.stop="signBtn"><i class="el-icon-more"></i></button>
               <ul class="dropdown-menu" v-show="signShow">
+                <!-- add Change Password page -->
+                <li @click="changePass = true">
+                  <a href="javascript:;">
+                    Change Password <i class="el-icon-s-tools"></i>
+                  </a>
+                </li>
+                <!-- Change Password end -->
                 <li @click="handleFullScreen">
                   <a href="javascript:;">
                     Fullscreen <i class="iconfont icon-fangda"></i>
@@ -274,6 +281,11 @@
         :postAdress="postAdress" :sendApi="sendApi"
         @getshareDialog="getshareDialog" @getShareGet="getPresignedGet">
       </share-dialog>
+
+      <!-- change password dialog box -->
+      <change-password
+        :changePass="changePass"  @getChangePass="getChangePass">
+      </change-password>
   </div>
 
 
@@ -361,6 +373,7 @@
 import axios from 'axios'
 import Moment from 'moment'
 import shareDialog from '@/components/shareDialog.vue';
+import changePassword from '@/components/changePassword.vue';
 let that
 export default {
   name: 'landing',
@@ -421,11 +434,13 @@ export default {
         return row.name   //这里看这一行中需要根据哪个属性值是id
       },
       exChangeList: [],
-      searchValue: ''
+      searchValue: '',
+      changePass: false
     }
   },
   components: {
-      shareDialog
+      shareDialog,
+      changePassword
   },
   props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick', 'allDealShow'],
   methods: {
@@ -780,6 +795,9 @@ export default {
     },
     signBtn() {
       this.signShow = !this.signShow
+    },
+    getChangePass(dialog){
+      this.changePass = dialog
     },
     handleFullScreen(){
       let element = document.documentElement;
