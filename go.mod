@@ -75,6 +75,7 @@ require (
 	github.com/secure-io/sio-go v0.3.1
 	github.com/sirupsen/logrus v1.8.0
 	github.com/streadway/amqp v1.0.0
+	github.com/syndtr/goleveldb v1.0.0
 	github.com/tinylib/msgp v1.1.6-0.20210521143832-0becd170c402
 	github.com/valyala/bytebufferpool v1.0.0
 	github.com/valyala/tcplisten v0.0.0-20161114210144-ceec8f93295a

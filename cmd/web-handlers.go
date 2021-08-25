@@ -26,6 +26,8 @@ import (
 	"github.com/minio/minio/internal/config"
 	"github.com/minio/minio/logs"
 	oshomedir "github.com/mitchellh/go-homedir"
+	"github.com/syndtr/goleveldb/leveldb"
+
 	//"github.com/filedrive-team/go-graphsplit"
 	"io"
 	"net"
@@ -3402,7 +3404,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(bodyByte)
 	BucketSaveToJson(bucket, sendResponse)
-
+	BucketSaveToDb(bucket, sendResponse)
 	return
 }
 
@@ -3423,6 +3425,18 @@ func BucketJsonPath() (string, error) {
 
 	fs3VolumeAddress := config.Fs3VolumeAddress
 	bucketJson := "." + "bucketdeals" + ".json"
+	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
+	expandedDir, err := oshomedir.Expand(bucketJsonPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return expandedDir, nil
+}
+
+func LevelDbPath() (string, error) {
+	fs3VolumeAddress := config.Fs3VolumeAddress
+	bucketJson := ".leveldb.db"
 	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
 	expandedDir, err := oshomedir.Expand(bucketJsonPath)
 	if err != nil {
@@ -3708,5 +3722,41 @@ func BucketSaveToJson(bucket string, response SendResponse) error {
 		}
 
 	}
+	return err
+}
+
+func BucketSaveToDb(bucket string, response SendResponse) error {
+	expandedDir, _ := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		fmt.Println("Yikes!")
+	}
+	defer db.Close()
+	VolumeAddress := config.Fs3VolumeAddress
+
+	newDeals := []SendResponse{}
+	newDeals = append(newDeals, response)
+	newBucketDealList := BucketDealList{
+		BucketName: bucket,
+		Deals:      newDeals,
+	}
+	newBucketDealsList := []BucketDealList{}
+	newBucketDealsList = append(newBucketDealsList, newBucketDealList)
+	newBucketManifestJson := BucketManifestJson{
+		VolumeAddress:   VolumeAddress,
+		BucketDealsList: newBucketDealsList,
+	}
+	dataBytes, err := json.Marshal(newBucketManifestJson)
+
+	err = db.Put([]byte(bucket), []byte(dataBytes), nil)
+	iter := db.NewIterator(nil, nil)
+	for iter.Next() {
+		key := iter.Key()
+		value := iter.Value()
+		fmt.Printf("key: %s | value: %s\n", key, value)
+	}
+
+	iter.Release()
+	err = iter.Error()
 	return err
 }
