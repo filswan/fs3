@@ -3466,7 +3466,11 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(bodyByte)
 	//SaveToJson(bucket, object, sendResponse)
-	SaveToDb(bucket, object, sendResponse)
+	err = SaveToDb(bucket, object, sendResponse)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+	}
 	return
 }
 
@@ -3702,7 +3706,11 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Write(bodyByte)
 	//BucketSaveToJson(bucket, sendResponse)
-	BucketSaveToDb(bucket, sendResponse)
+	err = BucketSaveToDb(bucket, sendResponse)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+	}
 	return
 }
 
@@ -4035,25 +4043,21 @@ func SaveToDb(bucket string, object string, response SendResponse) error {
 	defer db.Close()
 
 	fileDealKey := bucket + "_" + object
-	iter := db.NewIterator(nil, nil)
-	if iter.Seek([]byte(fileDealKey)) {
-		key := string(iter.Key())
-		if key == fileDealKey {
-			value := iter.Value()
-			data := BucketFileList{}
-			json.Unmarshal(value, &data)
+	bucketDeals, err := db.Get([]byte(fileDealKey), nil)
+	if err == nil {
+		data := BucketDealList{}
+		json.Unmarshal(bucketDeals, &data)
 
-			data.Deals = append(data.Deals, response)
-			dataBytes, err := json.Marshal(data)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return err
-			}
-			err = db.Put([]byte(fileDealKey), []byte(dataBytes), nil)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return err
-			}
+		data.Deals = append(data.Deals, response)
+		dataBytes, err := json.Marshal(data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(fileDealKey), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
 		}
 	} else {
 		newDeals := []SendResponse{}
@@ -4073,9 +4077,6 @@ func SaveToDb(bucket string, object string, response SendResponse) error {
 			return err
 		}
 	}
-
-	iter.Release()
-	err = iter.Error()
 	return err
 }
 
@@ -4088,25 +4089,21 @@ func BucketSaveToDb(bucket string, response SendResponse) error {
 	}
 	defer db.Close()
 
-	iter := db.NewIterator(nil, nil)
-	if iter.Seek([]byte(bucket)) {
-		key := string(iter.Key())
-		if key == bucket {
-			value := iter.Value()
-			data := BucketDealList{}
-			json.Unmarshal(value, &data)
+	bucketDeals, err := db.Get([]byte(bucket), nil)
+	if err == nil {
+		data := BucketDealList{}
+		json.Unmarshal(bucketDeals, &data)
 
-			data.Deals = append(data.Deals, response)
-			dataBytes, err := json.Marshal(data)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return err
-			}
-			err = db.Put([]byte(bucket), []byte(dataBytes), nil)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return err
-			}
+		data.Deals = append(data.Deals, response)
+		dataBytes, err := json.Marshal(data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(bucket), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
 		}
 	} else {
 		newDeals := []SendResponse{}
@@ -4126,8 +4123,5 @@ func BucketSaveToDb(bucket string, response SendResponse) error {
 			return err
 		}
 	}
-
-	iter.Release()
-	err = iter.Error()
 	return err
 }
