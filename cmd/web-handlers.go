@@ -3084,8 +3084,8 @@ func (web *webAPIHandlers) JsonRetrieveBucketDeal(w http.ResponseWriter, r *http
 	}
 }
 
-func (web *webAPIHandlers) RetrieveBucketDeal(w http.ResponseWriter, r *http.Request) {
-	ctx := newContext(r, w, "WebRetrieveBucketDeal")
+func (web *webAPIHandlers) RetrieveDeals(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRetrieveDeals")
 	claims, owner, authErr := webRequestAuthenticate(r)
 	defer logger.AuditLog(ctx, w, r, claims.Map())
 
@@ -3206,6 +3206,8 @@ func (web *webAPIHandlers) RetrieveBucketDeal(w http.ResponseWriter, r *http.Req
 
 	bucketDeals, err := db.Get([]byte(bucket), nil)
 	if err != nil || bucketDeals == nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
 		return
 	}
 	data := BucketDealList{}
@@ -3732,9 +3734,9 @@ func BucketJsonPath() (string, error) {
 
 func LevelDbPath() (string, error) {
 	fs3VolumeAddress := config.Fs3VolumeAddress
-	bucketJson := ".leveldb.db"
-	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
-	expandedDir, err := oshomedir.Expand(bucketJsonPath)
+	levelDbName := ".leveldb.db"
+	levelDbPath := filepath.Join(fs3VolumeAddress, levelDbName)
+	expandedDir, err := oshomedir.Expand(levelDbPath)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return "", err
