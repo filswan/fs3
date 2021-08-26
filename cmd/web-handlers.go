@@ -2599,8 +2599,8 @@ type SendResponse struct {
 	Message string             `json:"message"`
 }
 
-func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) {
-	ctx := newContext(r, w, "WebRetrieveDeal")
+func (web *webAPIHandlers) JsonRetrieveDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebJsonRetrieveDeal")
 	claims, owner, authErr := webRequestAuthenticate(r)
 	defer logger.AuditLog(ctx, w, r, claims.Map())
 
@@ -2773,8 +2773,162 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (web *webAPIHandlers) RetrieveBucketDeal(w http.ResponseWriter, r *http.Request) {
-	ctx := newContext(r, w, "WebRetrieveBucketDeal")
+func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRetrieveDeal")
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+	object, err := unescapePath(vars["object"])
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	getObjectNInfo := objectAPI.GetObjectNInfo
+	if web.CacheAPI() != nil {
+		getObjectNInfo = web.CacheAPI().GetObjectNInfo
+	}
+
+	var opts ObjectOptions
+	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+	defer gr.Close()
+
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	expandedDir, err := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+	defer db.Close()
+	fileDealKey := bucket + "_" + object
+	fileDeals, err := db.Get([]byte(fileDealKey), nil)
+	if err != nil || fileDeals == nil {
+		return
+	}
+	data := BucketFileList{}
+	json.Unmarshal(fileDeals, &data)
+
+	retrieveResponse := RetrieveResponse{Data: data, Status: "success", Message: "success"}
+	dataBytes, err := json.Marshal(retrieveResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return
+	}
+	w.Write(dataBytes)
+	return
+}
+
+func (web *webAPIHandlers) JsonRetrieveBucketDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebJsonRetrieveBucketDeal")
 	claims, owner, authErr := webRequestAuthenticate(r)
 	defer logger.AuditLog(ctx, w, r, claims.Map())
 
@@ -2928,6 +3082,143 @@ func (web *webAPIHandlers) RetrieveBucketDeal(w http.ResponseWriter, r *http.Req
 		w.Write(dataBytes)
 		return
 	}
+}
+
+func (web *webAPIHandlers) RetrieveBucketDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRetrieveBucketDeal")
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	_, err := objectAPI.GetBucketInfo(ctx, bucket)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	expandedDir, err := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+	defer db.Close()
+
+	bucketDeals, err := db.Get([]byte(bucket), nil)
+	if err != nil || bucketDeals == nil {
+		return
+	}
+	data := BucketDealList{}
+	json.Unmarshal(bucketDeals, &data)
+
+	retrieveResponse := RetrieveBucketResponse{Data: data, Status: "success", Message: "success"}
+	dataBytes, err := json.Marshal(retrieveResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return
+	}
+	w.Write(dataBytes)
+	return
 }
 
 // SendDeal - send deal to filecoin network.
@@ -3172,8 +3463,8 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(bodyByte)
-	SaveToJson(bucket, object, sendResponse)
-
+	//SaveToJson(bucket, object, sendResponse)
+	SaveToDb(bucket, object, sendResponse)
 	return
 }
 
@@ -3336,7 +3627,12 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 	fs3VolumeAddress := config.Fs3VolumeAddress
 	sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
 	outputBucketZipPath := filepath.Join(fs3VolumeAddress, bucket+"_deals.zip")
-	sourceBucketZipPath := ZipBucket(sourceBucketPath, outputBucketZipPath)
+	sourceBucketZipPath, err := ZipBucket(sourceBucketPath, outputBucketZipPath)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
 
 	verifiedDeal := "--verified-deal=" + onlineDealRequest.VerifiedDeal
 	fastRetrieval := "--fast-retrieval=" + onlineDealRequest.FastRetrieval
@@ -3403,7 +3699,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Write(bodyByte)
-	BucketSaveToJson(bucket, sendResponse)
+	//BucketSaveToJson(bucket, sendResponse)
 	BucketSaveToDb(bucket, sendResponse)
 	return
 }
@@ -3577,14 +3873,15 @@ type DealRequestVo struct {
 	DealCid      string `json:"deal_cid,omitempty"`
 }
 
-func ZipBucket(sourceBucketPath string, outputBucketZipPath string) string {
+func ZipBucket(sourceBucketPath string, outputBucketZipPath string) (string, error) {
 	baseFolder := sourceBucketPath
 
 	// Get a Buffer to Write To
 	expandedDir, _ := BucketZipPath(outputBucketZipPath)
 	outFile, err := os.OpenFile(expandedDir, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0660)
 	if err != nil {
-		fmt.Println(err)
+		logs.GetLogger().Error(err)
+		return "", err
 	}
 	defer outFile.Close()
 
@@ -3596,6 +3893,7 @@ func ZipBucket(sourceBucketPath string, outputBucketZipPath string) string {
 
 	if err != nil {
 		logs.GetLogger().Error(err)
+		return "", err
 	}
 
 	// Make sure to check the error on Close.
@@ -3603,7 +3901,7 @@ func ZipBucket(sourceBucketPath string, outputBucketZipPath string) string {
 	if err != nil {
 		logs.GetLogger().Error(err)
 	}
-	return outputBucketZipPath
+	return outputBucketZipPath, err
 }
 
 func addFiles(w *zip.Writer, basePath, baseInZip string) {
@@ -3725,35 +4023,106 @@ func BucketSaveToJson(bucket string, response SendResponse) error {
 	return err
 }
 
+func SaveToDb(bucket string, object string, response SendResponse) error {
+	expandedDir, _ := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	fileDealKey := bucket + "_" + object
+	iter := db.NewIterator(nil, nil)
+	if iter.Seek([]byte(fileDealKey)) {
+		key := string(iter.Key())
+		if key == fileDealKey {
+			value := iter.Value()
+			data := BucketFileList{}
+			json.Unmarshal(value, &data)
+
+			data.Deals = append(data.Deals, response)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+			err = db.Put([]byte(fileDealKey), []byte(dataBytes), nil)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+		}
+	} else {
+		newDeals := []SendResponse{}
+		newDeals = append(newDeals, response)
+		newBucketDealList := BucketFileList{
+			FileName: object,
+			Deals:    newDeals,
+		}
+		dataBytes, err := json.Marshal(newBucketDealList)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(fileDealKey), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+	}
+
+	iter.Release()
+	err = iter.Error()
+	return err
+}
+
 func BucketSaveToDb(bucket string, response SendResponse) error {
 	expandedDir, _ := LevelDbPath()
 	db, err := leveldb.OpenFile(expandedDir, nil)
 	if err != nil {
-		fmt.Println("Yikes!")
+		logs.GetLogger().Error(err)
+		return err
 	}
 	defer db.Close()
-	VolumeAddress := config.Fs3VolumeAddress
 
-	newDeals := []SendResponse{}
-	newDeals = append(newDeals, response)
-	newBucketDealList := BucketDealList{
-		BucketName: bucket,
-		Deals:      newDeals,
-	}
-	newBucketDealsList := []BucketDealList{}
-	newBucketDealsList = append(newBucketDealsList, newBucketDealList)
-	newBucketManifestJson := BucketManifestJson{
-		VolumeAddress:   VolumeAddress,
-		BucketDealsList: newBucketDealsList,
-	}
-	dataBytes, err := json.Marshal(newBucketManifestJson)
-
-	err = db.Put([]byte(bucket), []byte(dataBytes), nil)
 	iter := db.NewIterator(nil, nil)
-	for iter.Next() {
-		key := iter.Key()
-		value := iter.Value()
-		fmt.Printf("key: %s | value: %s\n", key, value)
+	if iter.Seek([]byte(bucket)) {
+		key := string(iter.Key())
+		if key == bucket {
+			value := iter.Value()
+			data := BucketDealList{}
+			json.Unmarshal(value, &data)
+
+			data.Deals = append(data.Deals, response)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+			err = db.Put([]byte(bucket), []byte(dataBytes), nil)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+		}
+	} else {
+		newDeals := []SendResponse{}
+		newDeals = append(newDeals, response)
+		newBucketDealList := BucketDealList{
+			BucketName: bucket,
+			Deals:      newDeals,
+		}
+		dataBytes, err := json.Marshal(newBucketDealList)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(bucket), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
 	}
 
 	iter.Release()
