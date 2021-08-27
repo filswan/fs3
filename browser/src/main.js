@@ -9,12 +9,12 @@ import VueClipboard from 'vue-clipboard2'
 // import $ from 'jquery'
 import Vuex from 'vuex'
 import store from './store'
-import i18n from './lang' // 语言包
+import i18n from './lang' //Language pack
 
 import ElementUI from 'element-ui';
 import locale from 'element-ui/lib/locale/lang/en'
-import 'element-ui/lib/theme-chalk/index.css'; // 默认主题
-// import './assets/css/theme-green/index.css'; // 浅绿色主题
+import 'element-ui/lib/theme-chalk/index.css'; // Default theme
+// import './assets/css/theme-green/index.css'; // Light green theme
 import './assets/css/icon.css';
 
 // import { Button, Input, Pagination, Table, TableColumn, MessageBox } from 'element-ui';
@@ -22,7 +22,7 @@ import './assets/css/icon.css';
 import 'element-ui/lib/theme-chalk/index.css';
 
 import * as filters from './filters'
-import '@/permission' // 登陆控制
+import '@/permission' // Login control
 
 Vue.config.productionTip = false
 Vue.prototype.data_api=process.env.NODE_ENV === 'production' ? `${window.location.protocol}//${window.location.host}` : 'http://192.168.88.41:9000';
@@ -53,8 +53,7 @@ Vue.prototype.NumberMul = function(arg1, arg2) {
 }
 router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {
-      //这里判断用户是否登录，验证本地存储是否有token
-      if (!localStorage.token) { // 判断当前的token是否存在
+      if (!localStorage.token) {
           next({
               path: '/minio/login',
               query: { redirect: to.fullPath }
@@ -63,7 +62,7 @@ router.beforeEach((to, from, next) => {
           next()
       }
   } else {
-      next() // 确保一定要调用 next()
+      next()
   }
 
   window.scrollTo(0,0);

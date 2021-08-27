@@ -58,6 +58,8 @@
 
 <script>
 import axios from 'axios'
+import Moment from 'moment'
+
 export default {
     data() {
         return {
@@ -67,61 +69,79 @@ export default {
             width: document.documentElement.clientWidth < 1024 ? '90%' : '75%'
         }
     },
-    props: ['retrievalDialog'],
+    props: ['retrievalDialog', 'currentBucket'],
     watch: {
       'retrievalDialog': function(){
         let _this = this
+        if(_this.retrievalDialog){
+          _this.getData()
+        }
       }
     },
     methods: {
-      submitForm(formName) {
-        this.$refs[formName].validate((valid) => {
-          if (valid) {
-
-            let _this = this
-            if(_this.sendApi == 1){
-              console.log('backup to filecoin');
-              return false
-            }
-
-            let postUrl01 = _this.data_api + `/minio/deal/` + _this.postAdress
-            let postUrl = `http://192.168.88.41:9000/minio/deal/` + _this.postAdress
-            let minioDeal = {
-                "VerifiedDeal": _this.ruleForm.verified == '2'? 'false' : 'true',
-                "FastRetrieval": _this.ruleForm.fastRetirval == '2'? 'false' : 'true',
-                "MinerId": _this.ruleForm.minerId,
-                "Price": _this.ruleForm.price,
-                "Duration": String(_this.ruleForm.duration*24*60*2)   //（UI上用户输入天数，需要转化成epoch给后端。例如10天, 就是 10*24*60*2）
-            }
-
-            axios.post(postUrl01, minioDeal, {headers: {
-                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
-            }}).then((response) => {
-                let json = response.data
-                if (json.status == 'success') {
-                  _this.ruleForm.dealCID = json.data.dealCid
-                  _this.$message({
-                    message: 'Transaction has been successfully sent.',
-                    type: 'success'
-                  });
-                }else{
-                    _this.$message.error(json.message);
-                    return false
-                }
-
-            }).catch(function (error) {
-                console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
-            });
-
-          } else {
-            console.log('error submit!!');
-            return false;
-          }
-        });
-      },
       getDiglogChange() {
         this.$emit('getretrievalDialog', false)
+      },
+      getData(){
+        let _this = this
+        _this.exChangeList = []
+
+        let postGetUrl = _this.data_api + `/minio/bucket/retrieve/` + _this.currentBucket
+        axios.get(postGetUrl, {
+           headers: {
+                'Authorization':"Bearer "+ _this.$store.getters.accessToken
+           }
+        }).then((response) => {
+            let json = response.data
+            if(json.status == 'success'){
+              let dataAll = json.data
+              if(dataAll.deals && dataAll.deals.length>0){
+                dataAll.deals.map(item => {
+                  if(item.data){
+                    item.data.visible = false
+                    item.data.visibleDataCid = false
+                    item.data.timeStamp = Moment(new Date(item.data.timeStamp/1000)).format('YYYY-MM-DD HH:mm:ss')
+                  }
+                })
+              }
+              _this.exChangeList = dataAll.deals
+            }else{
+                _this.$message.error(json.message);
+                return false
+            }
+        }).catch(function (error) {
+            console.log(error);
+            // console.log(error.message, error.request, error.response.headers);
+        });
+      },
+      copyLink(text){
+        let _this = this
+        var txtArea = document.createElement("textarea");
+        txtArea.id = 'txt';
+        txtArea.style.position = 'fixed';
+        txtArea.style.top = '0';
+        txtArea.style.left = '0';
+        txtArea.style.opacity = '0';
+        txtArea.value = text;
+        document.body.appendChild(txtArea);
+        txtArea.select();
+
+        try {
+            var successful = document.execCommand('copy');
+            var msg = successful ? 'Link copied to clipboard!' : 'copy failed!';
+            console.log('Copying text command was ' + msg);
+            if (successful) {
+                _this.$message({
+                    message: msg,
+                    type: 'success'
+                });
+            }
+        } catch (err) {
+            console.log('Oops, unable to copy');
+        } finally {
+            document.body.removeChild(txtArea);
+        }
+
       },
     },
     mounted() {},

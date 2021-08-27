@@ -1,15 +1,14 @@
 import Vue from 'vue'
 import Router from 'vue-router'
 Vue.use(Router)
-//路由懒加载
+// Route lazy loading
 const home = () => import("@/components/Home");
 const minio = () => import("@/views/minio/index");
 const login = () => import("@/components/login");
 
 
-//配置路由
 export default new Router({
-	// mode: 'history', // 后端支持可开
+	// mode: 'history', // Back end support can be opened
 	mode: 'hash',
 	routes: [
         {
@@ -25,9 +24,7 @@ export default new Router({
                     name: 'minio',
                     component: minio,
                     beforeEnter: (to, from, next) => {
-
-                      // 这里判断用户是否登录，验证本地存储是否有token
-                      if (!sessionStorage.getItem('oaxMinioLoginAccessToken')) { // 判断当前的token是否存在
+                      if (!sessionStorage.getItem('oaxMinioLoginAccessToken')) {
                         next({
                           path: '/minio/login',
                           query: { redirect: to.fullPath }
@@ -35,17 +32,15 @@ export default new Router({
                       } else {
                         next()
                       }
-
                     }
                 },
             ]
         },
-		//登录
-		{
-			path: '/minio/login',
-			name: 'login',
-			component: login,
-		},
+        {
+          path: '/minio/login',
+          name: 'login',
+          component: login,
+        },
         {
             path: '*',
             redirect: '/'

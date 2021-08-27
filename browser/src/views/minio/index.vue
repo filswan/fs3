@@ -26,6 +26,13 @@
               <button type="button" class="btn btn-default pcIcon" @click.stop="signBtn"><i class="iconfont icon-ziyuan"></i></button>
               <button type="button" class="btn btn-default mobileIcon" @click.stop="signBtn"><i class="el-icon-more"></i></button>
               <ul class="dropdown-menu" v-show="signShow">
+                <!-- add Change Password page -->
+                <li @click="changePass = true">
+                  <a href="javascript:;">
+                    Change Password <i class="el-icon-s-tools"></i>
+                  </a>
+                </li>
+                <!-- Change Password end -->
                 <li @click="handleFullScreen">
                   <a href="javascript:;">
                     Fullscreen <i class="iconfont icon-fangda"></i>
@@ -219,6 +226,7 @@
         </div>
       </el-drawer>
 
+      <!-- aboutus dialog box -->
       <div class="model" v-show="openAboutShow">
         <div class="model_bg" @click="openAbout"></div>
         <div class="model_cont">
@@ -250,10 +258,12 @@
       </div>
 
 
+      <!-- create bucket dialog box -->
       <el-dialog title="" custom-class="customStyle" :before-close="getDialogClose" :visible.sync="dialogFormVisible">
           <el-input v-model="form.name" placeholder="Bucket Name" ref="bucketNameRef"></el-input>
       </el-dialog>
 
+      <!-- delete dialog box -->
       <el-dialog
         :visible.sync="deleteDialogVisible"
         custom-class="deleteStyle"
@@ -268,16 +278,23 @@
         </div>
       </el-dialog>
 
+      <!-- share dialog box -->
       <share-dialog
         :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
         :shareFileShow="shareFileShow" :num="num" :share_input="share_input"
         :postAdress="postAdress" :sendApi="sendApi"
         @getshareDialog="getshareDialog" @getShareGet="getPresignedGet">
       </share-dialog>
+
+      <!-- change password dialog box -->
+      <change-password
+        :changePass="changePass"  @getChangePass="getChangePass">
+      </change-password>
   </div>
 
 
 
+  <!-- all deals page -->
   <div class="landing" v-else>
         <header class="fe-header">
               <div class="form_top">
@@ -361,6 +378,7 @@
 import axios from 'axios'
 import Moment from 'moment'
 import shareDialog from '@/components/shareDialog.vue';
+import changePassword from '@/components/changePassword.vue';
 let that
 export default {
   name: 'landing',
@@ -413,19 +431,18 @@ export default {
       },
       postAdress: '',
       sendApi: 2,
-      //设置row-key只展示一行
-      expands: [],//只展开一行放入当前行id
+      expands: [],
       getRowKeys: (row) => {
-        //获取当前行id
-        //console.log('获取当前行id', row, row.eqId)
-        return row.name   //这里看这一行中需要根据哪个属性值是id
+        return row.name
       },
       exChangeList: [],
-      searchValue: ''
+      searchValue: '',
+      changePass: false
     }
   },
   components: {
-      shareDialog
+      shareDialog,
+      changePassword
   },
   props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick', 'allDealShow'],
   methods: {
@@ -435,12 +452,12 @@ export default {
         that.expands = []
         if (row) {
           that.expands.push(row.name)
-          //console.log('只展开当前行id')
+          //open
         }
         that.tableJson(row.name)
       } else {
         that.expands = []
-        //console.log('收起了')
+        //retract
       }
     },
     tableJson(name) {
@@ -472,7 +489,6 @@ export default {
             }
         }).catch(function (error) {
             console.log(error);
-            // console.log(error.message, error.request, error.response.headers);
         });
     },
     copyLink(text){
@@ -525,7 +541,6 @@ export default {
       this.shareObjectShow = false
       this.shareFileShow = true
       this.postAdress = this.currentBucket + '/' + now.name
-      //this.$emit('getshareHome', true, false, true);
     },
     getshareDialog(shareDialog) {
       this.shareDialog = shareDialog
@@ -572,7 +587,6 @@ export default {
       this.deleteDialogVisible = true
       this.deleteDialogIndex = []
       this.deleteDialogIndex.push(name)
-      // this.tableData = this.tableData.splice(index, 1)
     },
     deleteListFun() {
       let _this = this
@@ -620,7 +634,6 @@ export default {
 
       }).catch(function (error) {
           console.log(error);
-          // console.log(error.message, error.request, error.response.headers);
       });
     },
     downloadFun() {
@@ -646,7 +659,6 @@ export default {
           _this.drawPlayClose()
       }).catch(function (error) {
           console.log(error);
-          // console.log(error.message, error.request, error.response.headers);
       });
 
     },
@@ -693,7 +705,7 @@ export default {
         var a = document.createElement("a");
         a.download = _this.currentBucketAll[0];
         a.href = requestUrl;
-        $("body").append(a); // 修复firefox中无法触发click
+        $("body").append(a); // Fix that click cannot be triggered in Firefox
         a.click();
         $(a).remove();
       }
@@ -744,7 +756,6 @@ export default {
 
       }).catch(function (error) {
           console.log(error);
-          // console.log(error.message, error.request, error.response.headers);
       });
     },
     drawPlay(index, now) {
@@ -781,6 +792,9 @@ export default {
     signBtn() {
       this.signShow = !this.signShow
     },
+    getChangePass(dialog){
+      this.changePass = dialog
+    },
     handleFullScreen(){
       let element = document.documentElement;
       if (this.fullscreen) {
@@ -807,11 +821,33 @@ export default {
       }
       this.fullscreen = !this.fullscreen;
     },
-    // 退出登录
+    // logout
     logout() {
       var _this = this;
-      _this.$store.dispatch("FedLogOut").then(() => {
-        _this.$router.replace({ name: 'login' })
+
+      let dataGetDiscoveryDoc = {
+          id: 1,
+          jsonrpc: "2.0",
+          method: "web.GetDiscoveryDoc",
+          params:{}
+      }
+      axios.post(_this.postUrl, dataGetDiscoveryDoc, {headers: {
+          'Authorization':"Bearer "+ _this.$store.getters.accessToken
+      }}).then((response) => {
+          let json = response.data
+          let error = json.error
+          let result = json.result
+          if (error) {
+              _this.$message.error(error.message);
+              return false
+          }
+
+          _this.$store.dispatch("FedLogOut").then(() => {
+            _this.$router.replace({ name: 'login' })
+          });
+
+      }).catch(function (error) {
+          console.log(error);
       });
     },
     getDialogClose() {
@@ -834,10 +870,8 @@ export default {
             item.lastModified = Moment(item.lastModified).format('YYYY-MM-DD HH:mm:ss')
           })
           _this.tableData = JSON.parse(JSON.stringify(_this.aboutListObjects.objects))
-          //console.log('tableData', _this.tableData)
       }else{
         _this.tableData = []
-        //_this.tableData = JSON.parse(JSON.stringify(_this.aboutListObjects.objects))
       }
     }
   },
@@ -1373,27 +1407,6 @@ export default {
 
       }
     }
-    // &::-webkit-scrollbar{
-    //     width: 7px;
-    //     height: 7px;
-    //     background-color: #F5F5F5;
-    // }
-
-    // /*定义滚动条轨道 内阴影+圆角*/
-    // &::-webkit-scrollbar-track {
-    //     box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
-    //     -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
-    //     border-radius: 10px;
-    //     background-color: #F5F5F5;
-    // }
-
-    // /*定义滑块 内阴影+圆角*/
-    // &::-webkit-scrollbar-thumb{
-    //     border-radius: 10px;
-    //     box-shadow: inset 0 0 6px rgba(0, 0, 0, .1);
-    //     -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, .1);
-    //     background-color: #c8c8c8;
-    // }
   }
   .el-drawer__wrapper.drawStyle01 /deep/{
     bottom: auto;
