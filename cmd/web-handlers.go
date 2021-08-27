@@ -70,6 +70,11 @@ import (
 	"os/exec"
 )
 
+const (
+	SuccessResponseStatus = "success"
+	FailResponseStatus    = "fail"
+)
+
 func extractBucketObject(args reflect.Value) (bucketName, objectName string) {
 	switch args.Kind() {
 	case reflect.Ptr:
@@ -2491,7 +2496,7 @@ func writeWebErrorResponse(w http.ResponseWriter, err error) {
 	ctx := logger.SetReqInfo(GlobalContext, reqInfo)
 	apiErr := toWebAPIError(ctx, err)
 	w.WriteHeader(apiErr.HTTPStatusCode)
-	sendResponse := SendResponse{Status: "fail", Message: apiErr.Description}
+	sendResponse := SendResponse{Status: FailResponseStatus, Message: apiErr.Description}
 	errJson, error := json.Marshal(sendResponse)
 	if error != nil {
 		logs.GetLogger().Error(error)
@@ -2630,7 +2635,7 @@ func (web *webAPIHandlers) JsonRetrieveDeal(w http.ResponseWriter, r *http.Reque
 				ObjectName:      object,
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -2655,7 +2660,7 @@ func (web *webAPIHandlers) JsonRetrieveDeal(w http.ResponseWriter, r *http.Reque
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJson, _ := json.Marshal(sendResponse)
 			w.Write(errJson)
 			return
@@ -2674,7 +2679,7 @@ func (web *webAPIHandlers) JsonRetrieveDeal(w http.ResponseWriter, r *http.Reque
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -2746,8 +2751,8 @@ func (web *webAPIHandlers) JsonRetrieveDeal(w http.ResponseWriter, r *http.Reque
 		fileDeals := data.FileList[fileIndex]
 		retrieveResponse := RetrieveResponse{
 			Data:    fileDeals,
-			Status:  "success",
-			Message: "success",
+			Status:  SuccessResponseStatus,
+			Message: SuccessResponseStatus,
 		}
 
 		dataBytes, err := json.Marshal(retrieveResponse)
@@ -2762,7 +2767,7 @@ func (web *webAPIHandlers) JsonRetrieveDeal(w http.ResponseWriter, r *http.Reque
 			FileName: object,
 			Deals:    []SendResponse{},
 		}
-		retrieveResponse := RetrieveResponse{Data: blankDeals, Status: "success", Message: "The specified object does not have deals"}
+		retrieveResponse := RetrieveResponse{Data: blankDeals, Status: SuccessResponseStatus, Message: "The specified object does not have deals"}
 		dataBytes, err := json.Marshal(retrieveResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
@@ -2804,7 +2809,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 				ObjectName:      object,
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -2829,7 +2834,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJson, _ := json.Marshal(sendResponse)
 			w.Write(errJson)
 			return
@@ -2848,7 +2853,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -2912,12 +2917,17 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	fileDealKey := bucket + "_" + object
 	fileDeals, err := db.Get([]byte(fileDealKey), nil)
 	if err != nil || fileDeals == nil {
+		logs.GetLogger().Error(err)
 		return
 	}
 	data := BucketFileList{}
-	json.Unmarshal(fileDeals, &data)
+	err = json.Unmarshal(fileDeals, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return
+	}
 
-	retrieveResponse := RetrieveResponse{Data: data, Status: "success", Message: "success"}
+	retrieveResponse := RetrieveResponse{Data: data, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
 	dataBytes, err := json.Marshal(retrieveResponse)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -2953,7 +2963,7 @@ func (web *webAPIHandlers) JsonRetrieveBucketDeal(w http.ResponseWriter, r *http
 				ObjectName:      "",
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -2978,7 +2988,7 @@ func (web *webAPIHandlers) JsonRetrieveBucketDeal(w http.ResponseWriter, r *http
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJson, _ := json.Marshal(sendResponse)
 			w.Write(errJson)
 			return
@@ -2997,7 +3007,7 @@ func (web *webAPIHandlers) JsonRetrieveBucketDeal(w http.ResponseWriter, r *http
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -3057,8 +3067,8 @@ func (web *webAPIHandlers) JsonRetrieveBucketDeal(w http.ResponseWriter, r *http
 		bucketDeals := data.BucketDealsList[fileIndex]
 		retrieveResponse := RetrieveBucketResponse{
 			Data:    bucketDeals,
-			Status:  "success",
-			Message: "success",
+			Status:  SuccessResponseStatus,
+			Message: SuccessResponseStatus,
 		}
 
 		dataBytes, err := json.Marshal(retrieveResponse)
@@ -3073,7 +3083,7 @@ func (web *webAPIHandlers) JsonRetrieveBucketDeal(w http.ResponseWriter, r *http
 			BucketName: bucket,
 			Deals:      []SendResponse{},
 		}
-		retrieveResponse := RetrieveBucketResponse{Data: blankDeals, Status: "success", Message: "The specified bucket does not have deals"}
+		retrieveResponse := RetrieveBucketResponse{Data: blankDeals, Status: SuccessResponseStatus, Message: "The specified bucket does not have deals"}
 		dataBytes, err := json.Marshal(retrieveResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
@@ -3110,7 +3120,7 @@ func (web *webAPIHandlers) RetrieveDeals(w http.ResponseWriter, r *http.Request)
 				ObjectName:      "",
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -3135,7 +3145,7 @@ func (web *webAPIHandlers) RetrieveDeals(w http.ResponseWriter, r *http.Request)
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJson, _ := json.Marshal(sendResponse)
 			w.Write(errJson)
 			return
@@ -3154,7 +3164,7 @@ func (web *webAPIHandlers) RetrieveDeals(w http.ResponseWriter, r *http.Request)
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -3186,6 +3196,7 @@ func (web *webAPIHandlers) RetrieveDeals(w http.ResponseWriter, r *http.Request)
 	_, err := objectAPI.GetBucketInfo(ctx, bucket)
 	if err != nil {
 		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
 		return
 	}
 
@@ -3213,7 +3224,7 @@ func (web *webAPIHandlers) RetrieveDeals(w http.ResponseWriter, r *http.Request)
 	data := BucketDealList{}
 	json.Unmarshal(bucketDeals, &data)
 
-	retrieveResponse := RetrieveBucketResponse{Data: data, Status: "success", Message: "success"}
+	retrieveResponse := RetrieveBucketResponse{Data: data, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
 	dataBytes, err := json.Marshal(retrieveResponse)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -3242,6 +3253,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	object, err := unescapePath(vars["object"])
 	if err != nil {
 		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
 		return
 	}
 
@@ -3256,7 +3268,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 				ObjectName:      object,
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -3281,8 +3293,13 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
-			errJson, _ := json.Marshal(sendResponse)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, err := json.Marshal(sendResponse)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
 			w.Write(errJson)
 			return
 		}
@@ -3300,7 +3317,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -3342,6 +3359,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	var opts ObjectOptions
 	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
 	if err != nil {
+		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
@@ -3388,7 +3406,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		noWalletResponse := OnlineDealResponse{}
 		sendResponse := SendResponse{
 			Data:    noWalletResponse,
-			Status:  "fail",
+			Status:  FailResponseStatus,
 			Message: "Please provide a wallet address for sending deals",
 		}
 		bodyByte, err := json.Marshal(sendResponse)
@@ -3409,7 +3427,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		noDataCidResponse := OnlineDealResponse{}
 		sendResponse := SendResponse{
 			Data:    noDataCidResponse,
-			Status:  "fail",
+			Status:  FailResponseStatus,
 			Message: "Sending deal failed during lotus importing",
 		}
 		bodyByte, err := json.Marshal(sendResponse)
@@ -3428,7 +3446,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		noDealCidResponse := OnlineDealResponse{}
 		sendResponse := SendResponse{
 			Data:    noDealCidResponse,
-			Status:  "fail",
+			Status:  FailResponseStatus,
 			Message: "Sending deal failed during lotus sending deal",
 		}
 		bodyByte, err := json.Marshal(sendResponse)
@@ -3459,8 +3477,8 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	sendResponse := SendResponse{
 		Data:    onlineDealResponse,
-		Status:  "success",
-		Message: "success",
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
 	}
 	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
@@ -3505,7 +3523,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 				ObjectName:      "",
 			}) {
 				w.WriteHeader(http.StatusUnauthorized)
-				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
 				errJson, _ := json.Marshal(sendResponse)
 				w.Write(errJson)
 				return
@@ -3530,7 +3548,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 			}
 		} else {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJson, _ := json.Marshal(sendResponse)
 			w.Write(errJson)
 			return
@@ -3549,7 +3567,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
-			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
 			errJsonIam, _ := json.Marshal(sendResponseIam)
 			w.Write(errJsonIam)
 			return
@@ -3580,6 +3598,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 
 	_, err := objectAPI.GetBucketInfo(ctx, bucket)
 	if err != nil {
+		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
@@ -3622,7 +3641,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		noWalletResponse := OnlineDealResponse{}
 		sendResponse := SendResponse{
 			Data:    noWalletResponse,
-			Status:  "fail",
+			Status:  FailResponseStatus,
 			Message: "Please provide a wallet address for sending deals",
 		}
 		bodyByte, err := json.Marshal(sendResponse)
@@ -3652,7 +3671,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		noDataCidResponse := OnlineDealResponse{}
 		sendResponse := SendResponse{
 			Data:    noDataCidResponse,
-			Status:  "fail",
+			Status:  FailResponseStatus,
 			Message: "Sending bucket deal failed during lotus importing",
 		}
 		bodyByte, err := json.Marshal(sendResponse)
@@ -3671,7 +3690,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		noDealCidResponse := OnlineDealResponse{}
 		sendResponse := SendResponse{
 			Data:    noDealCidResponse,
-			Status:  "fail",
+			Status:  FailResponseStatus,
 			Message: "Sending bucket deal failed during lotus sending deal",
 		}
 		bodyByte, err := json.Marshal(sendResponse)
@@ -3702,8 +3721,8 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 	}
 	sendResponse := SendResponse{
 		Data:    onlineDealResponse,
-		Status:  "success",
-		Message: "success",
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
 	}
 	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
@@ -3894,7 +3913,11 @@ func ZipBucket(sourceBucketPath string, outputBucketZipPath string) (string, err
 	baseFolder := sourceBucketPath
 
 	// Get a Buffer to Write To
-	expandedDir, _ := BucketZipPath(outputBucketZipPath)
+	expandedDir, err := BucketZipPath(outputBucketZipPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
 	outFile, err := os.OpenFile(expandedDir, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0660)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -3927,6 +3950,7 @@ func addFiles(w *zip.Writer, basePath, baseInZip string) {
 	files, err := ioioutil.ReadDir(expandedDir)
 	if err != nil {
 		logs.GetLogger().Error(err)
+		return
 	}
 
 	for _, file := range files {
@@ -3934,16 +3958,19 @@ func addFiles(w *zip.Writer, basePath, baseInZip string) {
 			dat, err := ioioutil.ReadFile(expandedDir + "/" + file.Name())
 			if err != nil {
 				logs.GetLogger().Error(err)
+				continue
 			}
 
 			// Add some files to the archive.
 			f, err := w.Create(baseInZip + file.Name())
 			if err != nil {
 				logs.GetLogger().Error(err)
+				continue
 			}
 			_, err = f.Write(dat)
 			if err != nil {
 				logs.GetLogger().Error(err)
+				continue
 			}
 		} else if file.IsDir() {
 			// Recurse
@@ -4089,7 +4116,11 @@ func SaveToDb(bucket string, object string, response SendResponse) error {
 }
 
 func BucketSaveToDb(bucket string, response SendResponse) error {
-	expandedDir, _ := LevelDbPath()
+	expandedDir, err := LevelDbPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
 	db, err := leveldb.OpenFile(expandedDir, nil)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -4100,8 +4131,11 @@ func BucketSaveToDb(bucket string, response SendResponse) error {
 	bucketDeals, err := db.Get([]byte(bucket), nil)
 	if err == nil {
 		data := BucketDealList{}
-		json.Unmarshal(bucketDeals, &data)
-
+		err = json.Unmarshal(bucketDeals, &data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
 		data.Deals = append(data.Deals, response)
 		dataBytes, err := json.Marshal(data)
 		if err != nil {
