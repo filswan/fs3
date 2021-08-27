@@ -4059,6 +4059,7 @@ func SaveToDb(bucket string, object string, response SendResponse) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+		return err
 	} else {
 		newDeals := []SendResponse{}
 		newDeals = append(newDeals, response)
@@ -4076,8 +4077,8 @@ func SaveToDb(bucket string, object string, response SendResponse) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+		return err
 	}
-	return err
 }
 
 func BucketSaveToDb(bucket string, response SendResponse) error {
@@ -4105,6 +4106,7 @@ func BucketSaveToDb(bucket string, response SendResponse) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+		return err
 	} else {
 		newDeals := []SendResponse{}
 		newDeals = append(newDeals, response)
@@ -4122,6 +4124,6 @@ func BucketSaveToDb(bucket string, response SendResponse) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+		return err
 	}
-	return err
 }
