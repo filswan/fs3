@@ -3394,6 +3394,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
 		w.Write(bodyByte)
@@ -3414,6 +3415,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
 		w.Write(bodyByte)
@@ -3431,6 +3433,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		}
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
+			writeWebErrorResponse(w, err)
 			logs.GetLogger().Error(err)
 			return
 		}
@@ -3461,6 +3464,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
+		writeWebErrorResponse(w, err)
 		logs.GetLogger().Error(err)
 		return
 	}
@@ -3576,7 +3580,6 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 
 	_, err := objectAPI.GetBucketInfo(ctx, bucket)
 	if err != nil {
-		//writeErrorResponse(ctx, w, toAPIError(ctx, err), r.URL, guessIsBrowserReq(r))
 		writeWebErrorResponse(w, err)
 		return
 	}
@@ -3624,6 +3627,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		}
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
+			writeWebErrorResponse(w, err)
 			logs.GetLogger().Error(err)
 			return
 		}
@@ -3654,6 +3658,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
 		w.Write(bodyByte)
@@ -3672,6 +3677,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
 		w.Write(bodyByte)
@@ -3702,6 +3708,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
 		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
 		return
 	}
 	w.Write(bodyByte)
