@@ -23,20 +23,19 @@
 </template>
 <script>
 import axios from 'axios'
-import * as myAjax from '@/api/login'
 import Moment from 'moment'
 export default {
     data() {
         var validateAccesskey = (rule, value, callback) => {
             if (value === '') {
-                callback(new Error('请填写此字段。'));
+                callback(new Error('Please fill in this field.'));
             } else {
                 callback();
             }
         };
         var validateSecretkey = (rule, value, callback) => {
             if (value === '') {
-                callback(new Error('请填写此字段。'));
+                callback(new Error('Please fill in this field.'));
             } else if (value.length < 8) {
                 callback(new Error('Length cannot be less than 8.'));
             } else {
@@ -77,14 +76,12 @@ export default {
         submitForm(formName) {
             this.$refs[formName].validate((valid) => {
                 if (valid) {
-                    // alert('submit!');
                     let _this = this;
                     let currentUiVersion = 'MINIO_UI_VERSION';
                     _this.loginLoad = true;
 
                     let p = window.location.pathname
                     const minioBrowserPrefix = p.slice(0, p.indexOf("/", 1))
-                    // let postUrl = `${window.location.protocol}//${window.location.host}/minio/webrpc`
                     let postUrl = _this.data_api + `/minio/webrpc`
                     let dataLogin = {
                         id: 1,
@@ -95,18 +92,6 @@ export default {
                             password: _this.ruleForm.Secretkey
                         }
                     }
-
-
-        // myAjax
-        // .webrpc(dataLogin)
-        // .then(response => {
-        //   console.log(response)
-        // })
-        // .catch(error => {
-        //   console.log(error)
-        //     _this.loading=false
-        // })
-        // return false;
 
                     axios.post(postUrl, dataLogin,{headers: {}}).then((response) => {
                         let json = response.data
@@ -138,7 +123,6 @@ export default {
 
                     }).catch(function (error) {
                         console.log(error);
-                        // console.log(error.message, error.request, error.response.headers);
                         _this.loginLoad=false
                     });
                 } else {

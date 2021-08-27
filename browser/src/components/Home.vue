@@ -28,20 +28,6 @@
             <div class="addFile">
                 <el-row v-if="addFileShow">
                     <el-col :span="24">
-                        <!-- <el-upload
-                            class="upload-demo"
-                            ref="uploadFileRef"
-                            :action="actionUrl"
-
-                            multiple
-                            :http-request="uploadFile"
-                            :file-list="fileList"
-                            :on-change="handleChange">
-                            <el-tooltip class="item" effect="dark" slot="trigger" content="Upload file" placement="left">
-                                <i class="iconfont icon-shangchuan"></i>
-                            </el-tooltip>
-                        </el-upload> -->
-
                         <el-upload
                             class="upload-demo"
                             action="customize"
@@ -66,8 +52,6 @@
             </div>
 
             <div class="progressStyle" v-show="drawer">
-                <!--:color="customColor"-->
-                <!--el-progress :percentage="percentage_new" style="width: 100%;"></el-progress-->
                 <progress id="progressBar01" value="0" max="100" style="width: 100%;"></progress>
                 <div class="speed">
                   <span id="time"></span><span id="percentage"></span>
@@ -184,11 +168,9 @@ export default {
             this.getListBuckets()
             this.getStorageInfo()
             this.getServerInfo()
-            // let postUrl = `${window.location.protocol}//${window.location.host}/minio/webrpc`
         },
         getListBuckets(name) {
             let _this = this
-            // let postUrl = _this.data_api + `/minio/webrpc`
             let dataListBuckets = {
                 id: 1,
                 jsonrpc: "2.0",
@@ -216,7 +198,6 @@ export default {
                 if(_this.minioListBuckets.buckets){
                   _this.getListObjects()
                 }
-                //console.log('minioListBuckets home', _this.minioListBuckets)
 
             }).catch(function (error) {
                 console.log(error.request.status);
@@ -225,7 +206,6 @@ export default {
                     _this.$router.push("/minio/login")
                   })
                 }
-                // console.log(error.message, error.request, error.response.headers);
             });
         },
         getStorageInfo() {
@@ -248,11 +228,9 @@ export default {
                 }
                 _this.minioStorageInfo = result
                 _this.userd = result.used
-                //console.log(json, 'userd:', _this.userd)
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
             });
         },
         getServerInfo() {
@@ -274,11 +252,9 @@ export default {
                     return false
                 }
                 _this.aboutServer = result
-                //console.log(json)
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
             });
         },
         getListObjects(listName, prefixData) {
@@ -305,12 +281,9 @@ export default {
                     return false
                 }
                 _this.aboutListObjects = result
-                //console.log(json)
-                //_this.slideListClick += 1
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
             });
         },
         getDialogClose(dialogFormVisible, closeModule) {
@@ -341,7 +314,6 @@ export default {
                     _this.$message.error(error.message);
                     if(oldName) {
                       _this.currentBucket = oldName
-                      //console.log('error', oldName)
                     }
                     return false
                 }
@@ -363,14 +335,12 @@ export default {
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
             });
 
         },
         getRemoveObject(data){
             let _this = this
             _this.aboutListObjects.objects = JSON.parse(JSON.stringify(data))
-            // console.log(_this.aboutListObjects.objects);
         },
         getminioListBucket(listName, all) {
           if(listName){
@@ -398,7 +368,7 @@ export default {
         },
 
 
-    //文件上传
+    //File upload
     httpRequest(file) {
       console.log('httpRequest', file);
     },
@@ -420,11 +390,7 @@ export default {
         if(!$hgh) {
           let prefix = _this.prefixData ? _this.prefixData + '/': ''
           let postUrl = _this.data_api + '/minio/upload/' + _this.currentBucket + '/' + prefix + file.name
-          let formData = new FormData();  //创建空对象
-          /*for (let i = 0; i < fileList.length; i++) {
-            formData.append("Content-Type", fileList[i].raw.type);
-            formData.append("Authorization", "Bearer "+ _this.$store.getters.accessToken);
-          }*/
+          let formData = new FormData();  //Create Empty
 
               document.getElementById("progressBar01").value = 0
               let xhr
@@ -445,10 +411,8 @@ export default {
                   .format("YYYYMMDDTHHmmss") + "Z"
               )
 
-              //console.log('dispatch', xhr, file.size, file.name);
 
               xhr.onload = function(event) {
-                //console.log('jinru1', xhr.status);
                 if (xhr.status == 401 || xhr.status == 403) {
                   _this.$message({
                       message: "Unauthorized request.",
@@ -490,51 +454,17 @@ export default {
                 //xhr.send(file.raw)
              }
 
-             xhr.upload.onprogress = _this.progressFunction;//【上传进度调用方法实现】
-             xhr.upload.onloadstart = function(){//上传开始执行方法
-                 //$(".progressStyle").html("")
-                 _this.progressArr.ot = new Date().getTime();   //设置上传开始时间
-                 _this.progressArr.oloaded = 0;//设置上传开始时，以上传的文件大小为0
+             xhr.upload.onprogress = _this.progressFunction;//Implementation of upload progress call method
+             xhr.upload.onloadstart = function(){//Upload start execution method
+                 _this.progressArr.ot = new Date().getTime();   //Set upload start time
+                 _this.progressArr.oloaded = 0;//Set the file size to 0 when uploading starts
                  _this.percentage_new = 0
                  _this.drawer = true
-                  //$(".progressStyle").append('<el-progress :percentage="percentage_new" id="progressBar" value="0" max="100" style="width: 100%;"></el-progress><progress id="progressBar01" value="0" max="100" style="width: 100%;"></progress><div class="speed"><span id="time"></span>(<span id="percentage"></span>)</div>')
              };
              xhr.send(file.raw)
-             console.log('shangchuan:', file.raw)
-
-          /*
-          axios.put(postUrl, formData, {headers: {
-              'Authorization':"Bearer "+ _this.$store.getters.accessToken,
-              'Content-Type': file.raw.type
-          }}).then((response) => {
-              let json = response.data
-              //console.log('upload res', json)
-
-          }).catch(function (error) {
-              console.log(error);
-              // console.log(error.message, error.request, error.response.headers);
-          });*/
-
-
-
-
-          /*if(fileList){
-            fileList.map(item => {
-              $("#progressD").append('<div class="progressStyle"><el-progress :percentage="percentage_new" id="progressBar" value="0" max="100" style="width: 100%;"></el-progress><progress id="progressBar01" value="0" max="100" style="width: 100%;"></progress><div class="speed"><span id="time"></span>(<span id="percentage"></span>)</div></div>')
-            })
-          }
-          fileList.map(item => {
-             _this.$notify({
-               title: '',
-               duration: 0,
-               dangerouslyUseHTMLString: true,
-               position: 'bottom-right',
-               message: '<div class="progressStyle"><el-progress :percentage="percentage_new" id="progressBar" value="0" max="100" style="width: 100%;"></el-progress><progress id="progressBar01" value="0" max="100" style="width: 100%;"></progress><div class="speed"><span id="time"></span>(<span id="percentage"></span>)</div></div>'
-             });
-          })*/
         }
       },
-      //上传进度实现方法，上传过程中会频繁调用该方法
+      //Upload progress implementation method, which will be called frequently during the upload process
       progressFunction(evt) {
            let _this = this
            let progressBar = document.getElementById("progressBar01");
@@ -547,17 +477,17 @@ export default {
            }
 
           let time = document.getElementById("time");
-          let nt = new Date().getTime();//获取当前时间
-          var pertime = (nt - _this.progressArr.ot)/1000; //计算出上次调用该方法时到现在的时间差，单位为s
-          _this.progressArr.ot = new Date().getTime(); //重新赋值时间，用于下次计算
+          let nt = new Date().getTime();//Get current time
+          var pertime = (nt - _this.progressArr.ot)/1000; //Calculate the time difference from the last time this method was called to the present, unit: s
+          _this.progressArr.ot = new Date().getTime(); //Reassign time for next calculation
 
-          var perload = evt.loaded - _this.progressArr.oloaded; //计算该分段上传的文件大小，单位b
-          _this.progressArr.oloaded = evt.loaded;//重新赋值已上传文件大小，用以下次计算
+          var perload = evt.loaded - _this.progressArr.oloaded; //Calculate the file size uploaded by this segment, unit B
+          _this.progressArr.oloaded = evt.loaded;//Reassign the uploaded file size, calculated with the following times
 
-          //上传速度计算
-          var speed = perload/pertime;//单位b/s
+          //Upload speed calculation
+          var speed = perload/pertime;//unit b/s
           var bspeed = speed;
-          var units = 'b/s';//单位名称
+          var units = 'b/s'; //unit
           if(speed/1024>1){
               speed = speed/1024;
               units = 'k/s';
@@ -567,11 +497,11 @@ export default {
               units = 'M/s';
           }
           speed = speed.toFixed(1);
-          //剩余时间
+          //Remaining time
           var resttime = ((evt.total-evt.loaded)/bspeed).toFixed(1);
-          time.innerHTML = speed+units;  //+'，剩余时间：'+resttime+'s'
+          time.innerHTML = speed+units;
           if(bspeed==0)
-              time.innerHTML = '上传已取消';
+              time.innerHTML = 'Upload cancelled';
           if(!resttime || resttime <= 0){
             //Notification.closeAll()
             _this.drawer = false
@@ -691,7 +621,6 @@ export default {
             background-color: #F5F5F5;
         }
 
-        /*定义滚动条轨道 内阴影+圆角*/
         &::-webkit-scrollbar-track {
             box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
             -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
@@ -699,7 +628,6 @@ export default {
             background-color: #F5F5F5;
         }
 
-        /*定义滑块 内阴影+圆角*/
         &::-webkit-scrollbar-thumb{
             border-radius: 10px;
             box-shadow: inset 0 0 6px rgba(0, 0, 0, .1);

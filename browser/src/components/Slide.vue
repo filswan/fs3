@@ -174,8 +174,6 @@ export default {
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
-                _this.loginLoad=false
             });
       },
       addPolicies() {
@@ -198,15 +196,7 @@ export default {
            }
 
            if(!$hgh){
-            console.log('$hgh', 111);
-
             _this.setPolicyChange()
-
-            setTimeout(function(){
-              console.log('return ceshi111', _this.bucketPolicies.policies);
-            },1000);
-           }else{
-            console.log('$hgh', 222);
            }
 
       },
@@ -237,8 +227,6 @@ export default {
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
-                _this.loginLoad=false
             });
       },
       dialogFun(name, index) {
@@ -275,12 +263,9 @@ export default {
             }
 
             _this.$emit('getListBuckets');
-            console.log(json)
 
         }).catch(function (error) {
             console.log(error);
-            // console.log(error.message, error.request, error.response.headers);
-            _this.loginLoad=false
         });
       },
       getListAllBucketPolicies(name) {
@@ -304,22 +289,13 @@ export default {
                 return false
             }
             _this.bucketPolicies = result
-            /*if(_this.bucketPolicies.policies) {
-              _this.bucketPolicies.policies.map(item => {
-                  if(!item.prefix){
-                      item.prefix = '*'
-                  }
-              })
-             }*/
 
         }).catch(function (error) {
             console.log(error);
-            // console.log(error.message, error.request, error.response.headers);
-            _this.loginLoad=false
         });
       },
       handleSelect(key, keyPath) {
-        console.log(key, keyPath);
+        //console.log(key, keyPath);
       },
       mobileMenuFun(){
         let _this = this;
@@ -376,7 +352,6 @@ export default {
             })
             _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
 
-            //console.log('minioListBucketsAll', _this.minioListBucketsAll);
         }else{
           _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
         }
@@ -520,7 +495,6 @@ export default {
               background-color: #F5F5F5;
           }
 
-          /*定义滚动条轨道 内阴影+圆角*/
           &::-webkit-scrollbar-track {
               box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
               -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
@@ -528,7 +502,6 @@ export default {
               background-color: #F5F5F5;
           }
 
-          /*定义滑块 内阴影+圆角*/
           &::-webkit-scrollbar-thumb{
               border-radius: 10px;
               box-shadow: inset 0 0 6px rgba(0, 0, 0, .1);

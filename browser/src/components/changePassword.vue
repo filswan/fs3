@@ -122,7 +122,6 @@ export default {
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
             });
           } else {
             console.log('error submit!!');

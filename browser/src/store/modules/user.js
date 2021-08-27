@@ -21,7 +21,7 @@ const user = {
   },
 
   actions: {
-    // 登录
+    // login
     Login({ commit }, userInfo) {
       var _this = this
       return new Promise((resolve, reject) => {
@@ -60,7 +60,7 @@ const user = {
           .catch(error => {
             _this.loginLoad = false
             Message({
-              message: '登录失败',
+              message: 'Login failed',
               type: 'error',
               duration: 5 * 1000
             })
@@ -70,13 +70,13 @@ const user = {
       })
     },
 
-    // 获取用户信息
+    // Get user information
     SetTime({ commit }, time) {
       return new Promise((resolve, reject) => {
         commit('SET_LINKTIME', time)
       })
     },
-    // 前端 登出
+    // logout
     FedLogOut({ commit }) {
       // var _this = this
       return new Promise(resolve => {

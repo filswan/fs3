@@ -1,13 +1,13 @@
 import router from './router'
-import NProgress from 'nprogress' // Progress 进度条
-import 'nprogress/nprogress.css' // Progress 进度条样式
+import NProgress from 'nprogress' // Progress
+import 'nprogress/nprogress.css' // Progress style
 import store from './store'
 
 NProgress.configure({
   showSpinner: false
 })
 
-const whiteList = ['/minio/login'] // 不重定向白名单
+const whiteList = ['/minio/login'] //Do not redirect whitelist
 router.beforeEach((to, from, next) => {
   NProgress.start()
   store.state.user.linkPageName = null
@@ -23,7 +23,7 @@ router.beforeEach((to, from, next) => {
       NProgress.done()
     }
   } else {
-    if (whiteList.indexOf(to.path) !== -1) { // 在免登录白名单，直接进入
+    if (whiteList.indexOf(to.path) !== -1) { // In the login free white list, enter directly
       next()
     } else {
       next()
@@ -33,5 +33,5 @@ router.beforeEach((to, from, next) => {
 })
 
 router.afterEach(() => {
-  NProgress.done() // 结束Progress
+  NProgress.done() // Progress end
 })
