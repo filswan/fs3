@@ -33,6 +33,12 @@ Vue.use(ElementUI, { locale })
 Vue.use(Vuex)
 Vue.use(VueClipboard)
 
+// metamask
+import './utils/web3.1.min.js';
+import Web3 from 'web3'
+Vue.prototype.Web3 = Web3
+
+
 Object.keys(filters).forEach(key => {
   Vue.filter(key, filters[key])
 })

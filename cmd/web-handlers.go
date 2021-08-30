@@ -18,17 +18,19 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"errors"
 	"fmt"
+	csv "github.com/minio/csvparser"
 	"github.com/minio/minio/internal/config"
 	"github.com/minio/minio/logs"
 	oshomedir "github.com/mitchellh/go-homedir"
 	"github.com/syndtr/goleveldb/leveldb"
 
-	//"github.com/filedrive-team/go-graphsplit"
+	"github.com/filedrive-team/go-graphsplit"
 	"io"
 	"net"
 	"net/http"
@@ -2509,6 +2511,14 @@ type DealVo struct {
 	MinerId      string `json:"miner_id,omitempty"`
 }
 
+type OfflineDealRequest struct {
+	CarSliceSize int64  `json:"car_slice_size,omitempty"`
+	Start        uint   `json:"start,omitempty"`
+	Duration     uint   `json:"duration,omitempty"`
+	Price        string `json:"price,omitempty"`
+	MinerId      string `json:"miner_id,omitempty"`
+}
+
 type OnlineDealRequest struct {
 	VerifiedDeal  string `json:"verifiedDeal"`
 	FastRetrieval string `json:"fastRetrieval"`
@@ -3394,6 +3404,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
 		w.Write(bodyByte)
@@ -3414,6 +3425,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
 		w.Write(bodyByte)
@@ -3431,6 +3443,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		}
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
+			writeWebErrorResponse(w, err)
 			logs.GetLogger().Error(err)
 			return
 		}
@@ -3461,6 +3474,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	}
 	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
+		writeWebErrorResponse(w, err)
 		logs.GetLogger().Error(err)
 		return
 	}
@@ -3576,7 +3590,6 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 
 	_, err := objectAPI.GetBucketInfo(ctx, bucket)
 	if err != nil {
-		//writeErrorResponse(ctx, w, toAPIError(ctx, err), r.URL, guessIsBrowserReq(r))
 		writeWebErrorResponse(w, err)
 		return
 	}
@@ -3624,6 +3637,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		}
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
+			writeWebErrorResponse(w, err)
 			logs.GetLogger().Error(err)
 			return
 		}
@@ -3654,6 +3668,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
 		w.Write(bodyByte)
@@ -3672,6 +3687,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
 		w.Write(bodyByte)
@@ -3702,6 +3718,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 	bodyByte, err := json.Marshal(sendResponse)
 	if err != nil {
 		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
 		return
 	}
 	w.Write(bodyByte)
@@ -4059,6 +4076,7 @@ func SaveToDb(bucket string, object string, response SendResponse) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+		return err
 	} else {
 		newDeals := []SendResponse{}
 		newDeals = append(newDeals, response)
@@ -4076,8 +4094,8 @@ func SaveToDb(bucket string, object string, response SendResponse) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+		return err
 	}
-	return err
 }
 
 func BucketSaveToDb(bucket string, response SendResponse) error {
@@ -4105,6 +4123,7 @@ func BucketSaveToDb(bucket string, response SendResponse) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+		return err
 	} else {
 		newDeals := []SendResponse{}
 		newDeals = append(newDeals, response)
@@ -4122,6 +4141,317 @@ func BucketSaveToDb(bucket string, response SendResponse) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+		return err
 	}
-	return err
+}
+
+func (web *webAPIHandlers) SendOnlineDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebSendOnlineDeal")
+
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+	object, err := unescapePath(vars["object"])
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: "fail", Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	getObjectNInfo := objectAPI.GetObjectNInfo
+	if web.CacheAPI() != nil {
+		getObjectNInfo = web.CacheAPI().GetObjectNInfo
+	}
+	var opts ObjectOptions
+	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+	defer gr.Close()
+
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var offlineDealRequest OfflineDealRequest
+	err = decoder.Decode(&offlineDealRequest)
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	_ = func(address string) (string, error) {
+		addr := net.ParseIP(address)
+		if addr != nil {
+			// Host is an ip address
+			err := errors.New("for dev env, please provide a header with valid Host, exp: a5a84b78-dd4a-45f4-bd90-31428fc23a21.cygnus.nbai.io")
+			return "", err
+		} else {
+			// Host is a host name
+			domainSegments := strings.Split(address, ".")
+			if len(domainSegments) > 1 {
+				return domainSegments[0], nil
+			} else {
+				err := errors.New(fmt.Sprintf("invalid Host in header %s", address))
+				return "", err
+			}
+		}
+	}
+
+	// generate car
+	VolumeAddress := config.Fs3VolumeAddress
+
+	sourceFilePath := filepath.Join(VolumeAddress, bucket, object)
+	carFileDir := "." + bucket
+	carFileDirPath := filepath.Join(VolumeAddress, carFileDir)
+
+	localPaths := globalEndpoints.LocalDisksPaths()
+	fmt.Println(localPaths)
+
+	sliceSize := offlineDealRequest.CarSliceSize
+	carDir := carFileDirPath
+	parentPath := sourceFilePath
+	targetPath := carFileDirPath
+	graphName := object
+	parallel := 4
+
+	Emptyctx := context.Background()
+	var cb graphsplit.GraphBuildCallback
+
+	cb = graphsplit.CommPCallback(carDir)
+	fmt.Println(sliceSize, carDir, parentPath, targetPath, graphName, parallel)
+	graphsplit.Chunk(Emptyctx, sliceSize, parentPath, targetPath, carDir, graphName, parallel, cb)
+
+	// send deal request to swan
+	offlineDeals, err := readManifestCsv(filepath.Join(carDir, "manifest.csv"))
+	logger.LogIf(Emptyctx, err)
+	if err != nil {
+		return
+	}
+
+	// todo send multiple deals
+	if len(offlineDeals) == 1 {
+		//reply, err := sendDeal(offlineDeals[0], &dealVo)
+		if err != nil {
+			return
+		}
+		bodyByte, _ := json.Marshal(offlineDeals[0])
+		w.Write(bodyByte)
+	}
+	return
+
+}
+
+type OfflineDeal struct {
+	MinerId       string
+	PieceCid      string
+	PieceSize     string
+	DataCid       string
+	Duration      string
+	Start         string
+	FastRetrieval bool
+	DealCid       string
+	Filename      string
+	Price         string
+}
+
+func NewOfflineDeal() *OfflineDeal {
+	return &OfflineDeal{FastRetrieval: true}
+}
+
+func readManifestCsv(_filepath string) ([]*OfflineDeal, error) {
+	csvFile, err := os.Open(_filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer csvFile.Close()
+
+	reader := csv.NewReader(csvFile)
+	reader.LazyQuotes = true
+	reader.Comma = ','
+
+	//ignore values in detail
+	reader.FieldsPerRecord = -1
+	csvLines, err := reader.ReadAll()
+	if err != nil {
+		return nil, err
+	}
+	var dealConfigs []*OfflineDeal
+	// playload_cid,filename,piece_cid,piece_size
+	for i, line := range csvLines {
+		if i == 0 {
+			// skip header line
+			continue
+		}
+
+		offlineDeal := NewOfflineDeal()
+
+		offlineDeal.DataCid = line[0]
+		offlineDeal.Filename = line[1]
+		offlineDeal.PieceCid = line[2]
+		offlineDeal.PieceSize = line[3]
+
+		dealConfigs = append(dealConfigs, offlineDeal)
+	}
+	return dealConfigs, nil
+}
+
+func sendDeal(offlineDeal *OfflineDeal, dealVo *DealVo) (*DealRequestVo, error) {
+	pieceSize, err := strconv.ParseInt(offlineDeal.PieceSize, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	dealRequestVo := &DealRequestVo{
+		PieceCid:  offlineDeal.PieceCid,
+		PieceSize: uint64(pieceSize),
+		DataCid:   offlineDeal.DataCid,
+		MinerId:   dealVo.MinerId,
+		Price:     dealVo.Price,
+		Start:     dealVo.Start,
+		Duration:  dealVo.Duration,
+	}
+
+	swanEndpoint := os.Getenv("SWAN_API")
+	swanToken := os.Getenv("SWAN_TOKEN")
+
+	_url := fmt.Sprintf("%s/offline_deal/send", swanEndpoint)
+
+	dealResponse, err := sendDealRequest(dealRequestVo, _url, swanToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return dealResponse, err
+}
+
+func sendDealRequest(dealRequestVo *DealRequestVo, _url string, token string) (*DealRequestVo, error) {
+	method := "POST"
+	jsonBody, err := json.Marshal(dealRequestVo)
+	if err != nil {
+		return nil, err
+	}
+	client := http.Client{Timeout: time.Minute}
+	req, err := http.NewRequest(method, _url, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	dealResponse := DealResponseVo{}
+	bodyBytes, _ := io.ReadAll(res.Body)
+
+	err = json.Unmarshal(bodyBytes, &dealResponse)
+	if err != nil {
+		return nil, err
+	}
+
+	return dealResponse.Data, nil
 }

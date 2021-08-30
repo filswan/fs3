@@ -344,7 +344,7 @@ export default {
                   }
               })
 
-              let postURL = 'https://api.filswan.com/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending'
+              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=10000'
               axios.get(postURL).then((response) => {
                   let json = response.data.data.miner
                   _this.tableData = json
@@ -600,6 +600,14 @@ export default {
                       .el-submenu.is-active{
                         // width: 100%;
                       }
+                      li.el-submenu{
+                        .el-submenu__title{
+                          &:hover{
+                            color: #66b1ff;
+                            background-color: #eef6ff;
+                          }
+                        }
+                      }
                       .el-submenu__title{
                           display: flex;
                           justify-content: space-between;
@@ -607,7 +615,7 @@ export default {
                           border: 0;
                           height: 0.35rem;
                           line-height: 0.35rem;
-                          padding: 0 0.1rem;
+                          padding: 0 0.1rem 0 0.2rem;
                       }
                       .el-menu--horizontal{
                           .el-submenu{
@@ -639,6 +647,7 @@ export default {
                                                   padding: 0.05rem 0;
                                                   background-color: #fff !important;
                                                   font-size: 0.13rem;
+                                                  font-weight: 600;
                                                   line-height: 1.5;
                                                   border: 0;
                                                   .cell{
@@ -657,11 +666,22 @@ export default {
                                                   }
                                               }
                                               th{
+                                                  font-size: 0.12rem;
+                                                  font-weight: normal;
                                                   .cell{
                                                       .el-checkbox{
                                                           display: none;
                                                       }
                                                   }
+                                              }
+                                              .el-table__body{
+                                                tr{
+                                                  &:hover{
+                                                    td{
+                                                      background-color: #eef6ff !important;
+                                                    }
+                                                  }
+                                                }
                                               }
                                               &::before, &::after {
                                                   height: 0;

@@ -83,7 +83,7 @@ export default {
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
-            logo: require("@/assets/images/title.svg"),
+            logo: require("@/assets/images/title.png"),
             bodyWidth: document.body.clientWidth<=1024?true:false,
             addFileShow: false,
             dialogFormVisible: false,
@@ -513,6 +513,7 @@ export default {
     mounted() {
         let _this = this
         _this.getData()
+        localStorage.removeItem('addrWeb')
     },
 };
 </script>

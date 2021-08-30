@@ -48,6 +48,29 @@
             </div>
           </li>
         </ul>
+        <div class="feh-metamask">
+          <el-tooltip class="item" effect="dark" content="Connect to your MetaMask Wallet" placement="bottom" v-if="!addr">
+            <img src="@/assets/images/metamask.png" @click="signFun" />
+          </el-tooltip>
+
+
+          <el-popover v-else
+            placement="bottom-end"
+            width="180"
+            trigger="click"
+            popper-class="addressInfo">
+              <h6>connected to:</h6>
+              <h4>{{addr | hiddAddress}}</h4>
+                  <el-divider></el-divider>
+              <h4>{{addr | hiddAddress}}</h4>
+              <h5>{{priceAccound}} ETH</h5>
+                  <el-divider></el-divider>
+              <h4 @click="signOutFun" style="margin: 0 0 0.14rem;">Disconnect</h4>
+              <el-tooltip class="item" effect="dark" content="Connect to your MetaMask Wallet" placement="bottom" slot="reference">
+                <img src="@/assets/images/metamask.png" />
+              </el-tooltip>
+           </el-popover>
+        </div>
       </header>
 
       <div class="table">
@@ -200,9 +223,21 @@
               <span class="point el-icon-more" @click.stop="actClient(scope.$index, 1)" v-if="drawIndex<1"></span>
 
               <ul class="dropdown-menu" :class="{'dropdown-show': tableData[scope.$index].dropShow}">
-                <a href="javascript:;" class="fiad-action" @click="deleteBtn(tableData[scope.$index].name)"><i class="el-icon-delete"></i></a>
-                <a href="javascript:;" class="fiad-action" @click="shareBtn(scope.$index)"><i class="el-icon-share"></i></a>
-                <a href="javascript:;" class="fiad-action" @click="ShareToFil(tableData[scope.$index])"><img :src="ShareToFilecoin" /></a>
+                <a href="javascript:;" class="fiad-action" @click="deleteBtn(tableData[scope.$index].name)">
+                  <el-tooltip class="item" effect="dark" content="Delete Object" placement="top">
+                    <i class="el-icon-delete"></i>
+                  </el-tooltip>
+                </a>
+                <a href="javascript:;" class="fiad-action" @click="shareBtn(scope.$index)">
+                  <el-tooltip class="item" effect="dark" content="Share Object" placement="top">
+                    <i class="el-icon-share"></i>
+                  </el-tooltip>
+                </a>
+                <a href="javascript:;" class="fiad-action" @click="ShareToFil(tableData[scope.$index])">
+                  <el-tooltip class="item" effect="dark" content="Backup to Filecoin" placement="top">
+                    <img :src="ShareToFilecoin" />
+                  </el-tooltip>
+                </a>
               </ul>
             </template>
           </el-table-column>
@@ -379,13 +414,14 @@ import axios from 'axios'
 import Moment from 'moment'
 import shareDialog from '@/components/shareDialog.vue';
 import changePassword from '@/components/changePassword.vue';
+import NCWeb3 from "@/utils/web3";
 let that
 export default {
   name: 'landing',
   data() {
     return {
       postUrl: this.data_api + `/minio/webrpc`,
-      logo: require("@/assets/images/title.svg"),
+      logo: require("@/assets/images/title.png"),
       ShareToFilecoin: require("@/assets/images/WechatIMG1133.png"),
       danger_img: require("@/assets/images/danger.png"),
       bodyWidth: document.body.clientWidth>600?true:false,
@@ -437,7 +473,9 @@ export default {
       },
       exChangeList: [],
       searchValue: '',
-      changePass: false
+      changePass: false,
+      addr: '',
+      priceAccound: 0
     }
   },
   components: {
@@ -873,7 +911,76 @@ export default {
       }else{
         _this.tableData = []
       }
-    }
+    },
+            // Wallet address
+            signFun(){
+                let _this = this
+                if(!_this.addr){
+                    NCWeb3.Init(addr=>{
+                        //Get the corresponding wallet address
+                        console.log('Wallet address:', addr)
+                        _this.$nextTick(() => {
+                            _this.addr = addr
+                            web3.eth.getBalance(addr)
+                            .then(balance => {
+                              let balanceAll = web3.utils.fromWei(balance, 'ether')
+                              _this.priceAccound = Number(balanceAll).toFixed(4)
+                            });
+                        })
+
+                    })
+                    return false
+                }
+
+                //_this.qm()
+            },
+            qm(){
+                let _this = this
+
+                let nonce = Math.floor(Math.random() * 1000000)
+                let addNonce = web3.utils.utf8ToHex("I am signing my one-time nonce: "+nonce)
+                web3.eth.personal.sign(addNonce, _this.addr)
+                .then(res => {
+                    // console.log
+                    // _this.ruleForm.publicAddress = res
+                })
+                .catch(error => {
+                    console.log(error)
+                    _this.$message.error(error.message)
+                })
+
+                return false
+
+            },
+            signOutFun() {
+              // this.addr = ''
+            },
+            send(){
+                let _this = this
+
+                if(!_this.addr){
+                    return false
+                }
+                // send
+                web3.eth.sendTransaction({
+                    from: _this.addr,
+                    to: '0x2bf5306C14A93DC366A7C69B1b795b9C14C665e5',
+                    value: '1000000000000000000'  // == 1, unit: wei
+                }).on('transactionHash', function(hash){
+                    console.info(hash)
+                })
+                .on('receipt', function(receipt){
+                    console.info(receipt)
+                })
+                .on('confirmation', function(confirmationNumber, receipt){
+                    console.info(confirmationNumber)
+                    console.info(receipt)
+                })
+                .on('error', console.error);
+
+
+                return false
+            }
   },
   watch: {
     aboutListObjects: function(){
@@ -919,13 +1026,23 @@ export default {
        if (!name) return '-';
        let retName = that.prefixName ? name.replace(that.prefixName+'/', "") : name
        return retName;
-     }
+    },
+    hiddAddress: function (val) {
+       if(val){
+        return `${val.substring(0, 6)}...${val.substring(val.length - 4)}`
+       }else{
+        return '-'
+       }
+    }
   },
   mounted() {
     let _this = this
     that = _this
     _this.aboutListData()
     _this.currentBucketAll = _this.currentBucket.split('/')
+    if(sessionStorage.getItem('addrWeb')){
+      _this.signFun()
+    }
     document.onkeydown = function(e) {
       if (e.keyCode === 13) {
         if(!_this.editNameFile){
@@ -967,6 +1084,29 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.addressInfo{
+  padding: 0.2rem;
+  h6{
+    margin: 0.14rem 0 0;
+    font-size: 0.13rem;
+    font-weight: normal;
+    padding: 0 0.07rem;
+  }
+  h5{
+    font-size: 0.14rem;
+    font-weight: normal;
+    padding: 0 0.07rem;
+  }
+  h4{
+    font-size: 0.15rem;
+    font-weight: normal;
+    padding: 0 0.07rem;
+    cursor: pointer;
+  }
+  .el-divider /deep/{
+    margin: 0.14rem 0;
+  }
+}
 .landing{
   padding: 0 0 0.4rem;
   .fe-header {
@@ -1116,6 +1256,20 @@ export default {
               display: inline-block;
               font-size: 0.145rem;
             }
+        }
+    }
+    .feh-metamask {
+        position: absolute;
+        right: 90px;
+        top: 37px;
+        z-index: 21;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        img{
+          display: block;
+          width:100%;
+          cursor: pointer;
         }
     }
     .feh-actions {
@@ -1685,6 +1839,11 @@ export default {
            }
          }
       }
+    .feh-metamask{
+        top: 0.21rem;
+        right: 45px;
+        position: fixed;
+    }
     .feh-actions{
         top: 0.1rem;
         right: 0;
