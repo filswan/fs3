@@ -1,7 +1,28 @@
 <template>
-  <div class="landing" @click="actClient(0)" v-if="allDealShow">
+  <div class="landing" @click="actClient(0)">
       <header class="fe-header">
-        <h2>
+        <!-- all deals page search -->
+        <div class="form_top" v-if="!allDealShow">
+            <div class="search">
+                <el-input
+                    placeholder="Search for Deal ID/W3SS ID/Data CID"
+                    prefix-icon="el-icon-search"
+                    v-model="searchValue"
+                >
+                </el-input>
+                <div class="search_right" :style="{'opacity': !searchValue?'0.8':'1'}">
+                    <el-button style="background-color: #ffb822"
+                      :disabled="!searchValue">Search</el-button>
+                    <el-button
+                      type="primary"
+                      style="background-color: #0b318f"
+                      :disabled="!searchValue"
+                    >Clear All</el-button>
+                </div>
+            </div>
+        </div>
+        <!-- all deals page search end -->
+        <h2 v-if="allDealShow">
           <span class="main" v-if="editNameFile" v-for="(item, index) in currentBucketAll" :key="index">
             <a href="javascript:;" @click="buckerAdress(index)">{{item}}</a>
           </span>
@@ -12,7 +33,7 @@
           </a>
           <el-input v-model="user.name_file" ref="mark" placeholder="Choose or create new path" v-else @blur="editFileFun"></el-input>
         </h2>
-        <div class="feh-used">
+        <div class="feh-used" v-if="allDealShow">
           <div class="fehu-chart">
             <div style="width: 0px;"></div>
           </div>
@@ -48,32 +69,33 @@
             </div>
           </li>
         </ul>
-        <div class="feh-metamask">
-          <el-tooltip class="item" effect="dark" content="Connect to your MetaMask Wallet" placement="bottom" v-if="!addr">
-            <img src="@/assets/images/metamask.png" @click="signFun" />
-          </el-tooltip>
+        <div :class="{'online': addr, 'feh-metamask': 1==1}">
+            <el-tooltip class="item" effect="dark" content="Connect to your MetaMask Wallet" placement="bottom" v-if="!addr">
+              <img src="@/assets/images/metamask.png" @click="signFun" />
+            </el-tooltip>
 
 
           <el-popover v-else
             placement="bottom-end"
             width="180"
             trigger="click"
-            popper-class="addressInfo">
+            popper-class="addressInfo"
+            @show="walletInfo">
               <h6>connected to:</h6>
+              <h5 v-if="network.name">{{ network.name }}</h5>
               <h4>{{addr | hiddAddress}}</h4>
                   <el-divider></el-divider>
               <h4>{{addr | hiddAddress}}</h4>
-              <h5>{{priceAccound}} ETH</h5>
+              <h5>{{priceAccound}} {{ network.name ? 'ETH' : network.newID==999 ? 'NBAI' : ''}}</h5>
                   <el-divider></el-divider>
-              <h4 @click="signOutFun" style="margin: 0 0 0.14rem;">Disconnect</h4>
-              <el-tooltip class="item" effect="dark" content="Connect to your MetaMask Wallet" placement="bottom" slot="reference">
-                <img src="@/assets/images/metamask.png" />
-              </el-tooltip>
+              <h3 @click="signOutFun">Disconnect</h3>
+
+               <img src="@/assets/images/metamask.png" slot="reference" />
            </el-popover>
         </div>
       </header>
 
-      <div class="table">
+      <div class="table" v-if="allDealShow">
         <el-table
           :data="tableData"
           stripe
@@ -244,6 +266,60 @@
         </el-table>
       </div>
 
+      // all deals page table
+      <div class="table" v-else>
+        <el-table :data="exChangeList" stripe style="width: 100%" class="demo-table-expand">
+            <el-table-column type="expand"></el-table-column>
+            <el-table-column prop="data.timeStamp" label="Date">
+              <template slot-scope="scope">
+                {{exChangeList[scope.$index].data.timeStamp}}
+                <!-- {{ props.row.date }} -->
+              </template>
+            </el-table-column>
+            <el-table-column prop="data.minerId" label="W3SS ID"></el-table-column>
+            <el-table-column prop="data.price" label="Price">
+              <template slot-scope="scope">
+                {{exChangeList[scope.$index].data.price}} FIL
+              </template>
+            </el-table-column>
+            <el-table-column prop="data.dealCid" label="Deal CID">
+              <template slot-scope="scope">
+                <div class="hot-cold-box">
+                    <el-popover
+                        placement="top"
+                        trigger="hover"
+                        v-model="exChangeList[scope.$index].data.visible">
+                        <div class="upload_form_right">
+                            <p>{{exChangeList[scope.$index].data.dealCid}}</p>
+                        </div>
+                        <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dealCid)">
+                            <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dealCid}}</p>
+                        </el-button>
+                    </el-popover>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="data.dataCid" label="Data CID">
+              <template slot-scope="scope">
+                <div class="hot-cold-box">
+                    <el-popover
+                        placement="top"
+                        trigger="hover"
+                        v-model="exChangeList[scope.$index].data.visibleDataCid">
+                        <div class="upload_form_right">
+                            <p>{{exChangeList[scope.$index].data.dataCid}}</p>
+                        </div>
+                        <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dataCid)">
+                            <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dataCid}}</p>
+                        </el-button>
+                    </el-popover>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="data.duration" label="Duration"></el-table-column>
+        </el-table>
+      </div>
+
       <el-drawer
         :visible.sync="drawer"
         :direction="direction"
@@ -327,86 +403,6 @@
       </change-password>
   </div>
 
-
-
-  <!-- all deals page -->
-  <div class="landing" v-else>
-        <header class="fe-header">
-              <div class="form_top">
-                  <div class="search">
-                      <el-input
-                          placeholder="Search for Deal ID/W3SS ID/Data CID"
-                          prefix-icon="el-icon-search"
-                          v-model="searchValue"
-                      >
-                      </el-input>
-                      <div class="search_right" :style="{'opacity': !searchValue?'0.8':'1'}">
-                          <el-button style="background-color: #ffb822"
-                            :disabled="!searchValue">Search</el-button>
-                          <el-button
-                            type="primary"
-                            style="background-color: #0b318f"
-                            :disabled="!searchValue"
-                          >Clear All</el-button>
-                      </div>
-                  </div>
-              </div>
-        </header>
-        <div class="table">
-          <el-table :data="exChangeList" stripe style="width: 100%" class="demo-table-expand">
-              <el-table-column type="expand"></el-table-column>
-              <el-table-column prop="data.timeStamp" label="Date">
-                <template slot-scope="scope">
-                  {{exChangeList[scope.$index].data.timeStamp}}
-                  <!-- {{ props.row.date }} -->
-                </template>
-              </el-table-column>
-              <el-table-column prop="data.minerId" label="W3SS ID"></el-table-column>
-              <el-table-column prop="data.price" label="Price">
-                <template slot-scope="scope">
-                  {{exChangeList[scope.$index].data.price}} FIL
-                </template>
-              </el-table-column>
-              <el-table-column prop="data.dealCid" label="Deal CID">
-                <template slot-scope="scope">
-                  <div class="hot-cold-box">
-                      <el-popover
-                          placement="top"
-                          trigger="hover"
-                          v-model="exChangeList[scope.$index].data.visible">
-                          <div class="upload_form_right">
-                              <p>{{exChangeList[scope.$index].data.dealCid}}</p>
-                          </div>
-                          <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dealCid)">
-                              <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dealCid}}</p>
-                          </el-button>
-                      </el-popover>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="data.dataCid" label="Data CID">
-                <template slot-scope="scope">
-                  <div class="hot-cold-box">
-                      <el-popover
-                          placement="top"
-                          trigger="hover"
-                          v-model="exChangeList[scope.$index].data.visibleDataCid">
-                          <div class="upload_form_right">
-                              <p>{{exChangeList[scope.$index].data.dataCid}}</p>
-                          </div>
-                          <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dataCid)">
-                              <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dataCid}}</p>
-                          </el-button>
-                      </el-popover>
-                  </div>
-                </template>
-              </el-table-column>
-              <el-table-column prop="data.duration" label="Duration"></el-table-column>
-          </el-table>
-        </div>
-
-
-    </div>
 </template>
 
 <script>
@@ -475,7 +471,11 @@ export default {
       searchValue: '',
       changePass: false,
       addr: '',
-      priceAccound: 0
+      priceAccound: 0,
+      network: {
+        name: '',
+        newID: 0
+      }
     }
   },
   components: {
@@ -921,18 +921,55 @@ export default {
                         console.log('Wallet address:', addr)
                         _this.$nextTick(() => {
                             _this.addr = addr
-                            web3.eth.getBalance(addr)
-                            .then(balance => {
-                              let balanceAll = web3.utils.fromWei(balance, 'ether')
-                              _this.priceAccound = Number(balanceAll).toFixed(4)
-                            });
+                            _this.walletInfo()
                         })
 
                     })
                     return false
                 }
+            },
+            walletInfo() {
+              let _this = this
+              web3.eth.getBalance(_this.addr).then(balance => {
+                let balanceAll = web3.utils.fromWei(balance, 'ether')
+                _this.priceAccound = Number(balanceAll).toFixed(4)
+              });
 
-                //_this.qm()
+              web3.eth.net.getId().then(netId => {
+                  console.log('network ID:', netId)
+                  switch (netId) {
+                    case 1:
+                      _this.network.name = 'mainnet';
+                      return;
+                    case 2:
+                      _this.network.name = 'deprecated Morden';
+                      return;
+                    case 3:
+                      _this.network.name = 'ropsten';
+                      break;
+                    case 4:
+                      _this.network.name = 'rinkeby';
+                      return;
+                    case 5:
+                      _this.network.name = 'goerli';
+                      return;
+                    case 42:
+                      _this.network.name = 'kovan';
+                      return;
+                    case 999:
+                      _this.network.name = '';
+                      _this.network.newID = 999;
+                      return;
+                    default:
+                      _this.network.name = '';
+                      return;
+                  }
+               });
+            },
+            fn() {
+              ethereum.on("accountsChanged", function(accounts) {
+                console.log('account:', accounts[0]);  //Once the account is switched, it will be executed here
+              });
             },
             qm(){
                 let _this = this
@@ -953,7 +990,8 @@ export default {
 
             },
             signOutFun() {
-              // this.addr = ''
+                this.addr = ''
+                sessionStorage.removeItem('addrWeb')
             },
             send(){
                 let _this = this
@@ -1043,6 +1081,7 @@ export default {
     if(sessionStorage.getItem('addrWeb')){
       _this.signFun()
     }
+    _this.fn()
     document.onkeydown = function(e) {
       if (e.keyCode === 13) {
         if(!_this.editNameFile){
@@ -1101,7 +1140,16 @@ export default {
     font-size: 0.15rem;
     font-weight: normal;
     padding: 0 0.07rem;
+  }
+  h3{
+    margin: 0 0 0.05rem;
+    font-size: 0.15rem;
+    font-weight: normal;
+    padding: 0 0.07rem;
     cursor: pointer;
+    &:hover{
+      color: rgba(11, 49, 143, 1);
+    }
   }
   .el-divider /deep/{
     margin: 0.14rem 0;
@@ -1271,6 +1319,21 @@ export default {
           width:100%;
           cursor: pointer;
         }
+        &:before{
+          position: absolute;
+          right: 0;
+          top: -4px;
+          content: "";
+          width: 5px;
+          height: 5px;
+          border-radius: 100%;
+          background: #d7d6d6;
+        }
+    }
+    .online{
+      &:before{
+        background: #0fce7c;
+      }
     }
     .feh-actions {
         list-style: none;

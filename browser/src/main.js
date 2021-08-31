@@ -39,6 +39,21 @@ import Web3 from 'web3'
 Vue.prototype.Web3 = Web3
 
 
+// shareDialog page -> Provider ID select lazy
+Vue.directive('loadmore', {
+  bind(el, binding) {
+    const selectWrap = el.querySelector('.el-table__body-wrapper')
+    selectWrap.addEventListener('scroll', function() {
+      let sign = 100
+      const scrollDistance = this.scrollHeight - this.scrollTop - this.clientHeight
+      if (scrollDistance <= sign) {
+        binding.value()
+      }
+    })
+  }
+})
+
+
 Object.keys(filters).forEach(key => {
   Vue.filter(key, filters[key])
 })

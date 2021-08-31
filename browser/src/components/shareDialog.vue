@@ -57,7 +57,7 @@
                                   </template>
                                   <el-menu-item :index="'1-'+n+'-1'" :attr="'1-'+n+'-1'">
                                       <!-- <el-table :cell-class-name="tableCellClassName" @cell-click="cellClick" ref="multipleTable" :data="tableData" v-loading="loading" tooltip-effect="dark" style="width: 100%" @selection-change="handleSelectionChange"> -->
-                                      <el-table ref="singleTable" :cell-class-name="tableCellClassName" @cell-click="cellClick" :data="tableData" v-loading="loading" highlight-current-row @current-change="handleCurrentChange" style="width: 100%">
+                                      <el-table ref="singleTable" :cell-class-name="tableCellClassName" @cell-click="cellClick" :data="tableData" v-loadmore="loadMore" v-loading="loading" height="255" highlight-current-row @current-change="handleCurrentChange" style="width: 100%">
                                           <el-table-column type="index" width="40">
                                               <template  slot-scope="scope">
                                                   <el-radio v-model="radio" :label="'1-'+n+'-'+scope.$index"></el-radio>
@@ -121,7 +121,10 @@ export default {
               verified: '2',
               fastRetirval: '1',
               textarea: 'lotus client',
-              dealCID: ''
+              dealCID: '',
+              loadSign: true,
+              page: 0,
+              total: 1
             },
             rules: {
                minerId: [
@@ -337,6 +340,8 @@ export default {
           if(key.indexOf('-') >= 0){
               _this.tableData = []
               _this.loading = true
+              _this.page = 0
+              _this.total = 1
               _this.parentLi = key
               _this.locationOptions.map(item => {
                   if(item.title == key){
@@ -344,11 +349,41 @@ export default {
                   }
               })
 
-              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=10000'
+              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
               axios.get(postURL).then((response) => {
                   let json = response.data.data.miner
                   _this.tableData = json
                   _this.loading = false
+                  _this.loadSign = true
+                  if(response.data.data.total_items > 20){
+                      _this.total = (response.data.data.total_items)/20
+                  }
+              }).catch(function (error) {
+                  console.log(error);
+                  _this.loading = false
+              });
+          }
+      },
+      loadMore () {
+          let _this = this
+          if (_this.loadSign) {
+              _this.loadSign = false
+              _this.page++
+              if (_this.page >= _this.total) {
+                  console.log('finish:', _this.page)
+                  return
+              }
+
+              _this.loading = true
+              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
+              axios.get(postURL).then((response) => {
+                  let json = response.data.data.miner
+                  json.map(item => {
+                      _this.tableData.push(item)
+                  })
+
+                  _this.loading = false
+                  _this.loadSign = true
 
               }).catch(function (error) {
                   console.log(error);
@@ -613,8 +648,8 @@ export default {
                           justify-content: space-between;
                           align-items: center;
                           border: 0;
-                          height: 0.35rem;
-                          line-height: 0.35rem;
+                          height: 35px;
+                          line-height: 35px;
                           padding: 0 0.1rem 0 0.2rem;
                       }
                       .el-menu--horizontal{
@@ -636,8 +671,7 @@ export default {
                                               width: 100%;
                                               max-width: 450px;
                                               height: 100%;
-                                              padding: 0.05rem 0 0.1rem;
-                                              overflow-y: scroll;
+                                              padding: 0;
                                               .el-table__header-wrapper{
                                                 .el-table__header{
                                                   width: 100% !important;
@@ -729,7 +763,8 @@ export default {
       .el-dialog__body{
         .shareContent{
           .el-row{
-            width: 300px;
+            width: 100%;
+            max-width: 500px;
           }
         }
       }
@@ -740,13 +775,13 @@ export default {
 
   .el-dialog__wrapper /deep/{
     .ShareObject{
-      width: 90%;
       .el-dialog__body{
         padding: 0;
         .shareContent{
           flex-wrap: wrap;
           .el-row{
             width: 100%;
+            max-width: 400px;
           }
         }
       }
@@ -755,5 +790,35 @@ export default {
       margin-top: 55vh !important;
     }
   }
+
+
+}
+@media screen and (max-width:441px){
+  .el-dialog__wrapper /deep/{
+    .ShareObject{
+      .el-dialog__body{
+        .shareContent{
+          .share_right{
+            .el-col{
+              .el-form{
+                .el-menu{
+                  .el-menu--horizontal{
+                      .el-submenu{
+                         min-width: 150px;
+                        .el-menu--horizontal{
+                            left: 100px !important;
+                        }
+                      }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+
 }
 </style>
