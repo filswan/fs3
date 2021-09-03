@@ -22,15 +22,18 @@ import (
 	"context"
 	"crypto/md5"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/filedrive-team/go-graphsplit"
+	"github.com/google/uuid"
 	csv "github.com/minio/csvparser"
 	"github.com/minio/minio/internal/config"
 	"github.com/minio/minio/logs"
 	oshomedir "github.com/mitchellh/go-homedir"
 	"github.com/syndtr/goleveldb/leveldb"
+	"mime/multipart"
 
 	//"github.com/filedrive-team/go-graphsplit"
 	"io"
@@ -77,6 +80,7 @@ import (
 const (
 	SuccessResponseStatus = "success"
 	FailResponseStatus    = "fail"
+	NoFileInBucket        = "No file in the bucket.Please upload files"
 )
 
 func extractBucketObject(args reflect.Value) (bucketName, objectName string) {
@@ -2519,7 +2523,7 @@ type DealVo struct {
 }
 
 type OfflineDealRequest struct {
-	Size     string `json:"size"`
+	TaskName string `json:"task_name"`
 	Start    uint   `json:"start"`
 	Duration uint   `json:"duration"`
 	Price    string `json:"price"`
@@ -3926,6 +3930,27 @@ type BucketFileList struct {
 	Deals    []SendResponse `json:"deals"`
 }
 
+type TaskResponse struct {
+	FileName string `json:"filename"`
+	Uuid     string `json:"uuid"`
+}
+
+type CreateTaskResponse struct {
+	Data   TaskResponse `json:"data"`
+	Status string       `json:"status"`
+}
+
+type BucketInfoResponse struct {
+	BucketName string             `json:"bucket_name"`
+	Deals      CreateTaskResponse `json:"deals"`
+}
+
+type BucketOfflineDealResponse struct {
+	Data    BucketInfoResponse `json:"data"`
+	Status  string             `json:"status"`
+	Message string             `json:"message"`
+}
+
 func SaveToJson(bucket string, object string, response SendResponse) error {
 	expandedDir, _ := JsonPath(bucket, object)
 	_, err := os.OpenFile(expandedDir, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0660)
@@ -4430,7 +4455,6 @@ func (web *webAPIHandlers) SendOfflineDeal(w http.ResponseWriter, r *http.Reques
 
 	var offlineDealRequest OfflineDealRequest
 	err = decoder.Decode(&offlineDealRequest)
-	fmt.Println(offlineDealRequest)
 
 	if err != nil && err != io.EOF {
 		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
@@ -4484,8 +4508,7 @@ func (web *webAPIHandlers) SendOfflineDeal(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	fmt.Println(carDirExpand, sourceDirExpand)
-	sliceSize, err := strconv.ParseInt(offlineDealRequest.Size, 10, 64)
+	sliceSize, err := strconv.ParseInt(config.CarFileSize, 10, 64)
 	carDir := carDirExpand
 	parentPath := sourceDirExpand
 	targetPath := sourceDirExpand
@@ -4496,25 +4519,26 @@ func (web *webAPIHandlers) SendOfflineDeal(w http.ResponseWriter, r *http.Reques
 	var cb graphsplit.GraphBuildCallback
 
 	cb = graphsplit.CommPCallback(carDir)
-	fmt.Println(sliceSize, carDir, parentPath, targetPath, graphName, parallel)
 	err = graphsplit.Chunk(Emptyctx, sliceSize, parentPath, targetPath, carDir, graphName, parallel, cb)
 	if err != nil {
-		fmt.Println(err)
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
 		return
 	}
 	// send deal request to swan
-	fmt.Println("before csv")
-	offlineDeals, err := readCarCsv(filepath.Join(carDir, "car.csv"))
+	offlineDeals, err := readCsv(filepath.Join(carDir, "car.csv"))
 	logger.LogIf(Emptyctx, err)
 	if err != nil {
-		fmt.Println(err)
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
 		return
 	}
 
 	// todo send multiple deals
 	if len(offlineDeals) == 1 {
-		//reply, err := sendDeal(offlineDeals[0], &dealVo)
 		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
 		bodyByte, _ := json.Marshal(offlineDeals[0])
@@ -4638,10 +4662,13 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	}
 
 	decoder := json.NewDecoder(r.Body)
-
-	var offlineDealRequest OfflineDealRequest
+	var offlineDealRequest TaskInfo
 	err = decoder.Decode(&offlineDealRequest)
-
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 	if err != nil && err != io.EOF {
 		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
 		return
@@ -4694,7 +4721,32 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	sliceSize, err := strconv.ParseInt(offlineDealRequest.Size, 10, 64)
+	//check if sourceDir is empty
+	dirEmpty, err := IsDirEmpty(sourceDirExpand)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	if dirEmpty {
+		noFileResponse := BucketInfoResponse{}
+		bucketOfflineDealResponse := BucketOfflineDealResponse{Data: noFileResponse, Status: FailResponseStatus, Message: NoFileInBucket}
+		dataBytes, err := json.Marshal(bucketOfflineDealResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	}
+
+	sliceSize, err := strconv.ParseInt(config.CarFileSize, 10, 64)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 	carDir := carDirExpand
 	parentPath := sourceDirExpand
 	targetPath := sourceDirExpand
@@ -4711,9 +4763,9 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 		writeWebErrorResponse(w, err)
 		return
 	}
+
 	// generate car.csv
 	err = generateCarCsv(carDir, parentPath)
-	fmt.Println("Generated")
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
@@ -4721,9 +4773,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	}
 
 	//Upload to ipfs
-	uploadCarFile(carDir, graphName)
-
-	//offlineDeals, err := readCarCsv(filepath.Join(carDir, "car.csv"))
+	err = uploadCarFile(carDir, graphName)
 	logger.LogIf(Emptyctx, err)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -4731,16 +4781,33 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	//reply, err := sendDeal(offlineDeals[len(offlineDeals)-1], &offlineDealRequest)
+	//Create task on swan
+	offlineDeals, err := readCsv(filepath.Join(carDir, "car.csv"))
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
-	//bodyByte, _ := json.Marshal(reply)
-	//w.Write(bodyByte)
+	reply, err := createTask(offlineDeals, carDir, offlineDealRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	var createTaskResponse CreateTaskResponse
+	json.Unmarshal(reply, &createTaskResponse)
 
+	bucketInfoResponse := BucketInfoResponse{BucketName: bucket, Deals: createTaskResponse}
+	bucketOfflineDealResponse := BucketOfflineDealResponse{Data: bucketInfoResponse, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
+	dataBytes, err := json.Marshal(bucketOfflineDealResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	w.Write(dataBytes)
 	return
+
 }
 
 type OfflineDeal struct {
@@ -4789,28 +4856,103 @@ type SourceFilePath struct {
 	Path string
 }
 
+type SourceFilesSize struct {
+	Bucket           string
+	SourceFilesSizes []SourceFileSize
+}
+type SourceFileSize struct {
+	Size string
+}
+
+type SourceFilesMd5 struct {
+	Bucket          string
+	SourceFilesMd5s []SourceFileMd5
+}
+type SourceFileMd5 struct {
+	Md5 string
+}
+
 func uploadCarFile(carDir string, graphName string) error {
-	records, err := readCarCsv(filepath.Join(carDir, "car.csv"))
+	records, err := readCsv(filepath.Join(carDir, "car.csv"))
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
 	}
-	for i, record := range records {
-		if i == 0 {
-			record = append(record, "car_file_address")
-		} else {
-			err = uploadCarFileIpfs(record)
+	var newRecords [][]string
+	newRecords = append(newRecords, []string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5", "car_file_url"})
+	for _, record := range records {
+		carHash, err := uploadCarFileIpfs(record)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
 		}
+		carFileAddress := config.IpfsAddress + "/ipfs/" + carHash
+		record = append(record, carFileAddress)
+		newRecords = append(newRecords, record)
+	}
+	err = writeCarCsv(filepath.Join(carDir, "car.csv"), newRecords)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
 	}
 	return err
 }
 
-func uploadCarFileIpfs(record []string) error {
-	storageServerType := "ipfs"
-	ipfsIp := "http://192.168.88.41"
-	ipfsPort := "5001"
-	fmt.Println(storageServerType, ipfsIp, ipfsPort)
-	return nil
+type UploadIpfsResponse struct {
+	Name string
+	Hash string
+	Size string
+}
+
+func uploadCarFileIpfs(record []string) (string, error) {
+	file, err := os.Open(record[1])
+
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("", filepath.Base(file.Name()))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+
+	io.Copy(part, file)
+	writer.Close()
+
+	url := config.IpfsAddress + "/api/v0/add"
+	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+
+	request.Header.Add("Content-Type", writer.FormDataContentType())
+	client := &http.Client{}
+
+	response, err := client.Do(request)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	defer response.Body.Close()
+
+	content, err := ioioutil.ReadAll(response.Body)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	uploadResponse := UploadIpfsResponse{}
+	err = json.Unmarshal(content, &uploadResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return uploadResponse.Hash, err
 }
 
 func generateCarCsv(carDir string, parentPath string) error {
@@ -4823,13 +4965,11 @@ func generateCarCsv(carDir string, parentPath string) error {
 	}
 	defer manifestCSV.Close()
 
-	carCsvNotExist := false
-	if _, err := os.Stat(carPath); os.IsNotExist(err) {
-		carCsvNotExist = true
+	if _, err := os.Stat(carPath); err == nil {
+		os.Remove(carPath)
 	}
-	fmt.Println(carCsvNotExist)
 
-	carCSV, err := os.OpenFile(carPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0777)
+	carCSV, err := os.OpenFile(carPath, os.O_CREATE|os.O_WRONLY, 0777)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
@@ -4850,8 +4990,6 @@ func generateCarCsv(carDir string, parentPath string) error {
 	}
 
 	manifestRecord := csvLines[len(csvLines)-1]
-	csvColumeLen := len(csvLines[0])
-	lastRecord := manifestRecord[len(manifestRecord)-csvColumeLen-1:]
 	carFileName := manifestRecord[0] + ".car"
 	carFilePath := filepath.Join(carDir, carFileName)
 	carFile, err := os.Open(carFilePath)
@@ -4873,10 +5011,7 @@ func generateCarCsv(carDir string, parentPath string) error {
 		logs.GetLogger().Error(err)
 		return err
 	}
-	carFileMd5 := bytes.NewBuffer(h.Sum(nil)).String()
-	fmt.Printf("var1 = %T\n", h.Sum(nil))
-	fmt.Printf("%x\n", h.Sum(nil))
-	fmt.Println("Md5:", carFileMd5)
+	carFileMd5 := hex.EncodeToString(h.Sum(nil))
 
 	files, err := ioioutil.ReadDir(parentPath)
 	if err != nil {
@@ -4885,6 +5020,8 @@ func generateCarCsv(carDir string, parentPath string) error {
 	}
 	var sourceFiles SourceFiles
 	var sourceFilesPath SourceFilesPath
+	var sourceFilesSize SourceFilesSize
+	var sourceFilesMd5 SourceFilesMd5
 	for _, f := range files {
 		sourceFile := SourceFile{
 			Name: f.Name(),
@@ -4892,8 +5029,36 @@ func generateCarCsv(carDir string, parentPath string) error {
 		sourceFilePath := SourceFilePath{
 			Path: filepath.Join(parentPath, f.Name()),
 		}
+		file, err := os.Open(filepath.Join(parentPath, f.Name()))
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileSize := strconv.FormatInt(stat.Size(), 10)
+		sourceFileSize := SourceFileSize{
+			Size: fileSize,
+		}
+
+		h := md5.New()
+		if _, err := io.Copy(h, file); err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileMd5 := hex.EncodeToString(h.Sum(nil))
+		sourceFileMd5 := SourceFileMd5{
+			Md5: fileMd5,
+		}
 		sourceFiles.SourceFilesNames = append(sourceFiles.SourceFilesNames, sourceFile)
 		sourceFilesPath.SourceFilesPaths = append(sourceFilesPath.SourceFilesPaths, sourceFilePath)
+		sourceFilesSize.SourceFilesSizes = append(sourceFilesSize.SourceFilesSizes, sourceFileSize)
+		sourceFilesMd5.SourceFilesMd5s = append(sourceFilesMd5.SourceFilesMd5s, sourceFileMd5)
 	}
 
 	sourceFileName, err := json.Marshal(sourceFiles.SourceFilesNames)
@@ -4910,30 +5075,28 @@ func generateCarCsv(carDir string, parentPath string) error {
 	}
 	sourceFilePath := string(sourceFilePaths)
 
-	data := CarRecord{
-		CarFileName:    carFileName,
-		CarFilePath:    carFilePath,
-		PieceCid:       lastRecord[2],
-		DataCid:        lastRecord[0],
-		CarFileSize:    carFileSize,
-		CarFileMd5:     carFileMd5,
-		SourceFileName: sourceFilesName,
-		SourceFilePath: sourceFilePath,
-		SourceFileSize: "123",
-		SourceFileMd5:  "123",
+	sourceFileSizes, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
 	}
-	fmt.Println(data)
+	sourceFileSize := string(sourceFileSizes)
+
+	sourceFileMd5s, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFileMd5 := string(sourceFileMd5s)
 
 	w := csv.NewWriter(carCSV)
-	if carCsvNotExist {
-		err = w.Write([]string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5"})
-		if err != nil {
-			logs.GetLogger().Error(err)
-			return err
-		}
+	err = w.Write([]string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5"})
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
 	}
 
-	err = w.Write([]string{carFileName, carFilePath, manifestRecord[2], manifestRecord[0], carFileSize, carFileMd5, sourceFilesName, sourceFilePath, "123", "123"})
+	err = w.Write([]string{carFileName, carFilePath, manifestRecord[2], manifestRecord[0], carFileSize, carFileMd5, sourceFilesName, sourceFilePath, sourceFileSize, sourceFileMd5})
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
@@ -4947,7 +5110,7 @@ func generateCarCsv(carDir string, parentPath string) error {
 	return err
 }
 
-func readCarCsv(_filepath string) ([][]string, error) {
+func readCsv(_filepath string) ([][]string, error) {
 	csvFile, err := os.Open(_filepath)
 	if err != nil {
 		return nil, err
@@ -4965,7 +5128,6 @@ func readCarCsv(_filepath string) ([][]string, error) {
 		logs.GetLogger().Error(err)
 		return nil, err
 	}
-
 	csvRecord := csvLines[len(csvLines)-1]
 	csvColumeLen := len(csvLines[0])
 	var records [][]string
@@ -4978,61 +5140,289 @@ func readCarCsv(_filepath string) ([][]string, error) {
 	return records, err
 }
 
-func sendDeal(offlineDeal *OfflineDeal, dealVo *OfflineDealRequest) (*DealRequestVo, error) {
-	pieceSize, err := strconv.ParseInt(offlineDeal.PieceSize, 10, 64)
+func writeCarCsv(_filepath string, records [][]string) error {
+	csvFile, err := os.OpenFile(_filepath, os.O_CREATE|os.O_WRONLY, 0777)
 	if err != nil {
-		return nil, err
+		logs.GetLogger().Error(err)
+		return err
 	}
-	dealRequestVo := &DealRequestVo{
-		PieceCid:  offlineDeal.PieceCid,
-		PieceSize: uint64(pieceSize),
-		DataCid:   offlineDeal.DataCid,
-		MinerId:   dealVo.MinerId,
-		Price:     dealVo.Price,
-		Start:     dealVo.Start,
-		Duration:  dealVo.Duration,
-	}
+	defer csvFile.Close()
 
-	swanEndpoint := os.Getenv("SWAN_API")
-	swanToken := os.Getenv("SWAN_TOKEN")
-
-	_url := fmt.Sprintf("%s/offline_deal/send", swanEndpoint)
-
-	dealResponse, err := sendDealRequest(dealRequestVo, _url, swanToken)
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(records)
 	if err != nil {
-		return nil, err
+		logs.GetLogger().Error(err)
+		return err
 	}
-
-	return dealResponse, err
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
 }
 
-func sendDealRequest(dealRequestVo *DealRequestVo, _url string, token string) (*DealRequestVo, error) {
-	method := "POST"
-	jsonBody, err := json.Marshal(dealRequestVo)
+func createTask(offlineDeals [][]string, outputDir string, request TaskInfo) ([]byte, error) {
+	taskUuid := uuid.New().String()
+	err := generateMetadataCsv(offlineDeals, taskUuid, outputDir)
 	if err != nil {
+		logs.GetLogger().Error(err)
 		return nil, err
 	}
-	client := http.Client{Timeout: time.Minute}
-	req, err := http.NewRequest(method, _url, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 
+	err = generateTaskCsv(offlineDeals, outputDir, taskUuid)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	response, err := createSwanTask(outputDir, taskUuid, request)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	return response, err
+
+}
+
+type TaskInfo struct {
+	TaskName       string `json:"task_name"`
+	CuratedDataset string `json:"curated_dataset"`
+	Description    string `json:"description"`
+	IsPublic       bool   `json:"is_public"`
+	Type           string `json:"type"`
+	MinerId        string `json:"miner_id"`
+	MinPrice       string `json:"min_price"`
+	MaxPrice       string `json:"max_price"`
+	Tags           string `json:"tags"`
+	ExpireDays     string `json:"expire_days"`
+}
+
+func createSwanTask(outputDir string, taskUuid string, request TaskInfo) ([]byte, error) {
+	taskCsv, err := os.Open(path.Join(outputDir, taskUuid+".csv"))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	client := http.Client{Timeout: time.Minute}
+	method := "POST"
+	swanUrl := config.SwanAddress + "/tasks"
+	token := config.SwanToken
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	fw, err := writer.CreateFormField("task_name")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.TaskName))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("curated_dataset")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.CuratedDataset))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("description")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.Description))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("is_public")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader("1"))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("verified_type")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.Type))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("miner_id")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.MinerId))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("min_price")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.MinPrice))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("max_price")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.MaxPrice))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("tags")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.Tags))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("expired_days")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.ExpireDays))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormFile("file", taskUuid+".csv")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, taskCsv)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	writer.Close()
+
+	req, err := http.NewRequest(method, swanUrl, bytes.NewReader(body.Bytes()))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 	res, err := client.Do(req)
 	if err != nil {
+		logs.GetLogger().Error(err)
 		return nil, err
 	}
 	defer res.Body.Close()
 
-	dealResponse := DealResponseVo{}
-	bodyBytes, _ := io.ReadAll(res.Body)
-
-	err = json.Unmarshal(bodyBytes, &dealResponse)
+	bodyBytes, err := ioioutil.ReadAll(res.Body)
 	if err != nil {
+		logs.GetLogger().Error(err)
 		return nil, err
 	}
 
-	return dealResponse.Data, nil
+	return bodyBytes, err
+}
+
+func generateTaskCsv(records [][]string, outputDir string, taskUuid string) error {
+	taskCsvPath := filepath.Join(outputDir, taskUuid+".csv")
+	csvFile, err := os.OpenFile(taskCsvPath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer csvFile.Close()
+
+	var taskRecords [][]string
+	taskRecords = append(taskRecords, []string{"uuid", "miner_id", "deal_cid", "payload_cid", "file_source_url", "md5", "start_epoch"})
+	for _, record := range records {
+		taskRecord := []string{taskUuid, "", "", record[3], record[10], record[5], ""}
+		taskRecords = append(taskRecords, taskRecord)
+	}
+
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(taskRecords)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func generateMetadataCsv(records [][]string, taskUuid string, outputDir string) error {
+	var newRecords [][]string
+	newRecords = append(newRecords, []string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5", "car_file_url", "uuid", "source_file_url", "deal_cid", "miner_id", "start_epoch"})
+	for _, record := range records {
+		record = append(record, taskUuid, "", "", "", "")
+		newRecords = append(newRecords, record)
+	}
+
+	metaCsvPath := filepath.Join(outputDir, taskUuid+"-metadata.csv")
+	csvFile, err := os.OpenFile(metaCsvPath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer csvFile.Close()
+
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(newRecords)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func IsDirEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	// read in ONLY one file
+	_, err = f.Readdir(1)
+
+	// and if the file is EOF... well, the dir is empty.
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
 }
