@@ -3949,8 +3949,9 @@ type TaskResponse struct {
 }
 
 type CreateTaskResponse struct {
-	Data   TaskResponse `json:"data"`
-	Status string       `json:"status"`
+	Data    TaskResponse `json:"data"`
+	Status  string       `json:"status"`
+	Message string       `json:"message"`
 }
 
 type BucketInfoResponse struct {
@@ -5202,7 +5203,7 @@ type TaskInfo struct {
 	TaskName       string `json:"task_name"`
 	CuratedDataset string `json:"curated_dataset"`
 	Description    string `json:"description"`
-	IsPublic       bool   `json:"is_public"`
+	IsPublic       string `json:"is_public"`
 	Type           string `json:"type"`
 	MinerId        string `json:"miner_id"`
 	MinPrice       string `json:"min_price"`
@@ -5260,7 +5261,9 @@ func createSwanTask(outputDir string, taskUuid string, request TaskInfo) ([]byte
 		logs.GetLogger().Error(err)
 		return nil, err
 	}
-	_, err = io.Copy(fw, strings.NewReader("1"))
+	if request.IsPublic == "0" {
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.IsPublic))
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return nil, err
