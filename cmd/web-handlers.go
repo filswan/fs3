@@ -2512,6 +2512,21 @@ func writeWebErrorResponse(w http.ResponseWriter, err error) {
 	w.Write(errJson)
 }
 
+func writeOfflineDealsErrorResponse(w http.ResponseWriter, err error) {
+	reqInfo := &logger.ReqInfo{
+		DeploymentID: globalDeploymentID,
+	}
+	ctx := logger.SetReqInfo(GlobalContext, reqInfo)
+	apiErr := toWebAPIError(ctx, err)
+	w.WriteHeader(apiErr.HTTPStatusCode)
+	sendResponse := BucketOfflineDealResponse{Status: FailResponseStatus, Message: apiErr.Description}
+	errJson, error := json.Marshal(sendResponse)
+	if error != nil {
+		logs.GetLogger().Error(error)
+	}
+	w.Write(errJson)
+}
+
 type DealVo struct {
 	SwanEndpoint string `json:"swan_endpoint,omitempty"`
 	CarSliceSize int64  `json:"car_slice_size,omitempty"`
@@ -2806,6 +2821,7 @@ func (web *webAPIHandlers) JsonRetrieveDeal(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			logs.GetLogger().Error(err)
 			writeWebErrorResponse(w, err)
+			return
 		}
 		w.Write(dataBytes)
 		return
@@ -3281,7 +3297,6 @@ func (web *webAPIHandlers) RetrieveDeals(w http.ResponseWriter, r *http.Request)
 	_, err := objectAPI.GetBucketInfo(ctx, bucket)
 	if err != nil {
 		writeWebErrorResponse(w, err)
-		logs.GetLogger().Error(err)
 		return
 	}
 
@@ -3465,7 +3480,6 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	var opts ObjectOptions
 	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
 	if err != nil {
-		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
@@ -3719,7 +3733,6 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 
 	_, err := objectAPI.GetBucketInfo(ctx, bucket)
 	if err != nil {
-		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
@@ -4556,7 +4569,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 
 	objectAPI := web.ObjectAPI()
 	if objectAPI == nil {
-		writeWebErrorResponse(w, errServerNotInitialized)
+		writeOfflineDealsErrorResponse(w, errServerNotInitialized)
 		return
 	}
 
@@ -4650,14 +4663,13 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 
 	_, err := objectAPI.GetBucketInfo(ctx, bucket)
 	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 
 	// Check if bucket is a reserved bucket name or invalid.
 	if isReservedOrInvalidBucket(bucket, false) {
-		writeWebErrorResponse(w, errInvalidBucketName)
+		writeOfflineDealsErrorResponse(w, errInvalidBucketName)
 		return
 	}
 
@@ -4666,7 +4678,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	err = decoder.Decode(&offlineDealRequest)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 	if err != nil && err != io.EOF {
@@ -4702,14 +4714,14 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	carDirExpand, err := oshomedir.Expand(carFileDirPath)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 	if _, err := os.Stat(carDirExpand); os.IsNotExist(err) {
 		err := os.Mkdir(carDirExpand, 0775)
 		if err != nil {
 			logs.GetLogger().Error(err)
-			writeWebErrorResponse(w, err)
+			writeOfflineDealsErrorResponse(w, err)
 			return
 		}
 	}
@@ -4717,7 +4729,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	sourceDirExpand, err := oshomedir.Expand(sourceDirPath)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 
@@ -4725,7 +4737,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	dirEmpty, err := IsDirEmpty(sourceDirExpand)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 	if dirEmpty {
@@ -4734,7 +4746,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 		dataBytes, err := json.Marshal(bucketOfflineDealResponse)
 		if err != nil {
 			logs.GetLogger().Error(err)
-			writeWebErrorResponse(w, err)
+			writeOfflineDealsErrorResponse(w, err)
 			return
 		}
 		w.Write(dataBytes)
@@ -4744,7 +4756,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	sliceSize, err := strconv.ParseInt(config.CarFileSize, 10, 64)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 	carDir := carDirExpand
@@ -4760,7 +4772,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	err = graphsplit.Chunk(Emptyctx, sliceSize, parentPath, targetPath, carDir, graphName, parallel, cb)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 
@@ -4768,7 +4780,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	err = generateCarCsv(carDir, parentPath)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 
@@ -4777,7 +4789,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	logger.LogIf(Emptyctx, err)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 
@@ -4785,13 +4797,13 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	offlineDeals, err := readCsv(filepath.Join(carDir, "car.csv"))
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 	reply, err := createTask(offlineDeals, carDir, offlineDealRequest)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 	var createTaskResponse CreateTaskResponse
@@ -4802,7 +4814,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	dataBytes, err := json.Marshal(bucketOfflineDealResponse)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
+		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
 	w.Write(dataBytes)

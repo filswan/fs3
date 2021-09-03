@@ -86,7 +86,7 @@
               <h4>{{addr | hiddAddress}}</h4>
                   <el-divider></el-divider>
               <h4>{{addr | hiddAddress}}</h4>
-              <h5>{{priceAccound}} {{ network.name ? 'ETH' : network.newID==999 ? 'NBAI' : ''}}</h5>
+              <h5>{{priceAccound}} {{ network.unit}}</h5>
                   <el-divider></el-divider>
               <h3 @click="signOutFun">Disconnect</h3>
 
@@ -474,7 +474,7 @@ export default {
       priceAccound: 0,
       network: {
         name: '',
-        newID: 0
+        unit: 0
       }
     }
   },
@@ -940,28 +940,31 @@ export default {
                   switch (netId) {
                     case 1:
                       _this.network.name = 'mainnet';
-                      return;
-                    case 2:
-                      _this.network.name = 'deprecated Morden';
+                      _this.network.unit = 'ETH';
                       return;
                     case 3:
                       _this.network.name = 'ropsten';
+                      _this.network.unit = 'ETH';
                       break;
                     case 4:
                       _this.network.name = 'rinkeby';
+                      _this.network.unit = 'ETH';
                       return;
                     case 5:
                       _this.network.name = 'goerli';
+                      _this.network.unit = 'ETH';
                       return;
                     case 42:
                       _this.network.name = 'kovan';
+                      _this.network.unit = 'ETH';
                       return;
                     case 999:
-                      _this.network.name = '';
-                      _this.network.newID = 999;
+                      _this.network.name = 'NBAI';
+                      _this.network.unit = 'NBAI';
                       return;
                     default:
                       _this.network.name = '';
+                      _this.network.unit = '';
                       return;
                   }
                });
