@@ -79,7 +79,7 @@ export default {
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
-            logo: require("@/assets/images/title.svg"),
+            logo: require("@/assets/images/title.png"),
             activeIndex: '1',
             mobileMenuShow: false,
             search: '',

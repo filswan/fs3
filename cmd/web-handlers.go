@@ -18,15 +18,22 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
+	"crypto/md5"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/filedrive-team/go-graphsplit"
+	"github.com/google/uuid"
+	csv "github.com/minio/csvparser"
 	"github.com/minio/minio/internal/config"
 	"github.com/minio/minio/logs"
 	oshomedir "github.com/mitchellh/go-homedir"
 	"github.com/syndtr/goleveldb/leveldb"
+	"mime/multipart"
 
 	//"github.com/filedrive-team/go-graphsplit"
 	"io"
@@ -73,6 +80,7 @@ import (
 const (
 	SuccessResponseStatus = "success"
 	FailResponseStatus    = "fail"
+	NoFileInBucket        = "No file in the bucket.Please upload files"
 )
 
 func extractBucketObject(args reflect.Value) (bucketName, objectName string) {
@@ -2504,6 +2512,21 @@ func writeWebErrorResponse(w http.ResponseWriter, err error) {
 	w.Write(errJson)
 }
 
+func writeOfflineDealsErrorResponse(w http.ResponseWriter, err error) {
+	reqInfo := &logger.ReqInfo{
+		DeploymentID: globalDeploymentID,
+	}
+	ctx := logger.SetReqInfo(GlobalContext, reqInfo)
+	apiErr := toWebAPIError(ctx, err)
+	w.WriteHeader(apiErr.HTTPStatusCode)
+	sendResponse := BucketOfflineDealResponse{Status: FailResponseStatus, Message: apiErr.Description}
+	errJson, error := json.Marshal(sendResponse)
+	if error != nil {
+		logs.GetLogger().Error(error)
+	}
+	w.Write(errJson)
+}
+
 type DealVo struct {
 	SwanEndpoint string `json:"swan_endpoint,omitempty"`
 	CarSliceSize int64  `json:"car_slice_size,omitempty"`
@@ -2512,6 +2535,14 @@ type DealVo struct {
 	Price        string `json:"price,omitempty"`
 	SwanApiToken string `json:"swan_api_token,omitempty"`
 	MinerId      string `json:"miner_id,omitempty"`
+}
+
+type OfflineDealRequest struct {
+	TaskName string `json:"task_name"`
+	Start    uint   `json:"start"`
+	Duration uint   `json:"duration"`
+	Price    string `json:"price"`
+	MinerId  string `json:"miner_id"`
 }
 
 type OnlineDealRequest struct {
@@ -2790,6 +2821,7 @@ func (web *webAPIHandlers) JsonRetrieveDeal(w http.ResponseWriter, r *http.Reque
 		if err != nil {
 			logs.GetLogger().Error(err)
 			writeWebErrorResponse(w, err)
+			return
 		}
 		w.Write(dataBytes)
 		return
@@ -3703,7 +3735,6 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 
 	_, err := objectAPI.GetBucketInfo(ctx, bucket)
 	if err != nil {
-		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
@@ -3912,6 +3943,28 @@ type ManifestJson struct {
 type BucketFileList struct {
 	FileName string         `json:"file_name"`
 	Deals    []SendResponse `json:"deals"`
+}
+
+type TaskResponse struct {
+	FileName string `json:"filename"`
+	Uuid     string `json:"uuid"`
+}
+
+type CreateTaskResponse struct {
+	Data    TaskResponse `json:"data"`
+	Status  string       `json:"status"`
+	Message string       `json:"message"`
+}
+
+type BucketInfoResponse struct {
+	BucketName string             `json:"bucket_name"`
+	Deals      CreateTaskResponse `json:"deals"`
+}
+
+type BucketOfflineDealResponse struct {
+	Data    BucketInfoResponse `json:"data"`
+	Status  string             `json:"status"`
+	Message string             `json:"message"`
 }
 
 func SaveToJson(bucket string, object string, response SendResponse) error {
@@ -4283,4 +4336,1110 @@ func BucketSaveToDb(bucket string, response SendResponse) error {
 		}
 		return err
 	}
+}
+
+func (web *webAPIHandlers) SendOfflineDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebSendOfflineDeal")
+
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+	object, err := unescapePath(vars["object"])
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	getObjectNInfo := objectAPI.GetObjectNInfo
+	if web.CacheAPI() != nil {
+		getObjectNInfo = web.CacheAPI().GetObjectNInfo
+	}
+	var opts ObjectOptions
+	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+	defer gr.Close()
+
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	fmt.Println(r.Body, decoder)
+
+	var offlineDealRequest OfflineDealRequest
+	err = decoder.Decode(&offlineDealRequest)
+
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	_ = func(address string) (string, error) {
+		addr := net.ParseIP(address)
+		if addr != nil {
+			// Host is an ip address
+			err := errors.New("for dev env, please provide a header with valid Host, exp: a5a84b78-dd4a-45f4-bd90-31428fc23a21.cygnus.nbai.io")
+			return "", err
+		} else {
+			// Host is a host name
+			domainSegments := strings.Split(address, ".")
+			if len(domainSegments) > 1 {
+				return domainSegments[0], nil
+			} else {
+				err := errors.New(fmt.Sprintf("invalid Host in header %s", address))
+				return "", err
+			}
+		}
+	}
+
+	// generate car
+	VolumeAddress := config.Fs3VolumeAddress
+
+	sourceFilePath := filepath.Join(VolumeAddress, bucket, object)
+	carFileDir := "." + bucket
+	carFileDirPath := filepath.Join(VolumeAddress, carFileDir)
+
+	carDirExpand, err := oshomedir.Expand(carFileDirPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	if _, err := os.Stat(carDirExpand); os.IsNotExist(err) {
+		err := os.Mkdir(carDirExpand, 0775)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
+
+	sourceDirExpand, err := oshomedir.Expand(sourceFilePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	sliceSize, err := strconv.ParseInt(config.CarFileSize, 10, 64)
+	carDir := carDirExpand
+	parentPath := sourceDirExpand
+	targetPath := sourceDirExpand
+	graphName := object
+	parallel := 4
+
+	Emptyctx := context.Background()
+	var cb graphsplit.GraphBuildCallback
+
+	cb = graphsplit.CommPCallback(carDir)
+	err = graphsplit.Chunk(Emptyctx, sliceSize, parentPath, targetPath, carDir, graphName, parallel, cb)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	// send deal request to swan
+	offlineDeals, err := readCsv(filepath.Join(carDir, "car.csv"))
+	logger.LogIf(Emptyctx, err)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	// todo send multiple deals
+	if len(offlineDeals) == 1 {
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		bodyByte, _ := json.Marshal(offlineDeals[0])
+		w.Write(bodyByte)
+	}
+	return
+
+}
+
+func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebSendOfflineDeals")
+
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeOfflineDealsErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	_, err := objectAPI.GetBucketInfo(ctx, bucket)
+	if err != nil {
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeOfflineDealsErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var offlineDealRequest TaskInfo
+	err = decoder.Decode(&offlineDealRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	_ = func(address string) (string, error) {
+		addr := net.ParseIP(address)
+		if addr != nil {
+			// Host is an ip address
+			err := errors.New("for dev env, please provide a header with valid Host, exp: a5a84b78-dd4a-45f4-bd90-31428fc23a21.cygnus.nbai.io")
+			return "", err
+		} else {
+			// Host is a host name
+			domainSegments := strings.Split(address, ".")
+			if len(domainSegments) > 1 {
+				return domainSegments[0], nil
+			} else {
+				err := errors.New(fmt.Sprintf("invalid Host in header %s", address))
+				return "", err
+			}
+		}
+	}
+
+	// generate car
+	VolumeAddress := config.Fs3VolumeAddress
+
+	sourceDirPath := filepath.Join(VolumeAddress, bucket)
+	carFileDir := "." + bucket + "_deals"
+	carFileDirPath := filepath.Join(VolumeAddress, carFileDir)
+
+	carDirExpand, err := oshomedir.Expand(carFileDirPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	if _, err := os.Stat(carDirExpand); os.IsNotExist(err) {
+		err := os.Mkdir(carDirExpand, 0775)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeOfflineDealsErrorResponse(w, err)
+			return
+		}
+	}
+
+	sourceDirExpand, err := oshomedir.Expand(sourceDirPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	//check if sourceDir is empty
+	dirEmpty, err := IsDirEmpty(sourceDirExpand)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	if dirEmpty {
+		noFileResponse := BucketInfoResponse{}
+		bucketOfflineDealResponse := BucketOfflineDealResponse{Data: noFileResponse, Status: FailResponseStatus, Message: NoFileInBucket}
+		dataBytes, err := json.Marshal(bucketOfflineDealResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeOfflineDealsErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	}
+
+	sliceSize, err := strconv.ParseInt(config.CarFileSize, 10, 64)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	carDir := carDirExpand
+	parentPath := sourceDirExpand
+	targetPath := sourceDirExpand
+	graphName := bucket
+	parallel := 4
+
+	Emptyctx := context.Background()
+	var cb graphsplit.GraphBuildCallback
+
+	cb = graphsplit.CommPCallback(carDir)
+	err = graphsplit.Chunk(Emptyctx, sliceSize, parentPath, targetPath, carDir, graphName, parallel, cb)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	// generate car.csv
+	err = generateCarCsv(carDir, parentPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	//Upload to ipfs
+	err = uploadCarFile(carDir, graphName)
+	logger.LogIf(Emptyctx, err)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	//Create task on swan
+	offlineDeals, err := readCsv(filepath.Join(carDir, "car.csv"))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	reply, err := createTask(offlineDeals, carDir, offlineDealRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	var createTaskResponse CreateTaskResponse
+	json.Unmarshal(reply, &createTaskResponse)
+
+	bucketInfoResponse := BucketInfoResponse{BucketName: bucket, Deals: createTaskResponse}
+	bucketOfflineDealResponse := BucketOfflineDealResponse{Data: bucketInfoResponse, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
+	dataBytes, err := json.Marshal(bucketOfflineDealResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	w.Write(dataBytes)
+	return
+
+}
+
+type OfflineDeal struct {
+	MinerId       string
+	PieceCid      string
+	PieceSize     string
+	DataCid       string
+	Duration      string
+	Start         string
+	FastRetrieval bool
+	DealCid       string
+	Filename      string
+	Price         string
+}
+
+func NewOfflineDeal() *OfflineDeal {
+	return &OfflineDeal{FastRetrieval: true}
+}
+
+type CarRecord struct {
+	CarFileName    string
+	CarFilePath    string
+	PieceCid       string
+	DataCid        string
+	CarFileSize    string
+	CarFileMd5     string
+	SourceFileName string
+	SourceFilePath string
+	SourceFileSize string
+	SourceFileMd5  string
+}
+
+type SourceFiles struct {
+	Bucket           string
+	SourceFilesNames []SourceFile
+}
+type SourceFile struct {
+	Name string
+}
+
+type SourceFilesPath struct {
+	Bucket           string
+	SourceFilesPaths []SourceFilePath
+}
+type SourceFilePath struct {
+	Path string
+}
+
+type SourceFilesSize struct {
+	Bucket           string
+	SourceFilesSizes []SourceFileSize
+}
+type SourceFileSize struct {
+	Size string
+}
+
+type SourceFilesMd5 struct {
+	Bucket          string
+	SourceFilesMd5s []SourceFileMd5
+}
+type SourceFileMd5 struct {
+	Md5 string
+}
+
+func uploadCarFile(carDir string, graphName string) error {
+	records, err := readCsv(filepath.Join(carDir, "car.csv"))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	var newRecords [][]string
+	newRecords = append(newRecords, []string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5", "car_file_url"})
+	for _, record := range records {
+		carHash, err := uploadCarFileIpfs(record)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		carFileAddress := config.IpfsAddress + "/ipfs/" + carHash
+		record = append(record, carFileAddress)
+		newRecords = append(newRecords, record)
+	}
+	err = writeCarCsv(filepath.Join(carDir, "car.csv"), newRecords)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+type UploadIpfsResponse struct {
+	Name string
+	Hash string
+	Size string
+}
+
+func uploadCarFileIpfs(record []string) (string, error) {
+	file, err := os.Open(record[1])
+
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("", filepath.Base(file.Name()))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+
+	io.Copy(part, file)
+	writer.Close()
+
+	url := config.IpfsAddress + "/api/v0/add"
+	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+
+	request.Header.Add("Content-Type", writer.FormDataContentType())
+	client := &http.Client{}
+
+	response, err := client.Do(request)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	defer response.Body.Close()
+
+	content, err := ioioutil.ReadAll(response.Body)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	uploadResponse := UploadIpfsResponse{}
+	err = json.Unmarshal(content, &uploadResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return uploadResponse.Hash, err
+}
+
+func generateCarCsv(carDir string, parentPath string) error {
+	manifestPath := filepath.Join(carDir, "manifest.csv")
+	carPath := filepath.Join(carDir, "car.csv")
+	manifestCSV, err := os.Open(manifestPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer manifestCSV.Close()
+
+	if _, err := os.Stat(carPath); err == nil {
+		os.Remove(carPath)
+	}
+
+	carCSV, err := os.OpenFile(carPath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer carCSV.Close()
+
+	reader := csv.NewReader(manifestCSV)
+	reader.LazyQuotes = true
+	reader.Comma = ','
+
+	//ignore values in detail
+	reader.FieldsPerRecord = -1
+
+	csvLines, err := reader.ReadAll()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
+	manifestRecord := csvLines[len(csvLines)-1]
+	carFileName := manifestRecord[0] + ".car"
+	carFilePath := filepath.Join(carDir, carFileName)
+	carFile, err := os.Open(carFilePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer carFile.Close()
+
+	stat, err := carFile.Stat()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileSize := strconv.FormatInt(stat.Size(), 10)
+
+	h := md5.New()
+	if _, err := io.Copy(h, carFile); err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileMd5 := hex.EncodeToString(h.Sum(nil))
+
+	files, err := ioioutil.ReadDir(parentPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	var sourceFiles SourceFiles
+	var sourceFilesPath SourceFilesPath
+	var sourceFilesSize SourceFilesSize
+	var sourceFilesMd5 SourceFilesMd5
+	for _, f := range files {
+		sourceFile := SourceFile{
+			Name: f.Name(),
+		}
+		sourceFilePath := SourceFilePath{
+			Path: filepath.Join(parentPath, f.Name()),
+		}
+		file, err := os.Open(filepath.Join(parentPath, f.Name()))
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileSize := strconv.FormatInt(stat.Size(), 10)
+		sourceFileSize := SourceFileSize{
+			Size: fileSize,
+		}
+
+		h := md5.New()
+		if _, err := io.Copy(h, file); err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileMd5 := hex.EncodeToString(h.Sum(nil))
+		sourceFileMd5 := SourceFileMd5{
+			Md5: fileMd5,
+		}
+		sourceFiles.SourceFilesNames = append(sourceFiles.SourceFilesNames, sourceFile)
+		sourceFilesPath.SourceFilesPaths = append(sourceFilesPath.SourceFilesPaths, sourceFilePath)
+		sourceFilesSize.SourceFilesSizes = append(sourceFilesSize.SourceFilesSizes, sourceFileSize)
+		sourceFilesMd5.SourceFilesMd5s = append(sourceFilesMd5.SourceFilesMd5s, sourceFileMd5)
+	}
+
+	sourceFileName, err := json.Marshal(sourceFiles.SourceFilesNames)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFilesName := string(sourceFileName)
+
+	sourceFilePaths, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFilePath := string(sourceFilePaths)
+
+	sourceFileSizes, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFileSize := string(sourceFileSizes)
+
+	sourceFileMd5s, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFileMd5 := string(sourceFileMd5s)
+
+	w := csv.NewWriter(carCSV)
+	err = w.Write([]string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5"})
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
+	err = w.Write([]string{carFileName, carFilePath, manifestRecord[2], manifestRecord[0], carFileSize, carFileMd5, sourceFilesName, sourceFilePath, sourceFileSize, sourceFileMd5})
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func readCsv(_filepath string) ([][]string, error) {
+	csvFile, err := os.Open(_filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer csvFile.Close()
+
+	reader := csv.NewReader(csvFile)
+	reader.LazyQuotes = true
+	reader.Comma = ','
+
+	//ignore values in detail
+	reader.FieldsPerRecord = -1
+	csvLines, err := reader.ReadAll()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	csvRecord := csvLines[len(csvLines)-1]
+	csvColumeLen := len(csvLines[0])
+	var records [][]string
+	i := 0
+	for i < len(csvRecord) {
+		record := csvRecord[i : i+csvColumeLen]
+		records = append(records, record)
+		i = i + csvColumeLen
+	}
+	return records, err
+}
+
+func writeCarCsv(_filepath string, records [][]string) error {
+	csvFile, err := os.OpenFile(_filepath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer csvFile.Close()
+
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(records)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func createTask(offlineDeals [][]string, outputDir string, request TaskInfo) ([]byte, error) {
+	taskUuid := uuid.New().String()
+	err := generateMetadataCsv(offlineDeals, taskUuid, outputDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	err = generateTaskCsv(offlineDeals, outputDir, taskUuid)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	response, err := createSwanTask(outputDir, taskUuid, request)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	return response, err
+
+}
+
+type TaskInfo struct {
+	TaskName       string `json:"task_name"`
+	CuratedDataset string `json:"curated_dataset"`
+	Description    string `json:"description"`
+	IsPublic       string `json:"is_public"`
+	Type           string `json:"type"`
+	MinerId        string `json:"miner_id"`
+	MinPrice       string `json:"min_price"`
+	MaxPrice       string `json:"max_price"`
+	Tags           string `json:"tags"`
+	ExpireDays     string `json:"expire_days"`
+}
+
+func createSwanTask(outputDir string, taskUuid string, request TaskInfo) ([]byte, error) {
+	taskCsv, err := os.Open(path.Join(outputDir, taskUuid+".csv"))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	client := http.Client{Timeout: time.Minute}
+	method := "POST"
+	swanUrl := config.SwanAddress + "/tasks"
+	token := config.SwanToken
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	fw, err := writer.CreateFormField("task_name")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.TaskName))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("curated_dataset")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.CuratedDataset))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("description")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.Description))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("is_public")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	if request.IsPublic == "0" {
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.IsPublic))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("verified_type")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.Type))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("miner_id")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.MinerId))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("min_price")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.MinPrice))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("max_price")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.MaxPrice))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("tags")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.Tags))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("expired_days")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.ExpireDays))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormFile("file", taskUuid+".csv")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, taskCsv)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	writer.Close()
+
+	req, err := http.NewRequest(method, swanUrl, bytes.NewReader(body.Bytes()))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	res, err := client.Do(req)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	bodyBytes, err := ioioutil.ReadAll(res.Body)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	return bodyBytes, err
+}
+
+func generateTaskCsv(records [][]string, outputDir string, taskUuid string) error {
+	taskCsvPath := filepath.Join(outputDir, taskUuid+".csv")
+	csvFile, err := os.OpenFile(taskCsvPath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer csvFile.Close()
+
+	var taskRecords [][]string
+	taskRecords = append(taskRecords, []string{"uuid", "miner_id", "deal_cid", "payload_cid", "file_source_url", "md5", "start_epoch"})
+	for _, record := range records {
+		taskRecord := []string{taskUuid, "", "", record[3], record[10], record[5], ""}
+		taskRecords = append(taskRecords, taskRecord)
+	}
+
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(taskRecords)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func generateMetadataCsv(records [][]string, taskUuid string, outputDir string) error {
+	var newRecords [][]string
+	newRecords = append(newRecords, []string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5", "car_file_url", "uuid", "source_file_url", "deal_cid", "miner_id", "start_epoch"})
+	for _, record := range records {
+		record = append(record, taskUuid, "", "", "", "")
+		newRecords = append(newRecords, record)
+	}
+
+	metaCsvPath := filepath.Join(outputDir, taskUuid+"-metadata.csv")
+	csvFile, err := os.OpenFile(metaCsvPath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer csvFile.Close()
+
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(newRecords)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func IsDirEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	// read in ONLY one file
+	_, err = f.Readdir(1)
+
+	// and if the file is EOF... well, the dir is empty.
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
 }
