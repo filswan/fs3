@@ -3297,6 +3297,7 @@ func (web *webAPIHandlers) RetrieveDeals(w http.ResponseWriter, r *http.Request)
 	_, err := objectAPI.GetBucketInfo(ctx, bucket)
 	if err != nil {
 		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
 		return
 	}
 
@@ -3480,6 +3481,7 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 	var opts ObjectOptions
 	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
 	if err != nil {
+		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
