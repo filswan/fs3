@@ -4780,7 +4780,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	}
 
 	// generate car.csv
-	err = generateCarCsv(carDir, parentPath)
+	err = saveCarCsvToDb(carDir, parentPath, bucket)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeOfflineDealsErrorResponse(w, err)
@@ -4788,7 +4788,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	}
 
 	//Upload to ipfs
-	err = uploadCarFile(carDir, graphName)
+	err = uploadCarFileAndSaveToDb(carDir, graphName)
 	logger.LogIf(Emptyctx, err)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -4797,13 +4797,13 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	}
 
 	//Create task on swan
-	offlineDeals, err := readCsv(filepath.Join(carDir, "car.csv"))
+	offlineDeals, err := readCsvInDb(bucket)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeOfflineDealsErrorResponse(w, err)
 		return
 	}
-	reply, err := createTask(offlineDeals, carDir, offlineDealRequest)
+	reply, err := createTask(bucket, offlineDeals, carDir, offlineDealRequest)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeOfflineDealsErrorResponse(w, err)
@@ -4887,6 +4887,48 @@ type SourceFileMd5 struct {
 	Md5 string
 }
 
+func uploadCarFileAndSaveToDb(carDir string, graphName string) error {
+	expandedDir, err := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	carCsv, err := db.Get([]byte(graphName+"_deals_car_csv"), nil)
+	if err != nil || carCsv == nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	csvRecord := CarCsv{}
+	err = json.Unmarshal(carCsv, &csvRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
+	carHash, err := uploadCarFileIpfs(csvRecord.CarFilePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileAddress := config.IpfsAddress + "/ipfs/" + carHash
+	csvRecord.CarFileUrl = carFileAddress
+
+	dataBytes, err := json.Marshal(csvRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	err = db.Put([]byte(graphName+"_deals_car_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
 func uploadCarFile(carDir string, graphName string) error {
 	records, err := readCsv(filepath.Join(carDir, "car.csv"))
 	if err != nil {
@@ -4896,7 +4938,7 @@ func uploadCarFile(carDir string, graphName string) error {
 	var newRecords [][]string
 	newRecords = append(newRecords, []string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5", "car_file_url"})
 	for _, record := range records {
-		carHash, err := uploadCarFileIpfs(record)
+		carHash, err := uploadCarFileIpfs(record[1])
 		if err != nil {
 			logs.GetLogger().Error(err)
 			return err
@@ -4919,8 +4961,8 @@ type UploadIpfsResponse struct {
 	Size string
 }
 
-func uploadCarFileIpfs(record []string) (string, error) {
-	file, err := os.Open(record[1])
+func uploadCarFileIpfs(carFilePath string) (string, error) {
+	file, err := os.Open(carFilePath)
 
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -4968,6 +5010,180 @@ func uploadCarFileIpfs(record []string) (string, error) {
 		return "", err
 	}
 	return uploadResponse.Hash, err
+}
+
+type CarCsv struct {
+	CarFileName    string
+	CarFilePath    string
+	PieceCid       string
+	DataCid        string
+	CarFileSize    string
+	CarFileMd5     string
+	SourceFileName string
+	SourceFilePath string
+	SourceFileSize string
+	SourceFileMd5  string
+	CarFileUrl     string
+}
+
+func saveCarCsvToDb(carDir string, parentPath string, bucket string) error {
+	manifestPath := filepath.Join(carDir, "manifest.csv")
+	manifestCSV, err := os.Open(manifestPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer manifestCSV.Close()
+
+	reader := csv.NewReader(manifestCSV)
+	reader.LazyQuotes = true
+	reader.Comma = ','
+
+	//ignore values in detail
+	reader.FieldsPerRecord = -1
+
+	csvLines, err := reader.ReadAll()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
+	manifestRecord := csvLines[len(csvLines)-1]
+	carFileName := manifestRecord[0] + ".car"
+	carFilePath := filepath.Join(carDir, carFileName)
+	carFile, err := os.Open(carFilePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer carFile.Close()
+
+	stat, err := carFile.Stat()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileSize := strconv.FormatInt(stat.Size(), 10)
+
+	h := md5.New()
+	if _, err := io.Copy(h, carFile); err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileMd5 := hex.EncodeToString(h.Sum(nil))
+
+	files, err := ioioutil.ReadDir(parentPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	var sourceFiles SourceFiles
+	var sourceFilesPath SourceFilesPath
+	var sourceFilesSize SourceFilesSize
+	var sourceFilesMd5 SourceFilesMd5
+	for _, f := range files {
+		sourceFile := SourceFile{
+			Name: f.Name(),
+		}
+		sourceFilePath := SourceFilePath{
+			Path: filepath.Join(parentPath, f.Name()),
+		}
+		file, err := os.Open(filepath.Join(parentPath, f.Name()))
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileSize := strconv.FormatInt(stat.Size(), 10)
+		sourceFileSize := SourceFileSize{
+			Size: fileSize,
+		}
+
+		h := md5.New()
+		if _, err := io.Copy(h, file); err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileMd5 := hex.EncodeToString(h.Sum(nil))
+		sourceFileMd5 := SourceFileMd5{
+			Md5: fileMd5,
+		}
+		sourceFiles.SourceFilesNames = append(sourceFiles.SourceFilesNames, sourceFile)
+		sourceFilesPath.SourceFilesPaths = append(sourceFilesPath.SourceFilesPaths, sourceFilePath)
+		sourceFilesSize.SourceFilesSizes = append(sourceFilesSize.SourceFilesSizes, sourceFileSize)
+		sourceFilesMd5.SourceFilesMd5s = append(sourceFilesMd5.SourceFilesMd5s, sourceFileMd5)
+	}
+
+	sourceFileName, err := json.Marshal(sourceFiles.SourceFilesNames)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFilesName := string(sourceFileName)
+
+	sourceFilePaths, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFilePath := string(sourceFilePaths)
+
+	sourceFileSizes, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFileSize := string(sourceFileSizes)
+
+	sourceFileMd5s, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFileMd5 := string(sourceFileMd5s)
+
+	expandedDir, err := LevelDbPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	newCarCsv := CarCsv{
+		CarFileName:    carFileName,
+		CarFilePath:    carFilePath,
+		PieceCid:       manifestRecord[2],
+		DataCid:        manifestRecord[0],
+		CarFileSize:    carFileSize,
+		CarFileMd5:     carFileMd5,
+		SourceFileName: sourceFilesName,
+		SourceFilePath: sourceFilePath,
+		SourceFileSize: sourceFileSize,
+		SourceFileMd5:  sourceFileMd5,
+		CarFileUrl:     "",
+	}
+	dataBytes, err := json.Marshal(newCarCsv)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	err = db.Put([]byte(bucket+"_deals_car_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
 }
 
 func generateCarCsv(carDir string, parentPath string) error {
@@ -5125,6 +5341,29 @@ func generateCarCsv(carDir string, parentPath string) error {
 	return err
 }
 
+func readCsvInDb(bucket string) (CarCsv, error) {
+	expandedDir, err := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return CarCsv{}, err
+	}
+	defer db.Close()
+
+	carCsv, err := db.Get([]byte(bucket+"_deals_car_csv"), nil)
+	if err != nil || carCsv == nil {
+		logs.GetLogger().Error(err)
+		return CarCsv{}, err
+	}
+	csvRecord := CarCsv{}
+	err = json.Unmarshal(carCsv, &csvRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return CarCsv{}, err
+	}
+	return csvRecord, err
+}
+
 func readCsv(_filepath string) ([][]string, error) {
 	csvFile, err := os.Open(_filepath)
 	if err != nil {
@@ -5178,9 +5417,15 @@ func writeCarCsv(_filepath string, records [][]string) error {
 	return err
 }
 
-func createTask(offlineDeals [][]string, outputDir string, request TaskInfo) ([]byte, error) {
+func createTask(bucket string, offlineDeals CarCsv, outputDir string, request TaskInfo) ([]byte, error) {
 	taskUuid := uuid.New().String()
-	err := generateMetadataCsv(offlineDeals, taskUuid, outputDir)
+	err := generateMetadataCsvToDb(bucket, offlineDeals, taskUuid, outputDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	err = generateTaskCsvToDb(bucket, offlineDeals, outputDir, taskUuid)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return nil, err
@@ -5365,7 +5610,52 @@ func createSwanTask(outputDir string, taskUuid string, request TaskInfo) ([]byte
 	return bodyBytes, err
 }
 
-func generateTaskCsv(records [][]string, outputDir string, taskUuid string) error {
+type TaskCsv struct {
+	Uuid          string
+	MinerId       string
+	DealCid       string
+	PayloadCid    string
+	FileSourceUrl string
+	Md5           string
+	StartEpoch    string
+}
+
+func generateTaskCsvToDb(bucket string, records CarCsv, outputDir string, taskUuid string) error {
+	expandedDir, err := LevelDbPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	newRecord := TaskCsv{
+		Uuid:          taskUuid,
+		MinerId:       "",
+		DealCid:       "",
+		PayloadCid:    records.DataCid,
+		FileSourceUrl: records.CarFileUrl,
+		Md5:           records.CarFileMd5,
+		StartEpoch:    "",
+	}
+	dataBytes, err := json.Marshal(newRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	err = db.Put([]byte(bucket+"_deals_task_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func generateTaskCsv(records CarCsv, outputDir string, taskUuid string) error {
 	taskCsvPath := filepath.Join(outputDir, taskUuid+".csv")
 	csvFile, err := os.OpenFile(taskCsvPath, os.O_CREATE|os.O_WRONLY, 0777)
 	if err != nil {
@@ -5376,10 +5666,8 @@ func generateTaskCsv(records [][]string, outputDir string, taskUuid string) erro
 
 	var taskRecords [][]string
 	taskRecords = append(taskRecords, []string{"uuid", "miner_id", "deal_cid", "payload_cid", "file_source_url", "md5", "start_epoch"})
-	for _, record := range records {
-		taskRecord := []string{taskUuid, "", "", record[3], record[10], record[5], ""}
-		taskRecords = append(taskRecords, taskRecord)
-	}
+	taskRecord := []string{taskUuid, "", "", records.DataCid, records.CarFileUrl, records.CarFileMd5, ""}
+	taskRecords = append(taskRecords, taskRecord)
 
 	w := csv.NewWriter(csvFile)
 	err = w.WriteAll(taskRecords)
@@ -5389,6 +5677,69 @@ func generateTaskCsv(records [][]string, outputDir string, taskUuid string) erro
 	}
 	w.Flush()
 	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+type MetaDataCsv struct {
+	CarFileName    string
+	CarFilePath    string
+	PieceCid       string
+	DataCid        string
+	CarFileSize    string
+	CarFileMd5     string
+	SourceFileName string
+	SourceFilePath string
+	SourceFileSize string
+	SourceFileMd5  string
+	CarFileUrl     string
+	Uuid           string
+	SourceFileUrl  string
+	DealCid        string
+	MinerId        string
+	StartEpoch     string
+}
+
+func generateMetadataCsvToDb(bucket string, records CarCsv, taskUuid string, outputDir string) error {
+	expandedDir, err := LevelDbPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	newRecord := MetaDataCsv{
+		CarFileName:    records.CarFileName,
+		CarFilePath:    records.CarFilePath,
+		PieceCid:       records.PieceCid,
+		DataCid:        records.DataCid,
+		CarFileSize:    records.DataCid,
+		CarFileMd5:     records.CarFileMd5,
+		SourceFileName: records.SourceFileName,
+		SourceFilePath: records.SourceFilePath,
+		SourceFileSize: records.SourceFileSize,
+		SourceFileMd5:  records.SourceFileMd5,
+		CarFileUrl:     records.CarFileUrl,
+		Uuid:           taskUuid,
+		SourceFileUrl:  "",
+		DealCid:        "",
+		MinerId:        "",
+		StartEpoch:     "",
+	}
+	dataBytes, err := json.Marshal(newRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	err = db.Put([]byte(bucket+"_deals_metadata_csv"), []byte(dataBytes), nil)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
