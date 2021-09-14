@@ -347,6 +347,7 @@ Response from POSTMAN
         "bucket_name": "test",
         "deals": {
             "data": {
+                "taskname": "test-name",
                 "filename": "be450523-52ed-44f9-9828-8e382c0d15c8.csv",
                 "uuid": "d2d79d42-6f79-46fe-97bd-cd6f69c25116"
             },
