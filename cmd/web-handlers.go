@@ -3946,6 +3946,7 @@ type BucketFileList struct {
 }
 
 type TaskResponse struct {
+	TaskName string `json:"taskname"`
 	FileName string `json:"filename"`
 	Uuid     string `json:"uuid"`
 }
@@ -4812,6 +4813,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	var createTaskResponse CreateTaskResponse
 	json.Unmarshal(reply, &createTaskResponse)
 
+	createTaskResponse.Data.TaskName = offlineDealRequest.TaskName
 	bucketInfoResponse := BucketInfoResponse{BucketName: bucket, Deals: createTaskResponse}
 	bucketOfflineDealResponse := BucketOfflineDealResponse{Data: bucketInfoResponse, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
 	dataBytes, err := json.Marshal(bucketOfflineDealResponse)
