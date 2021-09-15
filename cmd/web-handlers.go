@@ -3946,6 +3946,7 @@ type BucketFileList struct {
 }
 
 type TaskResponse struct {
+	TaskName string `json:"taskname"`
 	FileName string `json:"filename"`
 	Uuid     string `json:"uuid"`
 }
@@ -4812,6 +4813,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	var createTaskResponse CreateTaskResponse
 	json.Unmarshal(reply, &createTaskResponse)
 
+	createTaskResponse.Data.TaskName = offlineDealRequest.TaskName
 	bucketInfoResponse := BucketInfoResponse{BucketName: bucket, Deals: createTaskResponse}
 	bucketOfflineDealResponse := BucketOfflineDealResponse{Data: bucketInfoResponse, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
 	dataBytes, err := json.Marshal(bucketOfflineDealResponse)
@@ -4913,7 +4915,7 @@ func uploadCarFileAndSaveToDb(carDir string, graphName string) error {
 		logs.GetLogger().Error(err)
 		return err
 	}
-	carFileAddress := config.IpfsAddress + "/ipfs/" + carHash
+	carFileAddress := config.IpfsGateway + "/ipfs/" + carHash
 	csvRecord.CarFileUrl = carFileAddress
 
 	dataBytes, err := json.Marshal(csvRecord)
@@ -4943,7 +4945,7 @@ func uploadCarFile(carDir string, graphName string) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
-		carFileAddress := config.IpfsAddress + "/ipfs/" + carHash
+		carFileAddress := config.IpfsGateway + "/ipfs/" + carHash
 		record = append(record, carFileAddress)
 		newRecords = append(newRecords, record)
 	}
@@ -4981,7 +4983,7 @@ func uploadCarFileIpfs(carFilePath string) (string, error) {
 	io.Copy(part, file)
 	writer.Close()
 
-	url := config.IpfsAddress + "/api/v0/add"
+	url := config.IpfsApiAddress + "/api/v0/add"
 	request, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		logs.GetLogger().Error(err)
