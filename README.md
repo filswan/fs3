@@ -35,10 +35,10 @@ Set up or modify FS3 configuration in file `fs3/internal/config/config.go`
 ``` bash
  vim internal/config/config.go
 ```
-
 * __Wallet address__ : A wallet address is a must for sending deals to miner. You can set it up via variable `Fs3WalletAddress`.
 * __Car File Size__ : A fixed car file size in bytes need to be predefined before generating car files for trunk via variable `CarFileSize`, such as `8589934592` for 8Gb.
 * __Ipfs Address__ :  An available ipfs address with port need to be set up for uploading via variable `IpfsAddress`. For example, `https://MyIpfsUrl:Port`.
+* __Ipfs Gateway__ :  An available ipfs address with port need to be set up for downloading via variable `IpfsGateway`. For example, `https://MyIpfsGatewayUrl:Port`.
 * __Swan Token__ : A valid swan token is required for posting task on swan platform via variable `SwanToken`. It can be received after registering on swan website `https://www.filswan.com/`.
 
 If the configuration is changed in the future, build up the FS3 server again to make the changes take effect.
