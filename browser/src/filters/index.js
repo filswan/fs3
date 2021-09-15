@@ -60,22 +60,22 @@ export function formatTime(time, option) {
   const diff = (now - d) / 1000
 
   if (diff < 30) {
-    return '刚刚'
+    return 'just'
   } else if (diff < 3600) { // less 1 hour
-    return Math.ceil(diff / 60) + '分钟前'
+    return Math.ceil(diff / 60) + 'Minutes ago'
   } else if (diff < 3600 * 24) {
-    return Math.ceil(diff / 3600) + '小时前'
+    return Math.ceil(diff / 3600) + 'Hours ago'
   } else if (diff < 3600 * 24 * 2) {
-    return '1天前'
+    return '1 day ago'
   }
   if (option) {
     return parseTime(time, option)
   } else {
-    return d.getMonth() + 1 + '月' + d.getDate() + '日' + d.getHours() + '时' + d.getMinutes() + '分'
+    return d.getMonth() + 1 + 'month' + d.getDate() + 'day' + d.getHours() + 'hour' + d.getMinutes() + 'minute'
   }
 }
 
-/* 数字 格式化*/
+/* Number formatting*/
 export function nFormatter(num, digits) {
   const si = [
     { value: 1E18, symbol: 'E' },
@@ -112,7 +112,7 @@ export function convertNum(num_str) {
   if (!num_str) {
     return 0
   }
-  // 参数必须为 字符串
+  // Parameter must be a string
   var resValue = ''
   var power = ''
   var result = null
@@ -145,7 +145,6 @@ export function convertNum(num_str) {
     if (Number(power) >= 0) {
       var subres = resValue.substr(dotIndex)
       power = Number(power)
-      // 幂数大于小数点后面的数字位数时，后面加0
       for (var i = 0; i < power - subres.length; i++) {
         resArr.push('0')
       }
@@ -155,7 +154,6 @@ export function convertNum(num_str) {
     } else {
       power = power.replace('-', '')
       power = Number(power)
-      // 幂数大于等于 小数点的index位置, 前面加0
       for (let i = 0; i <= power + dotIndex; i++) {
         resArr.unshift('0')
       }
@@ -169,7 +167,7 @@ export function convertNum(num_str) {
   }
 }
 
-// 去除最后一位
+// Remove the last bit
 export function lastStr(str, n) {
   if (n) {
     return (str.toFixed(Number(n) + 1)).substring(0, (str.toFixed(Number(n) + 1)).length - 1)
@@ -179,16 +177,16 @@ export function lastStr(str, n) {
 }
 
 //timestamp
-export function dateFilter (timestamp) {    
-  function zero(time) {        
-    return time < 10 ? '0' + time : time    
-  }    
-  var date = new Date(Number(timestamp));//时间戳为10位需*1000，时间戳为13位的话不需乘1000    
-  let Y = date.getFullYear() + '-';    
-  let M = (date.getMonth() + 1 < 10 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1) + '-';    
-  let D = zero(date.getDate()) + ' ';    
-  let h = zero(date.getHours()) + ':';    
-  let m = zero(date.getMinutes()) + ':';    
-  let s = zero(date.getSeconds());    
+export function dateFilter (timestamp) {
+  function zero(time) {
+    return time < 10 ? '0' + time : time
+  }
+  var date = new Date(Number(timestamp));//If the timestamp is 10 bits, it needs * 1000, and if the timestamp is 13 bits, it does not need to be multiplied by 1000
+  let Y = date.getFullYear() + '-';
+  let M = (date.getMonth() + 1 < 10 ? '0' + (date.getMonth() + 1) : date.getMonth() + 1) + '-';
+  let D = zero(date.getDate()) + ' ';
+  let h = zero(date.getHours()) + ':';
+  let m = zero(date.getMinutes()) + ':';
+  let s = zero(date.getSeconds());
   return Y + M + D + h + m + s;
 };

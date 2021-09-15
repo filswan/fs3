@@ -2,17 +2,8 @@ import request from '../utils/request';
 import QS from 'qs';
 import Vue from 'vue'
 const basetConfig = Vue.prototype.data_api
-// 用户登录
-export function login(data) {
-  return request({
-    url: `/auth/login`,
-    method: 'POST',
-    data
-  })
-}
 
-
-// 注销
+// logout
 export function logout(data) {
   return request({
     url: `/auth/logout`,

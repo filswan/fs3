@@ -30,11 +30,18 @@ git submodule update --init --recursive
 make ffi
 ```
 
-#### Set up wallet address 
-A wallet address is a must for sending deals to miner. You can set it up via variable `Fs3WalletAddress`, which can be changed in `fs3/internal/config/config.go`. If the wallet address is changed in the future, build up the FS3 server again to make the changes take effect.
+#### Set up FS3 configuration
+Set up or modify FS3 configuration in file `fs3/internal/config/config.go`
 ``` bash
  vim internal/config/config.go
 ```
+* __Wallet address__ : A wallet address is a must for sending deals to miner. You can set it up via variable `Fs3WalletAddress`.
+* __Car File Size__ : A fixed car file size in bytes need to be predefined before generating car files for trunk via variable `CarFileSize`, such as `8589934592` for 8Gb.
+* __Ipfs Address__ :  An available ipfs address with port need to be set up for uploading via variable `IpfsAddress`. For example, `https://MyIpfsUrl:Port`.
+* __Ipfs Gateway__ :  An available ipfs address with port need to be set up for downloading via variable `IpfsGateway`. For example, `https://MyIpfsGatewayUrl:Port`.
+* __Swan Token__ : A valid swan token is required for posting task on swan platform via variable `SwanToken`. It can be received after registering on swan website `https://www.filswan.com/`.
+
+If the configuration is changed in the future, build up the FS3 server again to make the changes take effect.
 
 #### Build up FS3 server
 ``` bash
@@ -198,6 +205,162 @@ Response from POSTMAN
     "message": "success"
 }
 ```
+
+### Send Bucket Online Deals (bucket zip file)
+POST `minio/deals/{bucket}`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+    "VerifiedDeal":"false",
+    "FastRetrieval":"true",
+    "MinerId":"t00000",
+    "Price": "0.000005",
+    "Duration":"1036800"
+}
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "filename": "~/minio-data/test_deals.zip",
+        "walletAddress": "h376xbytsd3jie6ermpw",
+        "verifiedDeal": "false",
+        "fastRetrieval": "true",
+        "dataCid": "bafk2bza5dgw6pubjodkscqpg",
+        "minerId": "t03354",
+        "price": "0.000005",
+        "duration": "518800",
+        "dealCid": "bafyreicvqh7krdhdnpkqwokze",
+        "timeStamp": "1629835134146540"
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Retrieve Bucket Online Deals (bucket zip file)
+GET `minio/bucket/retrieve/{bucket}`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+```
+
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "bucket_name": "20210824",
+        "deals": [
+            {
+                "data": {
+                    "filename": "~/minio-data/test_deals.zip",
+                    "walletAddress": "t3u7pum2vzyasg7cimkpnojqd3jie6erm",
+                    "verifiedDeal": "false",
+                    "fastRetrieval": "true",
+                    "dataCid": "bafykbvgxdpej7neeoqsnvuzppme",
+                    "minerId": "t03354",
+                    "price": "0.000005",
+                    "duration": "518700",
+                    "dealCid": "bafyrekm3lmusljgmvyriqid6kcaoed5kni",
+                    "timeStamp": "1629816006709676"
+                },
+                "status": "success",
+                "message": "success"
+            },
+            {
+                "data": {
+                    "filename": "~/minio-data/test_deals.zip",
+                    "walletAddress": "t3u7khtadjzfydxxdanojqd3jie6ermpw",
+                    "verifiedDeal": "false",
+                    "fastRetrieval": "true",
+                    "dataCid": "bafykbnvz5rgs7obwbfztqrr4ahwjue",
+                    "minerId": "t03354",
+                    "price": "0.000005",
+                    "duration": "518800",
+                    "dealCid": "bafyrgigdm4ppqzwt4vufm4m3pmuvolnfe",
+                    "timeStamp": "1629833844752891"
+                },
+                "status": "success",
+                "message": "success"
+            }
+        ]
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Send Bucket Offline Deals 
+POST `minio/offlinedeals/{bucket}`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+    "Task_Name":"test_name",
+    "Curated_Dataset":"test_dataset",
+	"Description":"test_description",
+	"Is_Public": "0",             // public: "1", private: "0"
+	"Type": "regular",            // "verified" if deal is verified else "regular"
+	"Miner_Id" : "test_miner",    // miner id is ignored if <Is_Public> is set to "1"    
+	"Min_Price" : "0.000005",
+	"Max_Price" : "0.00005",
+	"Tags" : "test_tag",
+	"Expire_Days" : "10"
+}
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "bucket_name": "test",
+        "deals": {
+            "data": {
+                "taskname": "test-name",
+                "filename": "be450523-52ed-44f9-9828-8e382c0d15c8.csv",
+                "uuid": "d2d79d42-6f79-46fe-97bd-cd6f69c25116"
+            },
+            "status": "success",
+            "message": "Task created successfully.A notification email has been sent to the storage provider"
+        }
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+
 
 
 

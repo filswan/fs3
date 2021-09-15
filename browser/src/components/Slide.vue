@@ -12,7 +12,7 @@
                 @input="searchBucketFun">
             </el-input>
             <el-row>
-                <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket}" @click.native="getListBucket(item.name)">
+                <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket && allActive}" @click.native="getListBucket(item.name, true)">
                     <div>
                         <i class="iconfont icon-harddriveyingpan"></i>
                         {{item.name}}
@@ -21,9 +21,15 @@
 
                     <ul v-if="item.show && homeClick">
                         <li @click.stop="dialogFun(item.name, index)">Edit policy</li>
-                        <!--li @click="backupFun">Backup to Filecoin</li-->
+                        <li @click="backupFun">Backup to Filecoin</li>
+                        <li @click="retrievalFun">Retrieval</li>
                         <li @click.stop="dialogDeleteFun(item.name, index)">Delete</li>
                     </ul>
+                </el-col>
+
+                <el-col :span="24" :class="{'active': !allActive}"
+                  style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false)">
+                  All Deals
                 </el-col>
             </el-row>
         </div>
@@ -65,20 +71,15 @@
         </el-dialog>
 
 
-        <!--share-dialog
-          :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
-          :shareFileShow="shareFileShow" @getshareDialog="getshareDialog">
-        </share-dialog-->
     </div>
 </template>
 <script>
 import axios from 'axios'
-import shareDialog from '@/components/shareDialog.vue';
 export default {
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
-            logo: require("@/assets/images/title.svg"),
+            logo: require("@/assets/images/title.png"),
             activeIndex: '1',
             mobileMenuShow: false,
             search: '',
@@ -106,12 +107,13 @@ export default {
             shareDialog: false,
             shareObjectShow: true,
             shareFileShow: false,
+            sendApi: 1,
+            retrievalDialog: false,
+            allActive: true
         };
     },
     props: ['minioListBuckets', 'currentBucket', 'homeClick'],
-    components: {
-        shareDialog
-    },
+    components: {},
     computed: {
         email() {
             return this.$store.state.user.email
@@ -132,11 +134,17 @@ export default {
       getshareDialog(shareDialog) {
         this.shareDialog = shareDialog
       },
+      getretrievalDialog(retrievalDialog) {
+        this.retrievalDialog = retrievalDialog
+      },
       backupFun() {
         this.shareDialog = true
         this.shareObjectShow = false
         this.shareFileShow = true
         this.$emit('getshareHome', true, false, true);
+      },
+      retrievalFun(){
+        this.$emit('getretrievalHome', true);
       },
       removePolicies(content) {
         let _this = this
@@ -166,8 +174,6 @@ export default {
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
-                _this.loginLoad=false
             });
       },
       addPolicies() {
@@ -190,15 +196,7 @@ export default {
            }
 
            if(!$hgh){
-            console.log('$hgh', 111);
-
             _this.setPolicyChange()
-
-            setTimeout(function(){
-              console.log('return ceshi111', _this.bucketPolicies.policies);
-            },1000);
-           }else{
-            console.log('$hgh', 222);
            }
 
       },
@@ -229,8 +227,6 @@ export default {
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
-                _this.loginLoad=false
             });
       },
       dialogFun(name, index) {
@@ -267,12 +263,9 @@ export default {
             }
 
             _this.$emit('getListBuckets');
-            console.log(json)
 
         }).catch(function (error) {
             console.log(error);
-            // console.log(error.message, error.request, error.response.headers);
-            _this.loginLoad=false
         });
       },
       getListAllBucketPolicies(name) {
@@ -296,22 +289,13 @@ export default {
                 return false
             }
             _this.bucketPolicies = result
-            /*if(_this.bucketPolicies.policies) {
-              _this.bucketPolicies.policies.map(item => {
-                  if(!item.prefix){
-                      item.prefix = '*'
-                  }
-              })
-             }*/
 
         }).catch(function (error) {
             console.log(error);
-            // console.log(error.message, error.request, error.response.headers);
-            _this.loginLoad=false
         });
       },
       handleSelect(key, keyPath) {
-        console.log(key, keyPath);
+        //console.log(key, keyPath);
       },
       mobileMenuFun(){
         let _this = this;
@@ -338,7 +322,7 @@ export default {
            }
         })
         if(name){
-            _this.getListBucket(name)
+            _this.getListBucket(name, true)
         }
       },
       searchBucketFun() {
@@ -356,8 +340,9 @@ export default {
               _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
           }
       },
-      getListBucket(name) {
-          this.$emit('getminioListBucket', name);
+      getListBucket(name, allDeal) {
+          this.$emit('getminioListBucket', name, allDeal);
+          this.allActive = allDeal ? true : false
       },
       getMinioData() {
         let _this = this;
@@ -367,7 +352,6 @@ export default {
             })
             _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
 
-            //console.log('minioListBucketsAll', _this.minioListBucketsAll);
         }else{
           _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
         }
@@ -511,7 +495,6 @@ export default {
               background-color: #F5F5F5;
           }
 
-          /*定义滚动条轨道 内阴影+圆角*/
           &::-webkit-scrollbar-track {
               box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
               -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
@@ -519,7 +502,6 @@ export default {
               background-color: #F5F5F5;
           }
 
-          /*定义滑块 内阴影+圆角*/
           &::-webkit-scrollbar-thumb{
               border-radius: 10px;
               box-shadow: inset 0 0 6px rgba(0, 0, 0, .1);

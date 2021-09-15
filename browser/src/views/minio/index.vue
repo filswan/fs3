@@ -1,7 +1,28 @@
 <template>
   <div class="landing" @click="actClient(0)">
       <header class="fe-header">
-        <h2>
+        <!-- all deals page search -->
+        <div class="form_top" v-if="!allDealShow">
+            <div class="search">
+                <el-input
+                    placeholder="Search for Deal ID/W3SS ID/Data CID"
+                    prefix-icon="el-icon-search"
+                    v-model="searchValue"
+                >
+                </el-input>
+                <div class="search_right" :style="{'opacity': !searchValue?'0.8':'1'}">
+                    <el-button style="background-color: #ffb822"
+                      :disabled="!searchValue">Search</el-button>
+                    <el-button
+                      type="primary"
+                      style="background-color: #0b318f"
+                      :disabled="!searchValue"
+                    >Clear All</el-button>
+                </div>
+            </div>
+        </div>
+        <!-- all deals page search end -->
+        <h2 v-if="allDealShow">
           <span class="main" v-if="editNameFile" v-for="(item, index) in currentBucketAll" :key="index">
             <a href="javascript:;" @click="buckerAdress(index)">{{item}}</a>
           </span>
@@ -12,7 +33,7 @@
           </a>
           <el-input v-model="user.name_file" ref="mark" placeholder="Choose or create new path" v-else @blur="editFileFun"></el-input>
         </h2>
-        <div class="feh-used">
+        <div class="feh-used" v-if="allDealShow">
           <div class="fehu-chart">
             <div style="width: 0px;"></div>
           </div>
@@ -26,6 +47,13 @@
               <button type="button" class="btn btn-default pcIcon" @click.stop="signBtn"><i class="iconfont icon-ziyuan"></i></button>
               <button type="button" class="btn btn-default mobileIcon" @click.stop="signBtn"><i class="el-icon-more"></i></button>
               <ul class="dropdown-menu" v-show="signShow">
+                <!-- add Change Password page -->
+                <li @click="changePass = true">
+                  <a href="javascript:;">
+                    Change Password <i class="el-icon-s-tools"></i>
+                  </a>
+                </li>
+                <!-- Change Password end -->
                 <li @click="handleFullScreen">
                   <a href="javascript:;">
                     Fullscreen <i class="iconfont icon-fangda"></i>
@@ -41,9 +69,33 @@
             </div>
           </li>
         </ul>
+        <div :class="{'online': addr, 'feh-metamask': 1==1}">
+            <el-tooltip class="item" effect="dark" content="Connect to your MetaMask Wallet" placement="bottom" v-if="!addr">
+              <img src="@/assets/images/metamask.png" @click="signFun" />
+            </el-tooltip>
+
+
+          <el-popover v-else
+            placement="bottom-end"
+            width="180"
+            trigger="click"
+            popper-class="addressInfo"
+            @show="walletInfo">
+              <h6>connected to:</h6>
+              <h5 v-if="network.name">{{ network.name }}</h5>
+              <h4>{{addr | hiddAddress}}</h4>
+                  <el-divider></el-divider>
+              <h4>{{addr | hiddAddress}}</h4>
+              <h5>{{priceAccound}} {{ network.unit}}</h5>
+                  <el-divider></el-divider>
+              <h3 @click="signOutFun">Disconnect</h3>
+
+               <img src="@/assets/images/metamask.png" slot="reference" />
+           </el-popover>
+        </div>
       </header>
 
-      <div class="table">
+      <div class="table" v-if="allDealShow">
         <el-table
           :data="tableData"
           stripe
@@ -193,12 +245,78 @@
               <span class="point el-icon-more" @click.stop="actClient(scope.$index, 1)" v-if="drawIndex<1"></span>
 
               <ul class="dropdown-menu" :class="{'dropdown-show': tableData[scope.$index].dropShow}">
-                <a href="javascript:;" class="fiad-action" @click="deleteBtn(tableData[scope.$index].name)"><i class="el-icon-delete"></i></a>
-                <a href="javascript:;" class="fiad-action" @click="shareBtn(scope.$index)"><i class="el-icon-share"></i></a>
-                <a href="javascript:;" class="fiad-action" @click="ShareToFil(tableData[scope.$index])"><img :src="ShareToFilecoin" /></a>
+                <a href="javascript:;" class="fiad-action" @click="deleteBtn(tableData[scope.$index].name)">
+                  <el-tooltip class="item" effect="dark" content="Delete Object" placement="top">
+                    <i class="el-icon-delete"></i>
+                  </el-tooltip>
+                </a>
+                <a href="javascript:;" class="fiad-action" @click="shareBtn(scope.$index)">
+                  <el-tooltip class="item" effect="dark" content="Share Object" placement="top">
+                    <i class="el-icon-share"></i>
+                  </el-tooltip>
+                </a>
+                <a href="javascript:;" class="fiad-action" @click="ShareToFil(tableData[scope.$index])">
+                  <el-tooltip class="item" effect="dark" content="Backup to Filecoin" placement="top">
+                    <img :src="ShareToFilecoin" />
+                  </el-tooltip>
+                </a>
               </ul>
             </template>
           </el-table-column>
+        </el-table>
+      </div>
+
+      // all deals page table
+      <div class="table" v-else>
+        <el-table :data="exChangeList" stripe style="width: 100%" class="demo-table-expand">
+            <el-table-column type="expand"></el-table-column>
+            <el-table-column prop="data.timeStamp" label="Date">
+              <template slot-scope="scope">
+                {{exChangeList[scope.$index].data.timeStamp}}
+                <!-- {{ props.row.date }} -->
+              </template>
+            </el-table-column>
+            <el-table-column prop="data.minerId" label="W3SS ID"></el-table-column>
+            <el-table-column prop="data.price" label="Price">
+              <template slot-scope="scope">
+                {{exChangeList[scope.$index].data.price}} FIL
+              </template>
+            </el-table-column>
+            <el-table-column prop="data.dealCid" label="Deal CID">
+              <template slot-scope="scope">
+                <div class="hot-cold-box">
+                    <el-popover
+                        placement="top"
+                        trigger="hover"
+                        v-model="exChangeList[scope.$index].data.visible">
+                        <div class="upload_form_right">
+                            <p>{{exChangeList[scope.$index].data.dealCid}}</p>
+                        </div>
+                        <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dealCid)">
+                            <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dealCid}}</p>
+                        </el-button>
+                    </el-popover>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="data.dataCid" label="Data CID">
+              <template slot-scope="scope">
+                <div class="hot-cold-box">
+                    <el-popover
+                        placement="top"
+                        trigger="hover"
+                        v-model="exChangeList[scope.$index].data.visibleDataCid">
+                        <div class="upload_form_right">
+                            <p>{{exChangeList[scope.$index].data.dataCid}}</p>
+                        </div>
+                        <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dataCid)">
+                            <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dataCid}}</p>
+                        </el-button>
+                    </el-popover>
+                </div>
+              </template>
+            </el-table-column>
+            <el-table-column prop="data.duration" label="Duration"></el-table-column>
         </el-table>
       </div>
 
@@ -219,6 +337,7 @@
         </div>
       </el-drawer>
 
+      <!-- aboutus dialog box -->
       <div class="model" v-show="openAboutShow">
         <div class="model_bg" @click="openAbout"></div>
         <div class="model_cont">
@@ -250,10 +369,12 @@
       </div>
 
 
+      <!-- create bucket dialog box -->
       <el-dialog title="" custom-class="customStyle" :before-close="getDialogClose" :visible.sync="dialogFormVisible">
           <el-input v-model="form.name" placeholder="Bucket Name" ref="bucketNameRef"></el-input>
       </el-dialog>
 
+      <!-- delete dialog box -->
       <el-dialog
         :visible.sync="deleteDialogVisible"
         custom-class="deleteStyle"
@@ -268,26 +389,35 @@
         </div>
       </el-dialog>
 
+      <!-- share dialog box -->
       <share-dialog
         :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
         :shareFileShow="shareFileShow" :num="num" :share_input="share_input"
         :postAdress="postAdress" :sendApi="sendApi"
         @getshareDialog="getshareDialog" @getShareGet="getPresignedGet">
       </share-dialog>
+
+      <!-- change password dialog box -->
+      <change-password
+        :changePass="changePass"  @getChangePass="getChangePass">
+      </change-password>
   </div>
+
 </template>
 
 <script>
 import axios from 'axios'
 import Moment from 'moment'
 import shareDialog from '@/components/shareDialog.vue';
+import changePassword from '@/components/changePassword.vue';
+import NCWeb3 from "@/utils/web3";
 let that
 export default {
   name: 'landing',
   data() {
     return {
       postUrl: this.data_api + `/minio/webrpc`,
-      logo: require("@/assets/images/title.svg"),
+      logo: require("@/assets/images/title.png"),
       ShareToFilecoin: require("@/assets/images/WechatIMG1133.png"),
       danger_img: require("@/assets/images/danger.png"),
       bodyWidth: document.body.clientWidth>600?true:false,
@@ -333,20 +463,26 @@ export default {
       },
       postAdress: '',
       sendApi: 2,
-      //设置row-key只展示一行
-      expands: [],//只展开一行放入当前行id
+      expands: [],
       getRowKeys: (row) => {
-        //获取当前行id
-        //console.log('获取当前行id', row, row.eqId)
-        return row.name   //这里看这一行中需要根据哪个属性值是id
+        return row.name
       },
-      exChangeList: []
+      exChangeList: [],
+      searchValue: '',
+      changePass: false,
+      addr: '',
+      priceAccound: 0,
+      network: {
+        name: '',
+        unit: 0
+      }
     }
   },
   components: {
-      shareDialog
+      shareDialog,
+      changePassword
   },
-  props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick'],
+  props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick', 'allDealShow'],
   methods: {
     exChange(row, rowList) {
       var that = this
@@ -354,12 +490,12 @@ export default {
         that.expands = []
         if (row) {
           that.expands.push(row.name)
-          //console.log('只展开当前行id')
+          //open
         }
         that.tableJson(row.name)
       } else {
         that.expands = []
-        //console.log('收起了')
+        //retract
       }
     },
     tableJson(name) {
@@ -391,7 +527,6 @@ export default {
             }
         }).catch(function (error) {
             console.log(error);
-            // console.log(error.message, error.request, error.response.headers);
         });
     },
     copyLink(text){
@@ -444,7 +579,6 @@ export default {
       this.shareObjectShow = false
       this.shareFileShow = true
       this.postAdress = this.currentBucket + '/' + now.name
-      //this.$emit('getshareHome', true, false, true);
     },
     getshareDialog(shareDialog) {
       this.shareDialog = shareDialog
@@ -491,7 +625,6 @@ export default {
       this.deleteDialogVisible = true
       this.deleteDialogIndex = []
       this.deleteDialogIndex.push(name)
-      // this.tableData = this.tableData.splice(index, 1)
     },
     deleteListFun() {
       let _this = this
@@ -539,7 +672,6 @@ export default {
 
       }).catch(function (error) {
           console.log(error);
-          // console.log(error.message, error.request, error.response.headers);
       });
     },
     downloadFun() {
@@ -565,7 +697,6 @@ export default {
           _this.drawPlayClose()
       }).catch(function (error) {
           console.log(error);
-          // console.log(error.message, error.request, error.response.headers);
       });
 
     },
@@ -612,7 +743,7 @@ export default {
         var a = document.createElement("a");
         a.download = _this.currentBucketAll[0];
         a.href = requestUrl;
-        $("body").append(a); // 修复firefox中无法触发click
+        $("body").append(a); // Fix that click cannot be triggered in Firefox
         a.click();
         $(a).remove();
       }
@@ -663,7 +794,6 @@ export default {
 
       }).catch(function (error) {
           console.log(error);
-          // console.log(error.message, error.request, error.response.headers);
       });
     },
     drawPlay(index, now) {
@@ -700,6 +830,9 @@ export default {
     signBtn() {
       this.signShow = !this.signShow
     },
+    getChangePass(dialog){
+      this.changePass = dialog
+    },
     handleFullScreen(){
       let element = document.documentElement;
       if (this.fullscreen) {
@@ -726,11 +859,33 @@ export default {
       }
       this.fullscreen = !this.fullscreen;
     },
-    // 退出登录
+    // logout
     logout() {
       var _this = this;
-      _this.$store.dispatch("FedLogOut").then(() => {
-        _this.$router.replace({ name: 'login' })
+
+      let dataGetDiscoveryDoc = {
+          id: 1,
+          jsonrpc: "2.0",
+          method: "web.GetDiscoveryDoc",
+          params:{}
+      }
+      axios.post(_this.postUrl, dataGetDiscoveryDoc, {headers: {
+          'Authorization':"Bearer "+ _this.$store.getters.accessToken
+      }}).then((response) => {
+          let json = response.data
+          let error = json.error
+          let result = json.result
+          if (error) {
+              _this.$message.error(error.message);
+              return false
+          }
+
+          _this.$store.dispatch("FedLogOut").then(() => {
+            _this.$router.replace({ name: 'login' })
+          });
+
+      }).catch(function (error) {
+          console.log(error);
       });
     },
     getDialogClose() {
@@ -753,11 +908,120 @@ export default {
             item.lastModified = Moment(item.lastModified).format('YYYY-MM-DD HH:mm:ss')
           })
           _this.tableData = JSON.parse(JSON.stringify(_this.aboutListObjects.objects))
-          //console.log('tableData', _this.tableData)
       }else{
-        _this.tableData = JSON.parse(JSON.stringify(_this.aboutListObjects.objects))
+        _this.tableData = []
       }
-    }
+    },
+            // Wallet address
+            signFun(){
+                let _this = this
+                if(!_this.addr){
+                    NCWeb3.Init(addr=>{
+                        //Get the corresponding wallet address
+                        console.log('Wallet address:', addr)
+                        _this.$nextTick(() => {
+                            _this.addr = addr
+                            _this.walletInfo()
+                        })
+
+                    })
+                    return false
+                }
+            },
+            walletInfo() {
+              let _this = this
+              web3.eth.getBalance(_this.addr).then(balance => {
+                let balanceAll = web3.utils.fromWei(balance, 'ether')
+                _this.priceAccound = Number(balanceAll).toFixed(4)
+              });
+
+              web3.eth.net.getId().then(netId => {
+                  console.log('network ID:', netId)
+                  switch (netId) {
+                    case 1:
+                      _this.network.name = 'mainnet';
+                      _this.network.unit = 'ETH';
+                      return;
+                    case 3:
+                      _this.network.name = 'ropsten';
+                      _this.network.unit = 'ETH';
+                      break;
+                    case 4:
+                      _this.network.name = 'rinkeby';
+                      _this.network.unit = 'ETH';
+                      return;
+                    case 5:
+                      _this.network.name = 'goerli';
+                      _this.network.unit = 'ETH';
+                      return;
+                    case 42:
+                      _this.network.name = 'kovan';
+                      _this.network.unit = 'ETH';
+                      return;
+                    case 999:
+                      _this.network.name = 'NBAI';
+                      _this.network.unit = 'NBAI';
+                      return;
+                    default:
+                      _this.network.name = '';
+                      _this.network.unit = '';
+                      return;
+                  }
+               });
+            },
+            fn() {
+              ethereum.on("accountsChanged", function(accounts) {
+                console.log('account:', accounts[0]);  //Once the account is switched, it will be executed here
+              });
+            },
+            qm(){
+                let _this = this
+
+                let nonce = Math.floor(Math.random() * 1000000)
+                let addNonce = web3.utils.utf8ToHex("I am signing my one-time nonce: "+nonce)
+                web3.eth.personal.sign(addNonce, _this.addr)
+                .then(res => {
+                    // console.log
+                    // _this.ruleForm.publicAddress = res
+                })
+                .catch(error => {
+                    console.log(error)
+                    _this.$message.error(error.message)
+                })
+
+                return false
+
+            },
+            signOutFun() {
+                this.addr = ''
+                sessionStorage.removeItem('addrWeb')
+            },
+            send(){
+                let _this = this
+
+                if(!_this.addr){
+                    return false
+                }
+                // send
+                web3.eth.sendTransaction({
+                    from: _this.addr,
+                    to: '0x2bf5306C14A93DC366A7C69B1b795b9C14C665e5',
+                    value: '1000000000000000000'  // == 1, unit: wei
+                }).on('transactionHash', function(hash){
+                    console.info(hash)
+                })
+                .on('receipt', function(receipt){
+                    console.info(receipt)
+                })
+                .on('confirmation', function(confirmationNumber, receipt){
+                    console.info(confirmationNumber)
+                    console.info(receipt)
+                })
+                .on('error', console.error);
+
+
+                return false
+            }
   },
   watch: {
     aboutListObjects: function(){
@@ -803,13 +1067,24 @@ export default {
        if (!name) return '-';
        let retName = that.prefixName ? name.replace(that.prefixName+'/', "") : name
        return retName;
-     }
+    },
+    hiddAddress: function (val) {
+       if(val){
+        return `${val.substring(0, 6)}...${val.substring(val.length - 4)}`
+       }else{
+        return '-'
+       }
+    }
   },
   mounted() {
     let _this = this
     that = _this
     _this.aboutListData()
     _this.currentBucketAll = _this.currentBucket.split('/')
+    if(sessionStorage.getItem('addrWeb')){
+      _this.signFun()
+    }
+    _this.fn()
     document.onkeydown = function(e) {
       if (e.keyCode === 13) {
         if(!_this.editNameFile){
@@ -851,11 +1126,125 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+.addressInfo{
+  padding: 0.2rem;
+  h6{
+    margin: 0.14rem 0 0;
+    font-size: 0.13rem;
+    font-weight: normal;
+    padding: 0 0.07rem;
+  }
+  h5{
+    font-size: 0.14rem;
+    font-weight: normal;
+    padding: 0 0.07rem;
+  }
+  h4{
+    font-size: 0.15rem;
+    font-weight: normal;
+    padding: 0 0.07rem;
+  }
+  h3{
+    margin: 0 0 0.05rem;
+    font-size: 0.15rem;
+    font-weight: normal;
+    padding: 0 0.07rem;
+    cursor: pointer;
+    &:hover{
+      color: rgba(11, 49, 143, 1);
+    }
+  }
+  .el-divider /deep/{
+    margin: 0.14rem 0;
+  }
+}
 .landing{
   padding: 0 0 0.4rem;
   .fe-header {
     position: relative;
     padding: 0.4rem 0.4rem 0.4rem 0.45rem;
+    .form_top {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+
+        .title {
+            width: 100%;
+            text-align: left;
+            font-size: 0.1972rem;
+            color: #000;
+            line-height: 0.42rem;
+            text-indent: 0.08rem;
+        }
+
+        .search {
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            height: 0.42rem;
+
+            .search_right {
+                display: flex;
+                align-items: center;
+                // margin-left: 0.3rem;
+            }
+
+            span {
+                margin: auto 0.05rem auto 0.35rem;
+                font-size: 0.1372rem;
+                color: #000;
+                white-space: nowrap;
+            }
+
+            .el-button /deep/ {
+                height: 0.34rem;
+                padding: 0 0.4rem;
+                margin: 0 0.1rem;
+                color: #fff;
+                line-height: 0.34rem;
+                font-size: 0.15rem;
+                border: 0;
+                border-radius: 0.08rem;
+            }
+
+            .el-input /deep/ {
+                float: left;
+                width: 35%;
+
+                .el-input__inner {
+                    width: 100%;
+                    color: #737373;
+                    font-size: 0.12rem;
+                    height: 0.34rem;
+                    line-height: 0.34rem;
+                    padding: 0 0.27rem;
+                }
+
+                .el-input__icon {
+                    line-height: 0.24rem;
+                }
+            }
+
+            .el-select /deep/ {
+            float: right;
+            // width: 30%;
+            .el-input__inner {
+                border-radius: 0.08rem;
+                border: 1px solid #f8f8f8;
+                color: #737373;
+                font-size: 0.12rem;
+                height: 0.24rem;
+                line-height: 0.24rem;
+                padding: 0 0.1rem;
+            }
+
+            .el-input__icon {
+                line-height: 0.24rem;
+            }
+            }
+        }
+    }
     h2 {
       width: calc(100% - 60px);
       font-size: 0.16rem;
@@ -919,6 +1308,35 @@ export default {
               font-size: 0.145rem;
             }
         }
+    }
+    .feh-metamask {
+        position: absolute;
+        right: 90px;
+        top: 37px;
+        z-index: 21;
+        width: 30px;
+        height: 30px;
+        cursor: pointer;
+        img{
+          display: block;
+          width:100%;
+          cursor: pointer;
+        }
+        &:before{
+          position: absolute;
+          right: 0;
+          top: -4px;
+          content: "";
+          width: 5px;
+          height: 5px;
+          border-radius: 100%;
+          background: #d7d6d6;
+        }
+    }
+    .online{
+      &:before{
+        background: #0fce7c;
+      }
     }
     .feh-actions {
         list-style: none;
@@ -1030,8 +1448,8 @@ export default {
           font-size: 0.15rem;
         }
       }
-      th,td{
-        &:nth-child(1){
+      th, td{
+        &:first-child{
           padding-left: 0.3rem;
         }
       }
@@ -1149,86 +1567,66 @@ export default {
       .el-table__expanded-cell{
         padding: 0 !important;
       }
-      .demo-table-expand {
-        .el-table__header-wrapper{
-          margin-bottom: 0;
-        }
-        th, td{
-          &:first-child{
-            padding-left: 0;
-          }
-        }
-        .cell{
-          cursor: default;
-          text-align: center;
-          word-break: break-word;
-          line-height: 0.25rem;
-          .hot-cold-box{
-              .el-button{
-                  width: 100%;
-                  border: 0;
-                  padding: 0;
-                  background-color: transparent;
-                  word-break: break-word;
-                  text-align: center;
-                  line-height: 0.25rem;
-                  overflow: hidden;
-                  text-overflow: ellipsis;
-                  white-space: normal;
-                  display: -webkit-box;
-                  -webkit-line-clamp: 2;
-                  -webkit-box-orient: vertical;
-                  span{
-                      line-height: 0.25rem;
-                      overflow: hidden;
-                      text-overflow: ellipsis;
-                      white-space: normal;
-                      display: -webkit-box;
-                      -webkit-line-clamp: 2;
-                      -webkit-box-orient: vertical;
-                      font-weight: normal;
-                      word-break: break-all;
-                  }
-                  i, img{
-                      display: none;
-                      float: left;
-                      margin: 0 0.03rem;
-                      font-size: 0.17rem;
-                      line-height: 0.25rem;
-                  }
-              }
-              .el-button:hover{
-                  color: inherit;
-                  i, img{
-                      display: inline-block;
-                  }
-              }
-          }
+    }
 
+    .demo-table-expand /deep/{
+      .el-table__header-wrapper{
+        margin-bottom: 0;
+      }
+      th, td{
+        &:first-child{
+          padding-left: 0;
         }
       }
+      .cell{
+        cursor: default;
+        text-align: center;
+        word-break: break-word;
+        line-height: 0.25rem;
+        .hot-cold-box{
+            .el-button{
+                width: 100%;
+                border: 0;
+                padding: 0;
+                background-color: transparent;
+                word-break: break-word;
+                text-align: center;
+                line-height: 0.25rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: normal;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                span{
+                    line-height: 0.25rem;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    white-space: normal;
+                    display: -webkit-box;
+                    -webkit-line-clamp: 2;
+                    -webkit-box-orient: vertical;
+                    font-weight: normal;
+                    word-break: break-all;
+                }
+                i, img{
+                    display: none;
+                    float: left;
+                    margin: 0 0.03rem;
+                    font-size: 0.17rem;
+                    line-height: 0.25rem;
+                }
+            }
+            .el-button:hover{
+                color: inherit;
+                i, img{
+                    display: inline-block;
+                }
+            }
+        }
+
+      }
     }
-    // &::-webkit-scrollbar{
-    //     width: 7px;
-    //     height: 7px;
-    //     background-color: #F5F5F5;
-    // }
-
-    // /*定义滚动条轨道 内阴影+圆角*/
-    // &::-webkit-scrollbar-track {
-    //     box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
-    //     -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, 0.3);
-    //     border-radius: 10px;
-    //     background-color: #F5F5F5;
-    // }
-
-    // /*定义滑块 内阴影+圆角*/
-    // &::-webkit-scrollbar-thumb{
-    //     border-radius: 10px;
-    //     box-shadow: inset 0 0 6px rgba(0, 0, 0, .1);
-    //     -webkit-box-shadow: inset 0 0 6px rgba(0, 0, 0, .1);
-    //     background-color: #c8c8c8;
-    // }
   }
   .el-drawer__wrapper.drawStyle01 /deep/{
     bottom: auto;
@@ -1473,6 +1871,45 @@ export default {
 @media screen and (max-width:999px){
 .landing{
   .fe-header{
+      .form_top {
+         .search {
+           flex-wrap: wrap;
+           height: auto;
+
+           .el-input /deep/ {
+               width: 100%;
+               margin: 0.1rem 0;
+
+               .el-input__inner {
+               width: 100%;
+               font-size: 0.1372rem;
+               }
+           }
+
+           span {
+               margin-left: 0;
+           }
+
+           .search_right {
+
+               .el-select /deep/ {
+               .el-input__inner {
+                   font-size: 0.1372rem;
+               }
+               }
+
+               .el-button /deep/ {
+               padding: 0 0.2rem;
+               font-size: 0.1372rem;
+               }
+           }
+         }
+      }
+    .feh-metamask{
+        top: 0.21rem;
+        right: 45px;
+        position: fixed;
+    }
     .feh-actions{
         top: 0.1rem;
         right: 0;

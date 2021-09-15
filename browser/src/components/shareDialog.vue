@@ -1,8 +1,7 @@
 <template>
-      <el-dialog title="" :visible.sync="shareDialog" :custom-class="{'ShareObjectMobile': shareFileShowMobile, 'ShareObject': 1 === 1}" :before-close="getDiglogChange">
+      <el-dialog title="" top="50px" :visible.sync="shareDialog" :custom-class="{'ShareObjectMobile': shareFileShowMobile, 'ShareObject': 1 === 1}" :before-close="getDiglogChange">
           <div class="shareContent">
               <el-row class="share_left" v-if="shareObjectShow">
-                <!--el-button class="shareFileCoin" @click="shareFileShowFun">Share to Filecoin >></el-button-->
                 <div class="qrcode" id="qrcode" ref="qrCodeUrl"></div>
                 <el-col :span="24" style="margin-bottom: 0.45rem;">
                   <h4>Share Object</h4>
@@ -45,8 +44,33 @@
                 </el-col>
                 <el-col :span="24">
                   <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="110px" class="demo-ruleForm">
-                    <el-form-item label="Miner ID:" prop="minerId">
-                      <el-input v-model="ruleForm.minerId"></el-input>
+                    <el-form-item label="Provider ID:" prop="minerId">
+                      <!--el-input v-model="ruleForm.minerId"></el-input-->
+                      <el-menu :default-active="'1'" menu-trigger="click" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true">
+                          <el-submenu index="1" popper-class="myMenu" :popper-append-to-body="false">
+                              <template slot="title">
+                                  {{ name }}
+                              </template>
+                              <el-submenu :index="'1-'+n" v-for="(item, n) in locationOptions" :key="n" :attr="'1-'+n">
+                                  <template slot="title">
+                                      <span>{{ item.value }}</span>
+                                  </template>
+                                  <el-menu-item :index="'1-'+n+'-1'" :attr="'1-'+n+'-1'">
+                                      <!-- <el-table :cell-class-name="tableCellClassName" @cell-click="cellClick" ref="multipleTable" :data="tableData" v-loading="loading" tooltip-effect="dark" style="width: 100%" @selection-change="handleSelectionChange"> -->
+                                      <el-table ref="singleTable" :cell-class-name="tableCellClassName" @cell-click="cellClick" :data="tableData" v-loadmore="loadMore" v-loading="loading" height="255" highlight-current-row @current-change="handleCurrentChange" style="width: 100%">
+                                          <el-table-column type="index" width="40">
+                                              <template  slot-scope="scope">
+                                                  <el-radio v-model="radio" :label="'1-'+n+'-'+scope.$index"></el-radio>
+                                              </template>
+                                          </el-table-column>
+                                          <el-table-column property="miner_id" label="W3SS ID"></el-table-column>
+                                          <el-table-column property="status" label="Status"></el-table-column>
+                                          <el-table-column property="score" label="Score"></el-table-column>
+                                      </el-table>
+                                  </el-menu-item>
+                              </el-submenu>
+                          </el-submenu>
+                      </el-menu>
                     </el-form-item>
                     <el-form-item label="Price:" prop="price">
                       <el-input v-model="ruleForm.price" onkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,20})?).*$/g, '$1')"></el-input> FIL
@@ -76,18 +100,6 @@
                      disabled>
                    </el-input>
                  </el-col>
-                <!--el-col :span="24">
-                  <h4 style="margin: 0;">Retrieval from Filecoin Network <i class="el-icon-document-copy"></i></h4>
-                </el-col>
-                <el-col :span="24">
-                  <el-input
-                    type="textarea"
-                    :rows="4"
-                    placeholder=""
-                    v-model="ruleForm.textarea"
-                    disabled>
-                  </el-input>
-                </el-col-->
               </el-row>
           </div>
       </el-dialog>
@@ -109,7 +121,10 @@ export default {
               verified: '2',
               fastRetirval: '1',
               textarea: 'lotus client',
-              dealCID: ''
+              dealCID: '',
+              loadSign: true,
+              page: 0,
+              total: 1
             },
             rules: {
                minerId: [
@@ -122,6 +137,43 @@ export default {
                  { required: true, message: 'Please enter Duration', trigger: 'blur' }
                ],
             },
+            locationOptions: [
+                {
+                    value: "Global",
+                    title: '1-0'
+                },
+                {
+                    value: "Asia",
+                    title: '1-1'
+                },
+                {
+                    value: "Africa",
+                    title: '1-2'
+                },
+                {
+                    value: "North America",
+                    title: '1-3'
+                },
+                {
+                    value: "South America",
+                    title: '1-4'
+                },
+                {
+                    value: "Europe",
+                    title: '1-5'
+                },
+                {
+                    value: "Oceania",
+                    title: '1-6'
+                },
+            ],
+            tableData: [],
+            loading: false,
+            bodyWidth: document.documentElement.clientWidth < 1024 ? true : false,
+            name: 'Please select Provider ID',
+            parentLi: '',
+            parentName: '',
+            radio: '1'
         }
     },
     props: ['shareDialog','shareObjectShow','shareFileShow', 'num', 'share_input', 'postAdress', 'sendApi'],
@@ -151,16 +203,13 @@ export default {
           let _this = this
           document.getElementById("qrcode").innerHTML = ''
           let qrcode = new QRCode(_this.$refs.qrCodeUrl, {
-              text: _this.share_input, // 需要转换为二维码的内容
+              text: _this.share_input, // Content to be converted to QR code
               width: 100,
               height: 100,
               colorDark: '#000000',
               colorLight: '#ffffff',
               correctLevel: QRCode.CorrectLevel.L
           })
-      },
-      copyDealCid() {
-
       },
       shareFileShowFun() {
         this.shareFileShow = !this.shareFileShow
@@ -171,21 +220,26 @@ export default {
           if (valid) {
 
             let _this = this
+            let postUrl = ''
+
             if(_this.sendApi == 1){
-              return false
+              console.log('backup to filecoin', _this.postAdress);
+              postUrl = _this.data_api + `/minio/deals/` + _this.postAdress
+            }else{
+              postUrl = _this.data_api + `/minio/deal/` + _this.postAdress
             }
 
-            let postUrl01 = _this.data_api + `/minio/deal/` + _this.postAdress
-            let postUrl = `http://192.168.88.41:9000/minio/deal/` + _this.postAdress
+            //let postUrl = `http://192.168.88.41:9000/minio/deal/` + _this.postAdress
+
             let minioDeal = {
                 "VerifiedDeal": _this.ruleForm.verified == '2'? 'false' : 'true',
                 "FastRetrieval": _this.ruleForm.fastRetirval == '2'? 'false' : 'true',
                 "MinerId": _this.ruleForm.minerId,
                 "Price": _this.ruleForm.price,
-                "Duration": String(_this.ruleForm.duration*24*60*2)   //（UI上用户输入天数，需要转化成epoch给后端。例如10天, 就是 10*24*60*2）
+                "Duration": String(_this.ruleForm.duration*24*60*2)   //（The number of days entered by the user on the UI needs to be converted into epoch to the backend. For example, 10 days is 10*24*60*2）
             }
 
-            axios.post(postUrl01, minioDeal, {headers: {
+            axios.post(postUrl, minioDeal, {headers: {
                  'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
                 let json = response.data
@@ -202,7 +256,6 @@ export default {
 
             }).catch(function (error) {
                 console.log(error);
-                // console.log(error.message, error.request, error.response.headers);
             });
 
           } else {
@@ -246,7 +299,101 @@ export default {
             document.body.removeChild(txtArea);
         }
       },
+      //Provider ID select
+      tableCellClassName({row, column, rowIndex, columnIndex}){
+          //Use the callback method of the classname of the cell to assign a value to the row and column index
+          row.index=rowIndex;
+          column.index=columnIndex;
+      },
+      cellClick(row, column, cell, event){
+          console.log(row.index);  //Select row
+          let _this = this
+          _this.radio = _this.parentLi + '-' + row.index
+      },
+      toggleSelection(rows) {
+          if (rows) {
+              rows.forEach(row => {
+                  this.$refs.multipleTable.toggleRowSelection(row);
+              });
+          } else {
+              this.$refs.multipleTable.clearSelection();
+          }
+      },
+      handleSelectionChange(val) {
+          this.multipleSelection = val;
+          console.log('check', val)
+      },
+      setCurrent(row) {
+          this.$refs.singleTable.setCurrentRow(row);
+      },
+      handleCurrentChange(val) {
+          this.currentRow = val;
+          console.log(val)
+          if(val && val.miner_id){
+              //this.name = this.parentName + ' / ' + val.miner_id
+              this.ruleForm.minerId = val.miner_id
+              this.name = val.miner_id
+          }
+      },
+      handleOpen(key, keyPath) {
+          let _this = this
+          if(key.indexOf('-') >= 0){
+              _this.tableData = []
+              _this.loading = true
+              _this.page = 0
+              _this.total = 1
+              _this.parentLi = key
+              _this.locationOptions.map(item => {
+                  if(item.title == key){
+                      _this.parentName = item.value
+                  }
+              })
 
+              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
+              axios.get(postURL).then((response) => {
+                  let json = response.data.data.miner
+                  _this.tableData = json
+                  _this.loading = false
+                  _this.loadSign = true
+                  if(response.data.data.total_items > 20){
+                      _this.total = (response.data.data.total_items)/20
+                  }
+              }).catch(function (error) {
+                  console.log(error);
+                  _this.loading = false
+              });
+          }
+      },
+      loadMore () {
+          let _this = this
+          if (_this.loadSign) {
+              _this.loadSign = false
+              _this.page++
+              if (_this.page >= _this.total) {
+                  console.log('finish:', _this.page)
+                  return
+              }
+
+              _this.loading = true
+              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
+              axios.get(postURL).then((response) => {
+                  let json = response.data.data.miner
+                  json.map(item => {
+                      _this.tableData.push(item)
+                  })
+
+                  _this.loading = false
+                  _this.loadSign = true
+
+              }).catch(function (error) {
+                  console.log(error);
+                  _this.loading = false
+              });
+          }
+      },
+      handleClose(key, keyPath) {
+          //console.log('close');
+      },
     },
     mounted() {},
 };
@@ -309,8 +456,8 @@ export default {
                   img {
                       width: 100px;
                       height: 100px;
-                      background-color: #fff; //设置白色背景色
-                      padding: 0; // 利用padding的特性，挤出白边
+                      background-color: #fff;
+                      padding: 0;
                       box-sizing: border-box;
                   }
               }
@@ -478,6 +625,119 @@ export default {
                   .el-form-item.is-error, .el-form-item.is-required{
                     margin-bottom: 0.15rem;
                   }
+
+                  .el-menu{
+                      float: left;
+                      position: relative;
+                      display: inline-block;
+                      border: solid 1px #e6e6e6;
+                      // width: 80%;
+                      .el-submenu.is-active{
+                        // width: 100%;
+                      }
+                      li.el-submenu{
+                        .el-submenu__title{
+                          &:hover{
+                            color: #66b1ff;
+                            background-color: #eef6ff;
+                          }
+                        }
+                      }
+                      .el-submenu__title{
+                          display: flex;
+                          justify-content: space-between;
+                          align-items: center;
+                          border: 0;
+                          height: 35px;
+                          line-height: 35px;
+                          padding: 0 0.1rem 0 0.2rem;
+                      }
+                      .el-menu--horizontal{
+                          .el-submenu{
+                              .el-menu--horizontal{
+                                  position: absolute !important;
+                                  left: 200px !important;
+                                  top: 0 !important;
+                                  bottom: 0;
+                                  .el-menu{
+                                      // width: 100%;
+                                      height: 100%;
+                                      padding: 0;
+                                      .el-menu-item{
+                                          height: 100%;
+                                          max-height: 300px;
+                                          padding: 0;
+                                          .el-table{
+                                              width: 100%;
+                                              max-width: 450px;
+                                              height: 100%;
+                                              padding: 0;
+                                              .el-table__header-wrapper{
+                                                .el-table__header{
+                                                  width: 100% !important;
+                                                }
+                                              }
+                                              th, td{
+                                                  padding: 0.05rem 0;
+                                                  background-color: #fff !important;
+                                                  font-size: 0.13rem;
+                                                  font-weight: 600;
+                                                  line-height: 1.5;
+                                                  border: 0;
+                                                  .cell{
+                                                      padding-right: 0;
+                                                      line-height: 1.5;
+                                                      .el-radio{
+                                                          .el-radio__label{
+                                                              display: none;
+                                                          }
+                                                      }
+                                                      .el-checkbox{
+                                                          .el-checkbox__original{
+                                                              display: none;
+                                                          }
+                                                      }
+                                                  }
+                                              }
+                                              th{
+                                                  font-size: 0.12rem;
+                                                  font-weight: normal;
+                                                  .cell{
+                                                      .el-checkbox{
+                                                          display: none;
+                                                      }
+                                                  }
+                                              }
+                                              .el-table__body{
+                                                tr{
+                                                  &:hover{
+                                                    td{
+                                                      background-color: #eef6ff !important;
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                              &::before, &::after {
+                                                  height: 0;
+                                              }
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                          .is-opened{
+                              .el-submenu__title{
+                                  color: #66b1ff;
+                                  background-color: #eef6ff;
+                                  i{
+                                      color: #66b1ff;
+                                  }
+                              }
+                          }
+                      }
+                  }
+
+
                 }
               }
               &:after{
@@ -503,7 +763,8 @@ export default {
       .el-dialog__body{
         .shareContent{
           .el-row{
-            width: 300px;
+            width: 100%;
+            max-width: 500px;
           }
         }
       }
@@ -514,13 +775,13 @@ export default {
 
   .el-dialog__wrapper /deep/{
     .ShareObject{
-      width: 90%;
       .el-dialog__body{
         padding: 0;
         .shareContent{
           flex-wrap: wrap;
           .el-row{
             width: 100%;
+            max-width: 400px;
           }
         }
       }
@@ -529,5 +790,35 @@ export default {
       margin-top: 55vh !important;
     }
   }
+
+
+}
+@media screen and (max-width:441px){
+  .el-dialog__wrapper /deep/{
+    .ShareObject{
+      .el-dialog__body{
+        .shareContent{
+          .share_right{
+            .el-col{
+              .el-form{
+                .el-menu{
+                  .el-menu--horizontal{
+                      .el-submenu{
+                         min-width: 150px;
+                        .el-menu--horizontal{
+                            left: 100px !important;
+                        }
+                      }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+
 }
 </style>

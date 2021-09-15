@@ -99,7 +99,7 @@ a:focus{
   float: right;
 }
 
-/* 头部，导航 */
+/* header，Navigation */
 .header.el-row{
   position: fixed;
   top: 0;
@@ -206,7 +206,7 @@ a:focus{
   margin: 0;
 }
 .download a.menuChild{
-  margin: 0 0 0 0.24rem; 
+  margin: 0 0 0 0.24rem;
 }
 .menu::after,.SignUp::after{
   position: absolute;
@@ -435,10 +435,10 @@ a.menuMListChild.active{
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
-  /*背景颜色*/
+  /*background color*/
 
-  box-shadow:0 0 0 60px #fff inset; 
-  /*字的颜色*/
+  box-shadow:0 0 0 60px #fff inset;
+  /*font color*/
   -webkit-text-fill-color: #878787;
 }
 input:focus{ outline: none;}
