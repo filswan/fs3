@@ -1,0 +1,163 @@
+@font-face {
+  font-family: "iconfont"; /* Project id 2637127 */
+  src: url('../font/iconfont.woff2?t=1626167872170') format('woff2'),
+       url('../font/iconfont.woff?t=1626167872170') format('woff'),
+       url('../font/iconfont.ttf?t=1626167872170') format('truetype');
+}
+
+.iconfont {
+  font-family: "iconfont" !important;
+  font-size: 16px;
+  font-style: normal;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.icon-weishipin:before {
+  content: "\e65d";
+}
+
+.icon-wenjiantupian:before {
+  content: "\e646";
+}
+
+.icon-zip:before {
+  content: "\e61e";
+}
+
+.icon-geshi_tongyongshipin:before {
+  content: "\e6cc";
+}
+
+.icon-geshi_tongyongtupian:before {
+  content: "\e6d2";
+}
+
+.icon-PPT:before {
+  content: "\e64b";
+}
+
+.icon-exclxlsxlsx:before {
+  content: "\e638";
+}
+
+.icon-ppt:before {
+  content: "\e665";
+}
+
+.icon-word:before {
+  content: "\e759";
+}
+
+.icon-shipinwenjianhuise:before {
+  content: "\e619";
+}
+
+.icon-pdf:before {
+  content: "\e712";
+}
+
+.icon-word1:before {
+  content: "\e713";
+}
+
+.icon-avi:before {
+  content: "\ea49";
+}
+
+.icon-shipinwenku:before {
+  content: "\e623";
+}
+
+.icon-yunshangchuan:before {
+  content: "\e602";
+}
+
+.icon-shangchuan1:before {
+  content: "\e618";
+}
+
+.icon-shangchuan:before {
+  content: "\e663";
+}
+
+.icon-login-full:before {
+  content: "\e97e";
+}
+
+.icon-sort-asc-full:before {
+  content: "\ea21";
+}
+
+.icon-sort-desc-full:before {
+  content: "\ea22";
+}
+
+.icon-ziyuan:before {
+  content: "\e612";
+}
+
+.icon-sort-ascending:before {
+  content: "\eaf3";
+}
+
+.icon-sort-descending:before {
+  content: "\eaf4";
+}
+
+.icon-i:before {
+  content: "\e67f";
+}
+
+.icon-diqiu:before {
+  content: "\e62e";
+}
+
+.icon-fangda:before {
+  content: "\e650";
+}
+
+.icon-huaban18:before {
+  content: "\e667";
+}
+
+.icon-harddriveyingpan:before {
+  content: "\e6db";
+}
+
+.icon-denglu:before {
+  content: "\e601";
+}
+
+.icon-denglutongji:before {
+  content: "\e669";
+}
+
+.icon-denglu1:before {
+  content: "\e6bd";
+}
+
+.icon-signout:before {
+  content: "\e610";
+}
+
+.icon-yk_fangkuai:before {
+  content: "\e600";
+}
+
+.icon-tianjiawenjian:before {
+  content: "\f447";
+}
+
+.icon-file:before {
+  content: "\e7e0";
+}
+
+.icon-wenjian:before {
+  content: "\e69f";
+}
+
+.icon-Gotoright:before {
+  content: "\e6c6";
+}
+
