@@ -60,7 +60,7 @@
             <el-backtop target=".wrapper"></el-backtop>
         </div>
 
-        <share-dialog
+        <share-dialog  v-if="isRouterAlive"
           :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
           :shareFileShow="shareFileShow" :postAdress="currentBucket" :sendApi="sendApi"
           @getshareDialog="getshareDialog">
@@ -80,6 +80,11 @@ import Moment from "moment"
 import shareDialog from '@/components/shareDialog.vue';
 import retrievalDialog from '@/components/retrievalDialog.vue';
 export default {
+    provide () {
+        return {
+            reload: this.reload
+        }
+    },
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
@@ -133,7 +138,8 @@ export default {
             uploadClick: 0,
             sendApi: 1,
             allDealShow: true,
-            retrievalDialog: false
+            retrievalDialog: false,
+            isRouterAlive: true
         }
     },
     components: {
@@ -150,6 +156,12 @@ export default {
         },
     },
     methods: {
+        reload () {
+            this.isRouterAlive = false;
+            this.$nextTick(function () {
+                this.isRouterAlive = true;
+            })
+        },
         getshareDialog(shareDialog) {
           this.shareDialog = shareDialog
         },

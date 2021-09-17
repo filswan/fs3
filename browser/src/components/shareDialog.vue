@@ -36,7 +36,7 @@
                 </el-col>
               </el-row>
 
-              <el-tabs v-model="activeOn" @tab-click="handleClick" tab-position="left">
+              <el-tabs v-model="activeOn" @tab-click="handleClick" tab-position="left" v-if="shareFileShow && sendApi == 1">
                 <el-tab-pane label="online" name="online"></el-tab-pane>
                 <el-tab-pane label="offline" name="offline"></el-tab-pane>
               </el-tabs>
@@ -93,6 +93,18 @@
                     </el-form-item>
                   </el-form>
                 </el-col>
+                <el-col :span="24">
+                   <h4 style="margin: 0;">Deal CID <i class="el-icon-document-copy" v-if="ruleForm.dealCID" @click="copyLink(ruleForm.dealCID)"></i></h4>
+                 </el-col>
+                 <el-col :span="24">
+                   <el-input
+                     type="textarea"
+                     :rows="4"
+                     placeholder=""
+                     v-model="ruleForm.dealCID"
+                     disabled>
+                   </el-input>
+                 </el-col>
               </el-row>
 
 
@@ -531,7 +543,8 @@ export default {
                   }
               })
 
-              let postURL = _this.data_api + '/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
+              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
+              // let postURL = _this.data_api + '/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
               // let postURL = 'https://api.filswan.com/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
 
               axios.get(postURL).then((response) => {
@@ -559,7 +572,8 @@ export default {
               }
 
               _this.loading = true
-              let postURL = _this.data_api + '/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
+              // let postURL = _this.data_api + '/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
+              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
               axios.get(postURL).then((response) => {
                   let json = response.data.data.miner
                   json.map(item => {

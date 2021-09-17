@@ -390,7 +390,7 @@
       </el-dialog>
 
       <!-- share dialog box -->
-      <share-dialog
+      <share-dialog v-if="isRouterAlive"
         :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
         :shareFileShow="shareFileShow" :num="num" :share_input="share_input"
         :postAdress="postAdress" :sendApi="sendApi"
@@ -414,6 +414,11 @@ import NCWeb3 from "@/utils/web3";
 let that
 export default {
   name: 'landing',
+  provide () {
+      return {
+          reload: this.reload
+      }
+  },
   data() {
     return {
       postUrl: this.data_api + `/minio/webrpc`,
@@ -475,7 +480,8 @@ export default {
       network: {
         name: '',
         unit: 0
-      }
+      },
+      isRouterAlive: true
     }
   },
   components: {
@@ -484,6 +490,12 @@ export default {
   },
   props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick', 'allDealShow'],
   methods: {
+    reload () {
+        this.isRouterAlive = false;
+        this.$nextTick(function () {
+            this.isRouterAlive = true;
+        })
+    },
     exChange(row, rowList) {
       var that = this
       if (rowList.length) {
