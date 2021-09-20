@@ -54,7 +54,8 @@
                       <el-menu :default-active="'1'" menu-trigger="click" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true"  v-show="activeOn == 'online'" >
                           <el-submenu index="1" popper-class="myMenu" :popper-append-to-body="false">
                               <template slot="title">
-                                  {{ name }}
+                                 <!-- {{ name }} -->
+                                 <el-input v-model="ruleForm.minerId" placeholder="Please select Provider ID"></el-input>
                               </template>
                               <el-submenu :index="'1-'+n" v-for="(item, n) in locationOptions" :key="n" :attr="'1-'+n">
                                   <template slot="title">
@@ -159,7 +160,8 @@
                       <el-menu :default-active="'1'" menu-trigger="click" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true" v-if="offlineForm.OpenBidType != 1">
                           <el-submenu index="1" popper-class="myMenu" :popper-append-to-body="false">
                               <template slot="title">
-                                  {{ nameOffline }}
+                                  <!-- {{ nameOffline }} -->
+                                  <el-input v-model="offlineForm.providerId" placeholder="Please select Provider ID"></el-input>
                               </template>
                               <el-submenu :index="'1-'+n" v-for="(item, n) in locationOptions" :key="n" :attr="'1-'+n">
                                   <template slot="title">
@@ -834,11 +836,12 @@ export default {
                     padding: 0.1rem;
                     border: 1px solid #eee;
                     border-radius: 0.02rem;
-                    font-size: 13px;
                     cursor: text;
                     transition: border-color;
                     transition-duration: .3s;
                     background-color: transparent;
+                    font-size: 14px;
+                    color: #303133;
                   }
                 }
                 .el-form{
@@ -885,7 +888,15 @@ export default {
                           border: 0;
                           height: 35px;
                           line-height: 35px;
-                          padding: 0 0.1rem 0 0.2rem;
+                          padding: 0 0.1rem;
+                          .el-input{
+                             .el-input__inner{
+                                padding: 0;
+                                border: 0;
+                                font-size: 14px;
+                                color: #303133;
+                             }
+                          }
                       }
                       .el-menu--horizontal{
                           .el-submenu{
