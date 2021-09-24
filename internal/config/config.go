@@ -32,13 +32,13 @@ import (
 
 // Customized FS3 volume address and wallet address
 const (
-	SwanAddress      = "http://192.168.88.216:5002"
+	SwanAddress      = ""
 	Fs3VolumeAddress = "~/minio-data"
 	Fs3WalletAddress = "MYWALLETADDRESS"
 	CarFileSize      = "8589934592"
-	IpfsApiAddress   = "http://192.168.88.41:5001"
-	IpfsGateway      = "http://192.168.88.41:5050"
-	SwanToken        = "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJleHAiOjE2NTk4MTExNzIsImlhdCI6MTYyODI3NTE3Miwic3ViIjoxODR9.PDukJvAG4b_U5sKudFgaXwMhrNKJbXPfUlQ-Bq30FYI"
+	IpfsApiAddress   = ""
+	IpfsGateway      = ""
+	SwanToken        = ""
 )
 
 // Error config error type

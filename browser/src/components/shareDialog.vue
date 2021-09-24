@@ -128,7 +128,7 @@
                             {{tag}}
                         </el-tag>
                         <el-input class="input-new-tag" v-if="inputVisibleTask" v-model="inputValueTask" ref="saveTagInput" size="small"
-                                  @blur="handleInputConfirmTask"
+                                  @blur="handleInputConfirmTask"  @keyup.enter.native="handleInputConfirmTask"
                                   maxlength="15"
                         >
                         </el-input>
@@ -371,7 +371,6 @@ export default {
                   }}).then((response) => {
                       let json = response.data
                       if (json.status == 'success') {
-                        console.log(json.data.deals.data.taskname)
                         _this.taskName = json.data.deals.data.taskname
                         _this.finishTransaction = true
                       }else{
@@ -413,7 +412,6 @@ export default {
             let postUrl = ''
 
             if(_this.sendApi == 1){
-              console.log('backup to filecoin', _this.postAdress);
               postUrl = _this.data_api + `/minio/deals/` + _this.postAdress
             }else{
               postUrl = _this.data_api + `/minio/deal/` + _this.postAdress
@@ -458,7 +456,6 @@ export default {
         this.$emit('getshareDialog', false)
       },
       handleChange(value) {
-          console.log(this.num)
           this.$emit('getShareGet', this.num)
       },
       copyLink(text){
@@ -496,7 +493,6 @@ export default {
           column.index=columnIndex;
       },
       cellClick(row, column, cell, event){
-          console.log(row.index);  //Select row
           let _this = this
           _this.radio = _this.parentLi + '-' + row.index
       },
@@ -511,7 +507,6 @@ export default {
       },
       handleSelectionChange(val) {
           this.multipleSelection = val;
-          console.log('check', val)
       },
       setCurrent(row) {
           this.$refs.singleTable.setCurrentRow(row);
@@ -519,7 +514,6 @@ export default {
       handleCurrentChange(val) {
           let _this = this
           _this.currentRow = val;
-          console.log(val)
           if(val && val.miner_id){
               //this.name = this.parentName + ' / ' + val.miner_id
               if(_this.activeOn == 'online'){
@@ -570,7 +564,7 @@ export default {
               _this.page++
               if (_this.page >= _this.total) {
                   console.log('finish:', _this.page)
-                  return
+                  return false
               }
 
               _this.loading = true
@@ -595,16 +589,7 @@ export default {
           //console.log('close');
       },
     },
-    mounted() {
-      let _this = this
-      document.onkeydown = function(e) {
-          if (e.keyCode === 13) {
-              if(_this.inputValueTask){
-                  _this.handleInputConfirmTask()
-              }
-          }
-      }
-    },
+    mounted() {},
 };
 </script>
 

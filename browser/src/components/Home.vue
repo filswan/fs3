@@ -212,7 +212,7 @@ export default {
                 }
 
             }).catch(function (error) {
-                console.log(error.request.status);
+                // console.log(error.request.status);
                 if(error.request.status == '401'){
                   _this.$store.dispatch("FedLogOut").then(() => {
                     _this.$router.push("/minio/login")
@@ -382,10 +382,10 @@ export default {
 
     //File upload
     httpRequest(file) {
-      console.log('httpRequest', file);
+      // console.log('httpRequest', file);
     },
     onChange(file, fileList) {
-      console.log('onChange', file, fileList);
+      // console.log('onChange', file, fileList);
         let _this = this
         let $hgh
         if(!_this.minioListBuckets.buckets || _this.minioListBuckets.buckets.length < 1){

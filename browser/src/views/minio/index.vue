@@ -750,7 +750,6 @@ export default {
           }
         }
         xhr.send(JSON.stringify(objZip))
-        console.log('xiazai:', JSON.stringify(objZip));
       }else{
         var a = document.createElement("a");
         a.download = _this.currentBucketAll[0];
@@ -930,7 +929,7 @@ export default {
                 if(!_this.addr){
                     NCWeb3.Init(addr=>{
                         //Get the corresponding wallet address
-                        console.log('Wallet address:', addr)
+                        // console.log('Wallet address:', addr)
                         _this.$nextTick(() => {
                             _this.addr = addr
                             _this.walletInfo()
@@ -984,7 +983,11 @@ export default {
             fn() {
               let _this = this
               ethereum.on("accountsChanged", function(accounts) {
-                console.log('account:', accounts[0]);  //Once the account is switched, it will be executed here
+                  if(sessionStorage.getItem('addrWeb')){
+                    _this.addr = accounts[0]
+                    _this.walletInfo()
+                  }
+                // console.log('account:', accounts[0]);  //Once the account is switched, it will be executed here
               });
               ethereum.on("networkChanged", function(networkID) {
                  _this.walletInfo()
@@ -1108,7 +1111,8 @@ export default {
             _this.editNameFile = true
             _this.$refs.mark.$el.querySelector('input').blur()
           })
-        }else if(_this.form.name){
+        }
+        if(_this.form.name){
             console.log('create bucket')
             _this.getServer();
         }

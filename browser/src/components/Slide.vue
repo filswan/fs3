@@ -148,7 +148,6 @@ export default {
       },
       removePolicies(content) {
         let _this = this
-        console.log('content', content)
         let dataSetBucketPolicy = {
                 id: 1,
                 jsonrpc: "2.0",
@@ -190,7 +189,7 @@ export default {
                       $hgh = true
                       return false
                   }else{
-                      console.log(item.prefix, _this.dynamicValidateForm.value, item.policy, _this.dynamicValidateForm.valueSelect);
+                      // console.log(item.prefix, _this.dynamicValidateForm.value, item.policy, _this.dynamicValidateForm.valueSelect);
                   }
               })
            }
