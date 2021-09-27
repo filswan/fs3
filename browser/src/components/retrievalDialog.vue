@@ -59,7 +59,6 @@
 <script>
 import axios from 'axios'
 import Moment from 'moment'
-
 export default {
     data() {
         return {
@@ -141,7 +140,6 @@ export default {
         } finally {
             document.body.removeChild(txtArea);
         }
-
       },
     },
     mounted() {},
