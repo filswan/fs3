@@ -385,8 +385,13 @@ export default {
       // console.log('httpRequest', file);
     },
     onChange(file, fileList) {
-      // console.log('onChange', file, fileList);
         let _this = this
+      // console.log('onChange', file, fileList);
+      let regexp = /[#\/\\?]/
+      if(regexp.test(file.name)){
+        _this.$message.error('The filename cannot contain any of the following characters # ? \\ /');
+        return false
+      }
         let $hgh
         if(!_this.minioListBuckets.buckets || _this.minioListBuckets.buckets.length < 1){
             _this.$message({
