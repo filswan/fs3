@@ -3518,12 +3518,12 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	fs3VolumeAddress := config.Fs3VolumeAddress
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 
 	//sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
 	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
 	// send online deal to lotus
-	filWallet := config.Fs3WalletAddress
+	filWallet := config.GetUserConfig().Fs3WalletAddress
 	if filWallet == "" {
 		noWalletResponse := OnlineDealResponse{}
 		sendResponse := SendResponse{
@@ -3772,7 +3772,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// send online deal to lotus
-	filWallet := config.Fs3WalletAddress
+	filWallet := config.GetUserConfig().Fs3WalletAddress
 	if filWallet == "" {
 		noWalletResponse := OnlineDealResponse{}
 		sendResponse := SendResponse{
@@ -3789,7 +3789,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 		w.Write(bodyByte)
 		return
 	}
-	fs3VolumeAddress := config.Fs3VolumeAddress
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 	sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
 	outputBucketZipPath := filepath.Join(fs3VolumeAddress, bucket+"_deals.zip")
 	sourceBucketZipPath, err := ZipBucket(sourceBucketPath, outputBucketZipPath)
@@ -3878,7 +3878,7 @@ func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
 
 func JsonPath(bucket string, object string) (string, error) {
 
-	fs3VolumeAddress := config.Fs3VolumeAddress
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 	bucketJson := "." + bucket + ".json"
 	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
 	expandedDir, err := oshomedir.Expand(bucketJsonPath)
@@ -3891,7 +3891,7 @@ func JsonPath(bucket string, object string) (string, error) {
 
 func BucketJsonPath() (string, error) {
 
-	fs3VolumeAddress := config.Fs3VolumeAddress
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 	bucketJson := "." + "bucketdeals" + ".json"
 	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
 	expandedDir, err := oshomedir.Expand(bucketJsonPath)
@@ -3903,7 +3903,7 @@ func BucketJsonPath() (string, error) {
 }
 
 func LevelDbPath() (string, error) {
-	fs3VolumeAddress := config.Fs3VolumeAddress
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 	levelDbName := ".leveldb.db"
 	levelDbPath := filepath.Join(fs3VolumeAddress, levelDbName)
 	expandedDir, err := oshomedir.Expand(levelDbPath)
@@ -4167,7 +4167,7 @@ func BucketSaveToJson(bucket string, response SendResponse) error {
 		logs.GetLogger().Error(err)
 		return err
 	}
-	VolumeAddress := config.Fs3VolumeAddress
+	VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 	if data.VolumeAddress == "" {
 		newDeals := []SendResponse{}
 		newDeals = append(newDeals, response)
@@ -4497,7 +4497,7 @@ func (web *webAPIHandlers) SendOfflineDeal(w http.ResponseWriter, r *http.Reques
 	}
 
 	// generate car
-	VolumeAddress := config.Fs3VolumeAddress
+	VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 
 	sourceFilePath := filepath.Join(VolumeAddress, bucket, object)
 	carFileDir := "." + bucket
@@ -4525,7 +4525,7 @@ func (web *webAPIHandlers) SendOfflineDeal(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	sliceSize, err := strconv.ParseInt(config.CarFileSize, 10, 64)
+	sliceSize, err := strconv.ParseInt(config.GetUserConfig().CarFileSize, 10, 64)
 	carDir := carDirExpand
 	parentPath := sourceDirExpand
 	targetPath := sourceDirExpand
@@ -4709,7 +4709,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 	}
 
 	// generate car
-	VolumeAddress := config.Fs3VolumeAddress
+	VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 
 	sourceDirPath := filepath.Join(VolumeAddress, bucket)
 	carFileDir := "." + bucket + "_deals"
@@ -4757,7 +4757,7 @@ func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	sliceSize, err := strconv.ParseInt(config.CarFileSize, 10, 64)
+	sliceSize, err := strconv.ParseInt(config.GetUserConfig().CarFileSize, 10, 64)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeOfflineDealsErrorResponse(w, err)
@@ -4915,7 +4915,7 @@ func uploadCarFileAndSaveToDb(carDir string, graphName string) error {
 		logs.GetLogger().Error(err)
 		return err
 	}
-	carFileAddress := config.IpfsGateway + "/ipfs/" + carHash
+	carFileAddress := config.GetUserConfig().IpfsGateway + "/ipfs/" + carHash
 	csvRecord.CarFileUrl = carFileAddress
 
 	dataBytes, err := json.Marshal(csvRecord)
@@ -4945,7 +4945,7 @@ func uploadCarFile(carDir string, graphName string) error {
 			logs.GetLogger().Error(err)
 			return err
 		}
-		carFileAddress := config.IpfsGateway + "/ipfs/" + carHash
+		carFileAddress := config.GetUserConfig().IpfsGateway + "/ipfs/" + carHash
 		record = append(record, carFileAddress)
 		newRecords = append(newRecords, record)
 	}
@@ -4983,7 +4983,7 @@ func uploadCarFileIpfs(carFilePath string) (string, error) {
 	io.Copy(part, file)
 	writer.Close()
 
-	url := config.IpfsApiAddress + "/api/v0/add"
+	url := config.GetUserConfig().IpfsApiAddress + "/api/v0/add"
 	request, err := http.NewRequest("POST", url, body)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -5471,7 +5471,7 @@ func createSwanTask(outputDir string, taskUuid string, request TaskInfo) ([]byte
 	client := http.Client{Timeout: time.Minute}
 	method := "POST"
 	swanUrl := config.SwanAddress + "/tasks"
-	token := config.SwanToken
+	token := config.GetUserConfig().SwanToken
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)

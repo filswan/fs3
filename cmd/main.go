@@ -18,6 +18,8 @@
 package cmd
 
 import (
+	"fmt"
+	"github.com/minio/minio/internal/config"
 	"os"
 	"path/filepath"
 	"sort"
@@ -163,9 +165,21 @@ func newApp(name string) *cli.App {
 func Main(args []string) {
 	// Set the minio app name.
 	appName := filepath.Base(args[0])
-
+	initUserConfig()
+	fmt.Println("aaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+	fmt.Println(config.GetUserConfig().Fs3VolumeAddress)
 	// Run the app - exit on error.
 	if err := newApp(appName).Run(args); err != nil {
 		os.Exit(1)
 	}
+}
+
+func initUserConfig() {
+	fs3VolumeAddress := os.Getenv("FS3_VOLUME_ADDRESS")
+	fs3WalletAddress := os.Getenv("FS3_WALLET_ADDRESS")
+	carFileSize := os.Getenv("CAR_FILE_SIZE")
+	ipfsApiAddress := os.Getenv("IPFS_API_ADDRESS")
+	ipfsGateway := os.Getenv("IPFS_GATEWAY")
+	swanToken := os.Getenv("SWAN_TOKEN")
+	config.InitUserConfig(fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken)
 }
