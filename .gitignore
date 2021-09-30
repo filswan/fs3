@@ -21,4 +21,6 @@ prime/
 stage/
 .sia_temp/
 config.json
+sysconfig.toml
 node_modules/
+.env
