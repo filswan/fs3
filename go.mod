@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/storage v1.10.0
 	github.com/Azure/azure-pipeline-go v0.2.2
 	github.com/Azure/azure-storage-blob-go v0.10.0
+	github.com/BurntSushi/toml v0.3.1
 	github.com/Shopify/sarama v1.27.2
 	github.com/VividCortex/ewma v1.1.1
 	github.com/alecthomas/participle v0.2.1
@@ -32,6 +33,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/jcmturner/gokrb5/v8 v8.4.2
+	github.com/joho/godotenv v1.4.0
 	github.com/json-iterator/go v1.1.11
 	github.com/klauspost/compress v1.12.2
 	github.com/klauspost/cpuid/v2 v2.0.4
