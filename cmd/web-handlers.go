@@ -5470,7 +5470,7 @@ func createSwanTask(outputDir string, taskUuid string, request TaskInfo) ([]byte
 
 	client := http.Client{Timeout: time.Minute}
 	method := "POST"
-	swanUrl := config.SwanAddress + "/tasks"
+	swanUrl := config.GetUserConfig().SwanAddress + "/tasks"
 	token := config.GetUserConfig().SwanToken
 
 	body := &bytes.Buffer{}

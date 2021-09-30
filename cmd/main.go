@@ -183,14 +183,15 @@ func initUserConfig(standAlone bool) {
 	if standAlone {
 		LoadEnv()
 	}
+	swanAddress := os.Getenv("SWAN_ADDRESS")
 	fs3VolumeAddress := os.Getenv("FS3_VOLUME_ADDRESS")
 	fs3WalletAddress := os.Getenv("FS3_WALLET_ADDRESS")
 	carFileSize := os.Getenv("CAR_FILE_SIZE")
 	ipfsApiAddress := os.Getenv("IPFS_API_ADDRESS")
 	ipfsGateway := os.Getenv("IPFS_GATEWAY")
 	swanToken := os.Getenv("SWAN_TOKEN")
-	logs.GetLogger().Println(fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken)
-	config.InitUserConfig(fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken)
+	logs.GetLogger().Println(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken)
+	config.InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken)
 
 }
 

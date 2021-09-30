@@ -30,18 +30,6 @@ import (
 	"github.com/minio/pkg/env"
 )
 
-// Customized FS3 volume address and wallet address
-const (
-	SwanAddress = "http://192.168.88.216:5002"
-	StandAlone  = true
-	//Fs3VolumeAddress = "~/minio-data"
-	//Fs3WalletAddress = "MYWALLETADDRESS"
-	//CarFileSize      = "8589934592"
-	//IpfsApiAddress   = ""
-	//IpfsGateway      = ""
-	//SwanToken        = ""
-)
-
 // Error config error type
 type Error struct {
 	Err string

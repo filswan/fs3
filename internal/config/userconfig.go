@@ -1,6 +1,7 @@
 package config
 
 type UserConfigParams struct {
+	SwanAddress      string `json:"swan_address"`
 	Fs3VolumeAddress string `json:"fs_3_volume_address"`
 	Fs3WalletAddress string `json:"fs_3_wallet_address"`
 	CarFileSize      string `json:"car_file_size"`
@@ -11,8 +12,9 @@ type UserConfigParams struct {
 
 var UserConfig *UserConfigParams
 
-func InitUserConfig(fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken string) *UserConfigParams {
+func InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken string) *UserConfigParams {
 	UserConfig = new(UserConfigParams)
+	UserConfig.SwanAddress = swanAddress
 	UserConfig.Fs3VolumeAddress = fs3VolumeAddress
 	UserConfig.Fs3WalletAddress = fs3WalletAddress
 	UserConfig.CarFileSize = carFileSize
