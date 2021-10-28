@@ -35,9 +35,9 @@ Set up or modify FS3 configuration in file `fs3/internal/config/config.go`
 ``` bash
  vim internal/config/config.go
 ```
-* __Swan address__ : The address of filswan platform. Set it up as `https://api.filswan.com`.
+* __SWAN_ADDRESS__ : The address of filswan platform. Set it up as `https://api.filswan.com`.
 * __FS3_VOLUME_ADDRESS__ : The address of FS3 VOLUME. Set it up as `~/minio-data` for example. The FS3 server start command will change accordingly.
-* __FS3_WAllET_ADDRESS__ : A wallet address is a must for sending deals to miner. 
+* __FS3_WALLET_ADDRESS__ : A wallet address is a must for sending deals to miner. 
 * __CAR_FILE_SIZE__ : A fixed car file size in bytes need to be predefined before generating car files for trunk via variable `CarFileSize`, such as `8589934592` for 8Gb.
 * __IPFS_API_ADDRESS__ :  An available ipfs address with port need to be set up. For example, `https://MyIpfsUrl:Port`.
 * __IPFS_GATEWAY__ :  An available ipfs address with port need to be set up for file downloading. For example, `https://MyIpfsGatewayUrl:Port`.
