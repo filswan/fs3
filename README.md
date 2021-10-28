@@ -31,14 +31,17 @@ make ffi
 ```
 
 #### Set up FS3 configuration
-Set up or modify FS3 configuration in file `fs3/internal/config/config.go`
+Set up or modify FS3 configuration by creating a `.env` file to save as environment varibales. An example config is given as `.env.example`. You can either remove the file extension or create a new file using the following the command. 
 ``` bash
- vim internal/config/config.go
+ vim .env
 ```
-* __SWAN_ADDRESS__ : The address of filswan platform. Set it up as `https://api.filswan.com`.
-* __FS3_VOLUME_ADDRESS__ : The address of FS3 VOLUME. Set it up as `~/minio-data` for example. The FS3 server start command will change accordingly.
+
+Modify the `.env` file based on your use cases:
+
+* __SWAN_ADDRESS__ : The address of filswan platform, default as `https://api.filswan.com`.
+* __FS3_VOLUME_ADDRESS__ : The address of FS3 VOLUME, default as `~/minio-data`. The FS3 server start command will change accordingly.
 * __FS3_WALLET_ADDRESS__ : A wallet address is a must for sending deals to miner. 
-* __CAR_FILE_SIZE__ : A fixed car file size in bytes need to be predefined before generating car files for trunk via variable `CarFileSize`, such as `8589934592` for 8Gb.
+* __CAR_FILE_SIZE__ : A fixed car file size in bytes need to be predefined before generating car files for trunk via variable `CarFileSize`, such as `8589934592` for 8Gb as default.
 * __IPFS_API_ADDRESS__ :  An available ipfs address with port need to be set up. For example, `https://MyIpfsUrl:Port`.
 * __IPFS_GATEWAY__ :  An available ipfs address with port need to be set up for file downloading. For example, `https://MyIpfsGatewayUrl:Port`.
 * __SWAN_TOKEN__ : A valid swan token is required for posting task on swan platform. It can be received after registering on swan website `https://www.filswan.com/`.
