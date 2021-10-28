@@ -20,12 +20,22 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
 	"crypto/subtle"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/filedrive-team/go-graphsplit"
+	"github.com/google/uuid"
 	csv "github.com/minio/csvparser"
+	"github.com/minio/minio/internal/config"
+	"github.com/minio/minio/logs"
+	oshomedir "github.com/mitchellh/go-homedir"
+	"github.com/syndtr/goleveldb/leveldb"
+	"mime/multipart"
+
+	//"github.com/filedrive-team/go-graphsplit"
 	"io"
 	"net"
 	"net/http"
@@ -34,7 +44,6 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
@@ -63,6 +72,15 @@ import (
 	"github.com/minio/pkg/bucket/policy"
 	iampolicy "github.com/minio/pkg/iam/policy"
 	"github.com/minio/rpc/json2"
+
+	ioioutil "io/ioutil"
+	"os/exec"
+)
+
+const (
+	SuccessResponseStatus = "success"
+	FailResponseStatus    = "fail"
+	NoFileInBucket        = "No file in the bucket.Please upload files"
 )
 
 func extractBucketObject(args reflect.Value) (bucketName, objectName string) {
@@ -2486,7 +2504,27 @@ func writeWebErrorResponse(w http.ResponseWriter, err error) {
 	ctx := logger.SetReqInfo(GlobalContext, reqInfo)
 	apiErr := toWebAPIError(ctx, err)
 	w.WriteHeader(apiErr.HTTPStatusCode)
-	w.Write([]byte(apiErr.Description))
+	sendResponse := SendResponse{Status: FailResponseStatus, Message: apiErr.Description}
+	errJson, error := json.Marshal(sendResponse)
+	if error != nil {
+		logs.GetLogger().Error(error)
+	}
+	w.Write(errJson)
+}
+
+func writeOfflineDealsErrorResponse(w http.ResponseWriter, err error) {
+	reqInfo := &logger.ReqInfo{
+		DeploymentID: globalDeploymentID,
+	}
+	ctx := logger.SetReqInfo(GlobalContext, reqInfo)
+	apiErr := toWebAPIError(ctx, err)
+	w.WriteHeader(apiErr.HTTPStatusCode)
+	sendResponse := BucketOfflineDealResponse{Status: FailResponseStatus, Message: apiErr.Description}
+	errJson, error := json.Marshal(sendResponse)
+	if error != nil {
+		logs.GetLogger().Error(error)
+	}
+	w.Write(errJson)
 }
 
 type DealVo struct {
@@ -2499,17 +2537,33 @@ type DealVo struct {
 	MinerId      string `json:"miner_id,omitempty"`
 }
 
-type OfflineDeal struct {
-	MinerId       string
-	PieceCid      string
-	PieceSize     string
-	DataCid       string
-	Duration      string
-	Start         string
-	FastRetrieval bool
-	DealCid       string
-	Filename      string
-	Price         string
+type OfflineDealRequest struct {
+	TaskName string `json:"task_name"`
+	Start    uint   `json:"start"`
+	Duration uint   `json:"duration"`
+	Price    string `json:"price"`
+	MinerId  string `json:"miner_id"`
+}
+
+type OnlineDealRequest struct {
+	VerifiedDeal  string `json:"verifiedDeal"`
+	FastRetrieval string `json:"fastRetrieval"`
+	MinerId       string `json:"minerId"`
+	Price         string `json:"price"`
+	Duration      string `json:"duration"`
+}
+
+type OnlineDealResponse struct {
+	Filename      string `json:"filename"`
+	WalletAddress string `json:"walletAddress"`
+	VerifiedDeal  string `json:"verifiedDeal"`
+	FastRetrieval string `json:"fastRetrieval"`
+	DataCid       string `json:"dataCid"`
+	MinerId       string `json:"minerId"`
+	Price         string `json:"price"`
+	Duration      string `json:"duration"`
+	DealCid       string `json:"dealCid"`
+	TimeStamp     string `json:"timeStamp"`
 }
 
 func (d *DealVo) setDefault() {
@@ -2525,36 +2579,926 @@ func (d *DealVo) setDefault() {
 	if len(d.Price) == 0 {
 		d.Price = "0"
 	}
-	if len(d.SwanEndpoint) == 0 {
-		d.SwanEndpoint = os.Getenv("SWAN_API")
-		if len(strings.TrimSpace(d.SwanEndpoint)) == 0 {
-			d.SwanEndpoint = "https://api.filswan.com"
-		}
-		os.Setenv("SWAN_API", d.SwanEndpoint)
-	} else {
-		os.Setenv("SWAN_API", d.SwanEndpoint)
-	}
-	if len(d.SwanApiToken) == 0 {
-		d.SwanApiToken = os.Getenv("SWAN_TOKEN")
-	} else {
-		os.Setenv("SWAN_TOKEN", d.SwanApiToken)
-	}
+	//if len(d.SwanEndpoint) == 0 {
+	//d.SwanEndpoint = os.Getenv("SWAN_API")
+	//if len(strings.TrimSpace(d.SwanEndpoint)) == 0 {
+	//d.SwanEndpoint = "https://api.filswan.com"
+	//}
+	//os.Setenv("SWAN_API", d.SwanEndpoint)
+	//} else {
+	//os.Setenv("SWAN_API", d.SwanEndpoint)
+	//}
+	//if len(d.SwanApiToken) == 0 {
+	//d.SwanApiToken = os.Getenv("SWAN_TOKEN")
+	//} else {
+	//os.Setenv("SWAN_TOKEN", d.SwanApiToken)
+	//}
 	if len(d.MinerId) == 0 {
 		d.MinerId = "f0447183"
 	}
 }
 
-// SendDeal - send deal to filecoin network.
-func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
+func ExecCommand(strCommand string) (string, error) {
+	cmd := exec.Command("/bin/bash", "-c", strCommand)
+	stdout, _ := cmd.StdoutPipe()
+	if err := cmd.Start(); err != nil {
+		logs.GetLogger().Error("Execute failed when Start:" + err.Error())
+		return "", err
+	}
+	out_bytes, _ := ioioutil.ReadAll(stdout)
+	if err := stdout.Close(); err != nil {
+		logs.GetLogger().Error("Execute failed when close stdout:" + err.Error())
+		return "", err
+	}
+	if err := cmd.Wait(); err != nil {
+		logs.GetLogger().Error("Execute failed when Wait:" + err.Error())
+		return "", err
+	}
+	return string(out_bytes), nil
+}
 
-	decoder := json.NewDecoder(r.Body)
-	var dealVo DealVo
-	err := decoder.Decode(&dealVo)
+type SendRequest struct {
+	Data    OnlineDealRequest `json:"data"`
+	Status  string            `json:"status"`
+	Message string            `json:"message"`
+}
+
+type AuthToken struct {
+	Data    string `json:"data"`
+	Status  string `json:"status"`
+	Message string `json:"message"`
+}
+
+type SendResponse struct {
+	Data    OnlineDealResponse `json:"data"`
+	Status  string             `json:"status"`
+	Message string             `json:"message"`
+}
+
+func (web *webAPIHandlers) JsonRetrieveDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebJsonRetrieveDeal")
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+	object, err := unescapePath(vars["object"])
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, err := json.Marshal(sendResponse)
+				if err != nil {
+					logs.GetLogger().Error(err)
+					writeWebErrorResponse(w, err)
+				}
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, err := json.Marshal(sendResponse)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+			}
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, err := json.Marshal(sendResponseIam)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+			}
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	getObjectNInfo := objectAPI.GetObjectNInfo
+	if web.CacheAPI() != nil {
+		getObjectNInfo = web.CacheAPI().GetObjectNInfo
+	}
+
+	var opts ObjectOptions
+	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	defer gr.Close()
+
 	if err != nil && err != io.EOF {
 		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
 		return
 	}
-	dealVo.setDefault()
+
+	expandedDir, err := JsonPath(bucket, object)
+	file, err := ioioutil.ReadFile(expandedDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+
+	data := ManifestJson{}
+	err = json.Unmarshal(file, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+
+	fileIndex := -1
+	for i, v := range data.FileList {
+		if v.FileName == object {
+			fileIndex = i
+		}
+	}
+	if fileIndex != -1 {
+		fileDeals := data.FileList[fileIndex]
+		retrieveResponse := RetrieveResponse{
+			Data:    fileDeals,
+			Status:  SuccessResponseStatus,
+			Message: SuccessResponseStatus,
+		}
+
+		dataBytes, err := json.Marshal(retrieveResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+		}
+		w.Write(dataBytes)
+		return
+	} else {
+		blankDeals := BucketFileList{
+			FileName: object,
+			Deals:    []SendResponse{},
+		}
+		retrieveResponse := RetrieveResponse{Data: blankDeals, Status: SuccessResponseStatus, Message: "The specified object does not have deals"}
+		dataBytes, err := json.Marshal(retrieveResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	}
+}
+
+func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRetrieveDeal")
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+	object, err := unescapePath(vars["object"])
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, err := json.Marshal(sendResponse)
+				if err != nil {
+					logs.GetLogger().Error(err)
+					writeWebErrorResponse(w, err)
+				}
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, err := json.Marshal(sendResponse)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+			}
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, err := json.Marshal(sendResponseIam)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+			}
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	getObjectNInfo := objectAPI.GetObjectNInfo
+	if web.CacheAPI() != nil {
+		getObjectNInfo = web.CacheAPI().GetObjectNInfo
+	}
+
+	var opts ObjectOptions
+	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+	defer gr.Close()
+
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	expandedDir, err := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+	defer db.Close()
+	fileDealKey := bucket + "_" + object
+	fileDeals, err := db.Get([]byte(fileDealKey), nil)
+	if err != nil || fileDeals == nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	data := BucketFileList{}
+	err = json.Unmarshal(fileDeals, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	retrieveResponse := RetrieveResponse{Data: data, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
+	dataBytes, err := json.Marshal(retrieveResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	w.Write(dataBytes)
+	return
+}
+
+func (web *webAPIHandlers) JsonRetrieveBucketDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebJsonRetrieveBucketDeal")
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, err := json.Marshal(sendResponse)
+				if err != nil {
+					logs.GetLogger().Error(err)
+					writeWebErrorResponse(w, err)
+					return
+				}
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, err := json.Marshal(sendResponse)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, err := json.Marshal(sendResponseIam)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	_, err := objectAPI.GetBucketInfo(ctx, bucket)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	expandedDir, err := BucketJsonPath()
+	file, err := ioioutil.ReadFile(expandedDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+	}
+
+	data := BucketManifestJson{}
+	err = json.Unmarshal(file, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	fileIndex := -1
+	for i, v := range data.BucketDealsList {
+		if v.BucketName == bucket {
+			fileIndex = i
+		}
+	}
+	if fileIndex != -1 {
+		bucketDeals := data.BucketDealsList[fileIndex]
+		retrieveResponse := RetrieveBucketResponse{
+			Data:    bucketDeals,
+			Status:  SuccessResponseStatus,
+			Message: SuccessResponseStatus,
+		}
+
+		dataBytes, err := json.Marshal(retrieveResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	} else {
+		blankDeals := BucketDealList{
+			BucketName: bucket,
+			Deals:      []SendResponse{},
+		}
+		retrieveResponse := RetrieveBucketResponse{Data: blankDeals, Status: SuccessResponseStatus, Message: "The specified bucket does not have deals"}
+		dataBytes, err := json.Marshal(retrieveResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	}
+}
+
+func (web *webAPIHandlers) RetrieveDeals(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRetrieveDeals")
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, err := json.Marshal(sendResponse)
+				if err != nil {
+					logs.GetLogger().Error(err)
+					writeWebErrorResponse(w, err)
+					return
+				}
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, err := json.Marshal(sendResponse)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, err := json.Marshal(sendResponseIam)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	_, err := objectAPI.GetBucketInfo(ctx, bucket)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	expandedDir, err := LevelDbPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+	defer db.Close()
+
+	bucketDeals, err := db.Get([]byte(bucket), nil)
+	if err != nil || bucketDeals == nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+	data := BucketDealList{}
+	err = json.Unmarshal(bucketDeals, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	retrieveResponse := RetrieveBucketResponse{Data: data, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
+	dataBytes, err := json.Marshal(retrieveResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	w.Write(dataBytes)
+	return
+}
+
+// SendDeal - send deal to filecoin network.
+func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebSendDeal")
+
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+	object, err := unescapePath(vars["object"])
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, err := json.Marshal(sendResponse)
+				if err != nil {
+					logs.GetLogger().Error(err)
+					writeWebErrorResponse(w, err)
+					return
+				}
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, err := json.Marshal(sendResponse)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, err := json.Marshal(sendResponseIam)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	getObjectNInfo := objectAPI.GetObjectNInfo
+	if web.CacheAPI() != nil {
+		getObjectNInfo = web.CacheAPI().GetObjectNInfo
+	}
+	var opts ObjectOptions
+	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	defer gr.Close()
+
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var onlineDealRequest OnlineDealRequest
+	err = decoder.Decode(&onlineDealRequest)
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
 
 	_ = func(address string) (string, error) {
 		addr := net.ParseIP(address)
@@ -2574,171 +3518,537 @@ func (web *webAPIHandlers) SendDeal(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// generate car
-	localPaths := globalEndpoints.LocalDisksPaths()
-	if len(localPaths) != 1 {
-		return
-	}
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 
-	localPath := localPaths[0]
-	vars := mux.Vars(r)
-	bucket := vars["bucket"]
-	object, err := unescapePath(vars["object"])
-	if err != nil {
-		return
-	}
-
-	carBucketName := strings.ToLower(object)
-	reg, err := regexp.Compile("[^a-z0-9\\-\\.]+")
-	if err != nil {
-
-		return
-	}
-	carBucketName = reg.ReplaceAllString(carBucketName, "")
-
-	sourceFileParentPath := filepath.Join(localPath, bucket)
-	sourceFilePath := filepath.Join(localPath, bucket, object)
-
-	carBucketPath := filepath.Join(sourceFileParentPath, carBucketName)
-	if _, err := os.Stat(carBucketPath); os.IsNotExist(err) {
-		err := os.Mkdir(carBucketPath, 0775)
+	//sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
+	sourceFilePath := filepath.Join(fs3VolumeAddress, bucket, object)
+	// send online deal to lotus
+	filWallet := config.GetUserConfig().Fs3WalletAddress
+	if filWallet == "" {
+		noWalletResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noWalletResponse,
+			Status:  FailResponseStatus,
+			Message: "Please provide a wallet address for sending deals",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
 		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
 			return
 		}
-	}
-
-	sliceSize := dealVo.CarSliceSize
-	carDir := carBucketPath
-	parentPath := sourceFilePath
-	targetPath := sourceFilePath
-	graphName := object
-	parallel := 4
-
-	Emptyctx := context.Background()
-	var cb graphsplit.GraphBuildCallback
-
-	cb = graphsplit.CommPCallback(carDir)
-
-	graphsplit.Chunk(Emptyctx, sliceSize, parentPath, targetPath, carDir, graphName, parallel, cb)
-
-	// send deal request to swan
-	offlineDeals, err := readManifestCsv(filepath.Join(carDir, "manifest.csv"))
-	logger.LogIf(Emptyctx, err)
-	if err != nil {
-		return
-	}
-
-	// todo send multiple deals
-	if len(offlineDeals) == 1 {
-		reply, err := sendDeal(offlineDeals[0], &dealVo)
-		if err != nil {
-			return
-		}
-		bodyByte, _ := json.Marshal(reply)
 		w.Write(bodyByte)
+		return
+	}
+
+	verifiedDeal := "--verified-deal=" + onlineDealRequest.VerifiedDeal
+	fastRetrieval := "--fast-retrieval=" + onlineDealRequest.FastRetrieval
+	commandLine := "lotus " + "client " + "import " + sourceFilePath
+	dataCID, err := ExecCommand(commandLine)
+	if err != nil {
+		noDataCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDataCidResponse,
+			Status:  FailResponseStatus,
+			Message: "Sending deal failed during lotus importing",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
+	outStr := strings.Fields(string(dataCID))
+	dataCIDStr := outStr[len(outStr)-1]
+	dealCID, err := exec.Command("lotus", "client", "deal", "--from", filWallet, verifiedDeal, fastRetrieval, dataCIDStr, onlineDealRequest.MinerId, onlineDealRequest.Price, onlineDealRequest.Duration).Output()
+	if err != nil {
+		noDealCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDealCidResponse,
+			Status:  FailResponseStatus,
+			Message: "Sending deal failed during lotus sending deal",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			writeWebErrorResponse(w, err)
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
+	dealCIDStr := string(dealCID)
+	dealCIDStr = strings.TrimSuffix(dealCIDStr, "\n")
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+
+	onlineDealResponse := OnlineDealResponse{
+		Filename:      sourceFilePath,
+		WalletAddress: filWallet,
+		VerifiedDeal:  onlineDealRequest.VerifiedDeal,
+		FastRetrieval: onlineDealRequest.FastRetrieval,
+		DataCid:       dataCIDStr,
+		MinerId:       onlineDealRequest.MinerId,
+		Price:         onlineDealRequest.Price,
+		Duration:      onlineDealRequest.Duration,
+		DealCid:       dealCIDStr,
+		TimeStamp:     timestamp,
+	}
+	sendResponse := SendResponse{
+		Data:    onlineDealResponse,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
+	}
+	bodyByte, err := json.Marshal(sendResponse)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+	w.Write(bodyByte)
+	//SaveToJson(bucket, object, sendResponse)
+	err = SaveToDb(bucket, object, sendResponse)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
 	}
 	return
-
 }
 
-func NewOfflineDeal() *OfflineDeal {
-	return &OfflineDeal{FastRetrieval: true}
+func (web *webAPIHandlers) SendDeals(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebSendBucketDeal")
+
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, err := json.Marshal(sendResponse)
+				if err != nil {
+					logs.GetLogger().Error(err)
+					writeWebErrorResponse(w, err)
+					return
+				}
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, err := json.Marshal(sendResponse)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, err := json.Marshal(sendResponseIam)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	_, err := objectAPI.GetBucketInfo(ctx, bucket)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var onlineDealRequest OnlineDealRequest
+	err = decoder.Decode(&onlineDealRequest)
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	_ = func(address string) (string, error) {
+		addr := net.ParseIP(address)
+		if addr != nil {
+			// Host is an ip address
+			err := errors.New("for dev env, please provide a header with valid Host, exp: a5a84b78-dd4a-45f4-bd90-31428fc23a21.cygnus.nbai.io")
+			return "", err
+		} else {
+			// Host is a host name
+			domainSegments := strings.Split(address, ".")
+			if len(domainSegments) > 1 {
+				return domainSegments[0], nil
+			} else {
+				err := errors.New(fmt.Sprintf("invalid Host in header %s", address))
+				return "", err
+			}
+		}
+	}
+
+	// send online deal to lotus
+	filWallet := config.GetUserConfig().Fs3WalletAddress
+	if filWallet == "" {
+		noWalletResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noWalletResponse,
+			Status:  FailResponseStatus,
+			Message: "Please provide a wallet address for sending deals",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			writeWebErrorResponse(w, err)
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
+	sourceBucketPath := filepath.Join(fs3VolumeAddress, bucket)
+	outputBucketZipPath := filepath.Join(fs3VolumeAddress, bucket+"_deals.zip")
+	sourceBucketZipPath, err := ZipBucket(sourceBucketPath, outputBucketZipPath)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+
+	verifiedDeal := "--verified-deal=" + onlineDealRequest.VerifiedDeal
+	fastRetrieval := "--fast-retrieval=" + onlineDealRequest.FastRetrieval
+	commandLine := "lotus " + "client " + "import " + sourceBucketZipPath
+	dataCID, err := ExecCommand(commandLine)
+	if err != nil {
+		noDataCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDataCidResponse,
+			Status:  FailResponseStatus,
+			Message: "Sending bucket deal failed during lotus importing",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
+	outStr := strings.Fields(string(dataCID))
+	dataCIDStr := outStr[len(outStr)-1]
+	dealCID, err := exec.Command("lotus", "client", "deal", "--from", filWallet, verifiedDeal, fastRetrieval, dataCIDStr, onlineDealRequest.MinerId, onlineDealRequest.Price, onlineDealRequest.Duration).Output()
+	if err != nil {
+		noDealCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDealCidResponse,
+			Status:  FailResponseStatus,
+			Message: "Sending bucket deal failed during lotus sending deal",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
+	dealCIDStr := string(dealCID)
+	dealCIDStr = strings.TrimSuffix(dealCIDStr, "\n")
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+
+	onlineDealResponse := OnlineDealResponse{
+		Filename:      sourceBucketZipPath,
+		WalletAddress: filWallet,
+		VerifiedDeal:  onlineDealRequest.VerifiedDeal,
+		FastRetrieval: onlineDealRequest.FastRetrieval,
+		DataCid:       dataCIDStr,
+		MinerId:       onlineDealRequest.MinerId,
+		Price:         onlineDealRequest.Price,
+		Duration:      onlineDealRequest.Duration,
+		DealCid:       dealCIDStr,
+		TimeStamp:     timestamp,
+	}
+	sendResponse := SendResponse{
+		Data:    onlineDealResponse,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
+	}
+	bodyByte, err := json.Marshal(sendResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	w.Write(bodyByte)
+	//BucketSaveToJson(bucket, sendResponse)
+	err = BucketSaveToDb(bucket, sendResponse)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+	}
+	return
 }
 
-func readManifestCsv(_filepath string) ([]*OfflineDeal, error) {
-	csvFile, err := os.Open(_filepath)
-	if err != nil {
-		return nil, err
-	}
-	defer csvFile.Close()
+func JsonPath(bucket string, object string) (string, error) {
 
-	reader := csv.NewReader(csvFile)
-	reader.LazyQuotes = true
-	reader.Comma = ','
-
-	//ignore values in detail
-	reader.FieldsPerRecord = -1
-	csvLines, err := reader.ReadAll()
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
+	bucketJson := "." + bucket + ".json"
+	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
+	expandedDir, err := oshomedir.Expand(bucketJsonPath)
 	if err != nil {
-		return nil, err
+		logs.GetLogger().Error(err)
+		return "", err
 	}
-	var dealConfigs []*OfflineDeal
-	// playload_cid,filename,piece_cid,piece_size
-	for i, line := range csvLines {
-		if i == 0 {
-			// skip header line
-			continue
+	return expandedDir, nil
+}
+
+func BucketJsonPath() (string, error) {
+
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
+	bucketJson := "." + "bucketdeals" + ".json"
+	bucketJsonPath := filepath.Join(fs3VolumeAddress, bucketJson)
+	expandedDir, err := oshomedir.Expand(bucketJsonPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return expandedDir, nil
+}
+
+func LevelDbPath() (string, error) {
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
+	levelDbName := ".leveldb.db"
+	levelDbPath := filepath.Join(fs3VolumeAddress, levelDbName)
+	expandedDir, err := oshomedir.Expand(levelDbPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return expandedDir, nil
+}
+
+func BucketZipPath(outputBucketZipPath string) (string, error) {
+	expandedDir, err := oshomedir.Expand(outputBucketZipPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return expandedDir, nil
+}
+
+type RetrieveResponse struct {
+	Data    BucketFileList `json:"data"`
+	Status  string         `json:"status"`
+	Message string         `json:"message"`
+}
+
+type RetrieveBucketResponse struct {
+	Data    BucketDealList `json:"data"`
+	Status  string         `json:"status"`
+	Message string         `json:"message"`
+}
+
+type ManifestJson struct {
+	BucketName string           `json:"bucket_name"`
+	FileList   []BucketFileList `json:"file_list"`
+}
+
+type BucketFileList struct {
+	FileName string         `json:"file_name"`
+	Deals    []SendResponse `json:"deals"`
+}
+
+type TaskResponse struct {
+	TaskName string `json:"taskname"`
+	FileName string `json:"filename"`
+	Uuid     string `json:"uuid"`
+}
+
+type CreateTaskResponse struct {
+	Data    TaskResponse `json:"data"`
+	Status  string       `json:"status"`
+	Message string       `json:"message"`
+}
+
+type BucketInfoResponse struct {
+	BucketName string             `json:"bucket_name"`
+	Deals      CreateTaskResponse `json:"deals"`
+}
+
+type BucketOfflineDealResponse struct {
+	Data    BucketInfoResponse `json:"data"`
+	Status  string             `json:"status"`
+	Message string             `json:"message"`
+}
+
+func SaveToJson(bucket string, object string, response SendResponse) error {
+	expandedDir, _ := JsonPath(bucket, object)
+	_, err := os.OpenFile(expandedDir, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0660)
+	file, err := ioutil.ReadFile(expandedDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	data := ManifestJson{}
+	err = json.Unmarshal(file, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	dealBucketName := bucket
+	dealFileName := object
+	if data.BucketName == "" {
+		newDeals := []SendResponse{}
+		newDeals = append(newDeals, response)
+		newBucketFileList := BucketFileList{
+			FileName: dealFileName,
+			Deals:    newDeals,
+		}
+		newFileList := []BucketFileList{}
+		newFileList = append(newFileList, newBucketFileList)
+		newManifestJson := ManifestJson{
+			BucketName: dealBucketName,
+			FileList:   newFileList,
+		}
+		dataBytes, err := json.Marshal(newManifestJson)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+	} else {
+		fileIndex := -1
+		for i, v := range data.FileList {
+			if v.FileName == object {
+				fileIndex = i
+			}
+		}
+		if fileIndex != -1 {
+			data.FileList[fileIndex].Deals = append(data.FileList[fileIndex].Deals, response)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+			err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+		} else {
+			newDeal := []SendResponse{}
+			newDeal = append(newDeal, response)
+			newBucketFileList := BucketFileList{
+				FileName: dealFileName,
+				Deals:    newDeal,
+			}
+			data.FileList = append(data.FileList, newBucketFileList)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+			err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
 		}
 
-		offlineDeal := NewOfflineDeal()
-
-		offlineDeal.DataCid = line[0]
-		offlineDeal.Filename = line[1]
-		offlineDeal.PieceCid = line[2]
-		offlineDeal.PieceSize = line[3]
-
-		dealConfigs = append(dealConfigs, offlineDeal)
-	}
-	return dealConfigs, nil
-}
-
-func sendDeal(offlineDeal *OfflineDeal, dealVo *DealVo) (*DealRequestVo, error) {
-	pieceSize, err := strconv.ParseInt(offlineDeal.PieceSize, 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	dealRequestVo := &DealRequestVo{
-		PieceCid:  offlineDeal.PieceCid,
-		PieceSize: uint64(pieceSize),
-		DataCid:   offlineDeal.DataCid,
-		MinerId:   dealVo.MinerId,
-		Price:     dealVo.Price,
-		Start:     dealVo.Start,
-		Duration:  dealVo.Duration,
 	}
 
-	swanEndpoint := os.Getenv("SWAN_API")
-	swanToken := os.Getenv("SWAN_TOKEN")
-
-	_url := fmt.Sprintf("%s/offline_deal/send", swanEndpoint)
-
-	dealResponse, err := sendDealRequest(dealRequestVo, _url, swanToken)
-	if err != nil {
-		return nil, err
-	}
-
-	return dealResponse, err
-}
-
-func sendDealRequest(dealRequestVo *DealRequestVo, _url string, token string) (*DealRequestVo, error) {
-	method := "POST"
-	jsonBody, err := json.Marshal(dealRequestVo)
-	if err != nil {
-		return nil, err
-	}
-	client := http.Client{Timeout: time.Minute}
-	req, err := http.NewRequest(method, _url, bytes.NewBuffer(jsonBody))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	dealResponse := DealResponseVo{}
-	bodyBytes, _ := io.ReadAll(res.Body)
-
-	err = json.Unmarshal(bodyBytes, &dealResponse)
-	if err != nil {
-		return nil, err
-	}
-
-	return dealResponse.Data, nil
+	return err
 }
 
 type DealResponseVo struct {
@@ -2760,4 +4070,1729 @@ type DealRequestVo struct {
 	DealCost     string `json:"deal_cost,omitempty"`
 	TotalCost    string `json:"total_cost,omitempty"`
 	DealCid      string `json:"deal_cid,omitempty"`
+}
+
+func ZipBucket(sourceBucketPath string, outputBucketZipPath string) (string, error) {
+	baseFolder := sourceBucketPath
+
+	// Get a Buffer to Write To
+	expandedDir, err := BucketZipPath(outputBucketZipPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	outFile, err := os.OpenFile(expandedDir, os.O_CREATE|os.O_RDWR|os.O_TRUNC, 0660)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	defer outFile.Close()
+
+	// Create a new zip archive.
+	w := zip.NewWriter(outFile)
+
+	// Add some files to the archive.
+	addFiles(w, baseFolder, "")
+
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+
+	// Make sure to check the error on Close.
+	err = w.Close()
+	if err != nil {
+		logs.GetLogger().Error(err)
+	}
+	return outputBucketZipPath, err
+}
+
+func addFiles(w *zip.Writer, basePath, baseInZip string) {
+	// Open the Directory
+	expandedDir, _ := BucketZipPath(basePath)
+	files, err := ioioutil.ReadDir(expandedDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return
+	}
+
+	for _, file := range files {
+		if !file.IsDir() {
+			dat, err := ioioutil.ReadFile(expandedDir + "/" + file.Name())
+			if err != nil {
+				logs.GetLogger().Error(err)
+				continue
+			}
+
+			// Add some files to the archive.
+			f, err := w.Create(baseInZip + file.Name())
+			if err != nil {
+				logs.GetLogger().Error(err)
+				continue
+			}
+			_, err = f.Write(dat)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				continue
+			}
+		} else if file.IsDir() {
+			// Recurse
+			newBase := basePath + file.Name() + "/"
+			addFiles(w, newBase, baseInZip+file.Name()+"/")
+		}
+	}
+}
+
+type BucketManifestJson struct {
+	VolumeAddress   string           `json:"volume_address"`
+	BucketDealsList []BucketDealList `json:"bucket_deal_list"`
+}
+
+type BucketDealList struct {
+	BucketName string         `json:"bucket_name"`
+	Deals      []SendResponse `json:"deals"`
+}
+
+func BucketSaveToJson(bucket string, response SendResponse) error {
+	expandedDir, _ := BucketJsonPath()
+	_, err := os.OpenFile(expandedDir, os.O_CREATE|os.O_RDWR|os.O_APPEND, 0660)
+	file, err := ioioutil.ReadFile(expandedDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	data := BucketManifestJson{}
+	err = json.Unmarshal(file, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
+	if data.VolumeAddress == "" {
+		newDeals := []SendResponse{}
+		newDeals = append(newDeals, response)
+		newBucketDealList := BucketDealList{
+			BucketName: bucket,
+			Deals:      newDeals,
+		}
+		newBucketDealsList := []BucketDealList{}
+		newBucketDealsList = append(newBucketDealsList, newBucketDealList)
+		newBucketManifestJson := BucketManifestJson{
+			VolumeAddress:   VolumeAddress,
+			BucketDealsList: newBucketDealsList,
+		}
+		dataBytes, err := json.Marshal(newBucketManifestJson)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+	} else {
+		fileIndex := -1
+		for i, v := range data.BucketDealsList {
+			if v.BucketName == bucket {
+				fileIndex = i
+			}
+		}
+		if fileIndex != -1 {
+			data.BucketDealsList[fileIndex].Deals = append(data.BucketDealsList[fileIndex].Deals, response)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+			err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+		} else {
+			newDeal := []SendResponse{}
+			newDeal = append(newDeal, response)
+			newBucketDealList := BucketDealList{
+				BucketName: bucket,
+				Deals:      newDeal,
+			}
+			data.BucketDealsList = append(data.BucketDealsList, newBucketDealList)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+			err = ioioutil.WriteFile(expandedDir, dataBytes, 0644)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+		}
+
+	}
+	return err
+}
+
+func SaveToDb(bucket string, object string, response SendResponse) error {
+	expandedDir, _ := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	fileDealKey := bucket + "_" + object
+	bucketDeals, err := db.Get([]byte(fileDealKey), nil)
+	if err == nil {
+		data := BucketDealList{}
+		err = json.Unmarshal(bucketDeals, &data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		data.Deals = append(data.Deals, response)
+		dataBytes, err := json.Marshal(data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(fileDealKey), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		return err
+	} else {
+		newDeals := []SendResponse{}
+		newDeals = append(newDeals, response)
+		newBucketDealList := BucketFileList{
+			FileName: object,
+			Deals:    newDeals,
+		}
+		dataBytes, err := json.Marshal(newBucketDealList)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(fileDealKey), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		return err
+	}
+}
+
+func BucketSaveToDb(bucket string, response SendResponse) error {
+	expandedDir, err := LevelDbPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	bucketDeals, err := db.Get([]byte(bucket), nil)
+	if err == nil {
+		data := BucketDealList{}
+		err = json.Unmarshal(bucketDeals, &data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		data.Deals = append(data.Deals, response)
+		dataBytes, err := json.Marshal(data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(bucket), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		return err
+	} else {
+		newDeals := []SendResponse{}
+		newDeals = append(newDeals, response)
+		newBucketDealList := BucketDealList{
+			BucketName: bucket,
+			Deals:      newDeals,
+		}
+		dataBytes, err := json.Marshal(newBucketDealList)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(bucket), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		return err
+	}
+}
+
+func (web *webAPIHandlers) SendOfflineDeal(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebSendOfflineDeal")
+
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeWebErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+	object, err := unescapePath(vars["object"])
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      object,
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeWebErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	getObjectNInfo := objectAPI.GetObjectNInfo
+	if web.CacheAPI() != nil {
+		getObjectNInfo = web.CacheAPI().GetObjectNInfo
+	}
+	var opts ObjectOptions
+	gr, err := getObjectNInfo(ctx, bucket, object, nil, r.Header, readLock, opts)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+	defer gr.Close()
+
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	fmt.Println(r.Body, decoder)
+
+	var offlineDealRequest OfflineDealRequest
+	err = decoder.Decode(&offlineDealRequest)
+
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	_ = func(address string) (string, error) {
+		addr := net.ParseIP(address)
+		if addr != nil {
+			// Host is an ip address
+			err := errors.New("for dev env, please provide a header with valid Host, exp: a5a84b78-dd4a-45f4-bd90-31428fc23a21.cygnus.nbai.io")
+			return "", err
+		} else {
+			// Host is a host name
+			domainSegments := strings.Split(address, ".")
+			if len(domainSegments) > 1 {
+				return domainSegments[0], nil
+			} else {
+				err := errors.New(fmt.Sprintf("invalid Host in header %s", address))
+				return "", err
+			}
+		}
+	}
+
+	// generate car
+	VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
+
+	sourceFilePath := filepath.Join(VolumeAddress, bucket, object)
+	carFileDir := "." + bucket
+	carFileDirPath := filepath.Join(VolumeAddress, carFileDir)
+
+	carDirExpand, err := oshomedir.Expand(carFileDirPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	if _, err := os.Stat(carDirExpand); os.IsNotExist(err) {
+		err := os.Mkdir(carDirExpand, 0775)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
+
+	sourceDirExpand, err := oshomedir.Expand(sourceFilePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	sliceSize, err := strconv.ParseInt(config.GetUserConfig().CarFileSize, 10, 64)
+	carDir := carDirExpand
+	parentPath := sourceDirExpand
+	targetPath := sourceDirExpand
+	graphName := object
+	parallel := 4
+
+	Emptyctx := context.Background()
+	var cb graphsplit.GraphBuildCallback
+
+	cb = graphsplit.CommPCallback(carDir)
+	err = graphsplit.Chunk(Emptyctx, sliceSize, parentPath, targetPath, carDir, graphName, parallel, cb)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	// send deal request to swan
+	offlineDeals, err := readCsv(filepath.Join(carDir, "car.csv"))
+	logger.LogIf(Emptyctx, err)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	// todo send multiple deals
+	if len(offlineDeals) == 1 {
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		bodyByte, _ := json.Marshal(offlineDeals[0])
+		w.Write(bodyByte)
+	}
+	return
+
+}
+
+func (web *webAPIHandlers) SendOfflineDeals(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebSendOfflineDeals")
+
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	objectAPI := web.ObjectAPI()
+	if objectAPI == nil {
+		writeOfflineDealsErrorResponse(w, errServerNotInitialized)
+		return
+	}
+
+	vars := mux.Vars(r)
+
+	bucket := vars["bucket"]
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
+				return
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      "",
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
+			return
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
+			return
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+
+	_, err := objectAPI.GetBucketInfo(ctx, bucket)
+	if err != nil {
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	// Check if bucket is a reserved bucket name or invalid.
+	if isReservedOrInvalidBucket(bucket, false) {
+		writeOfflineDealsErrorResponse(w, errInvalidBucketName)
+		return
+	}
+
+	decoder := json.NewDecoder(r.Body)
+	var offlineDealRequest TaskInfo
+	err = decoder.Decode(&offlineDealRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	if err != nil && err != io.EOF {
+		w.Write([]byte(fmt.Sprintf("bad request: %s", err.Error())))
+		return
+	}
+
+	_ = func(address string) (string, error) {
+		addr := net.ParseIP(address)
+		if addr != nil {
+			// Host is an ip address
+			err := errors.New("for dev env, please provide a header with valid Host, exp: a5a84b78-dd4a-45f4-bd90-31428fc23a21.cygnus.nbai.io")
+			return "", err
+		} else {
+			// Host is a host name
+			domainSegments := strings.Split(address, ".")
+			if len(domainSegments) > 1 {
+				return domainSegments[0], nil
+			} else {
+				err := errors.New(fmt.Sprintf("invalid Host in header %s", address))
+				return "", err
+			}
+		}
+	}
+
+	// generate car
+	VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
+
+	sourceDirPath := filepath.Join(VolumeAddress, bucket)
+	carFileDir := "." + bucket + "_deals"
+	carFileDirPath := filepath.Join(VolumeAddress, carFileDir)
+
+	carDirExpand, err := oshomedir.Expand(carFileDirPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	if _, err := os.Stat(carDirExpand); os.IsNotExist(err) {
+		err := os.Mkdir(carDirExpand, 0775)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeOfflineDealsErrorResponse(w, err)
+			return
+		}
+	}
+
+	sourceDirExpand, err := oshomedir.Expand(sourceDirPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	//check if sourceDir is empty
+	dirEmpty, err := IsDirEmpty(sourceDirExpand)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	if dirEmpty {
+		noFileResponse := BucketInfoResponse{}
+		bucketOfflineDealResponse := BucketOfflineDealResponse{Data: noFileResponse, Status: FailResponseStatus, Message: NoFileInBucket}
+		dataBytes, err := json.Marshal(bucketOfflineDealResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeOfflineDealsErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	}
+
+	sliceSize, err := strconv.ParseInt(config.GetUserConfig().CarFileSize, 10, 64)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	carDir := carDirExpand
+	parentPath := sourceDirExpand
+	targetPath := sourceDirExpand
+	graphName := bucket
+	parallel := 4
+
+	Emptyctx := context.Background()
+	var cb graphsplit.GraphBuildCallback
+
+	cb = graphsplit.CommPCallback(carDir)
+	err = graphsplit.Chunk(Emptyctx, sliceSize, parentPath, targetPath, carDir, graphName, parallel, cb)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	// generate car.csv
+	err = saveCarCsvToDb(carDir, parentPath, bucket)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	//Upload to ipfs
+	err = uploadCarFileAndSaveToDb(carDir, graphName)
+	logger.LogIf(Emptyctx, err)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	//Create task on swan
+	offlineDeals, err := readCsvInDb(bucket)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	reply, err := createTask(bucket, offlineDeals, carDir, offlineDealRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	var createTaskResponse CreateTaskResponse
+	json.Unmarshal(reply, &createTaskResponse)
+
+	createTaskResponse.Data.TaskName = offlineDealRequest.TaskName
+	bucketInfoResponse := BucketInfoResponse{BucketName: bucket, Deals: createTaskResponse}
+	bucketOfflineDealResponse := BucketOfflineDealResponse{Data: bucketInfoResponse, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
+	dataBytes, err := json.Marshal(bucketOfflineDealResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	w.Write(dataBytes)
+	return
+
+}
+
+type OfflineDeal struct {
+	MinerId       string
+	PieceCid      string
+	PieceSize     string
+	DataCid       string
+	Duration      string
+	Start         string
+	FastRetrieval bool
+	DealCid       string
+	Filename      string
+	Price         string
+}
+
+func NewOfflineDeal() *OfflineDeal {
+	return &OfflineDeal{FastRetrieval: true}
+}
+
+type CarRecord struct {
+	CarFileName    string
+	CarFilePath    string
+	PieceCid       string
+	DataCid        string
+	CarFileSize    string
+	CarFileMd5     string
+	SourceFileName string
+	SourceFilePath string
+	SourceFileSize string
+	SourceFileMd5  string
+}
+
+type SourceFiles struct {
+	Bucket           string
+	SourceFilesNames []SourceFile
+}
+type SourceFile struct {
+	Name string
+}
+
+type SourceFilesPath struct {
+	Bucket           string
+	SourceFilesPaths []SourceFilePath
+}
+type SourceFilePath struct {
+	Path string
+}
+
+type SourceFilesSize struct {
+	Bucket           string
+	SourceFilesSizes []SourceFileSize
+}
+type SourceFileSize struct {
+	Size string
+}
+
+type SourceFilesMd5 struct {
+	Bucket          string
+	SourceFilesMd5s []SourceFileMd5
+}
+type SourceFileMd5 struct {
+	Md5 string
+}
+
+func uploadCarFileAndSaveToDb(carDir string, graphName string) error {
+	expandedDir, err := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	carCsv, err := db.Get([]byte(graphName+"_deals_car_csv"), nil)
+	if err != nil || carCsv == nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	csvRecord := CarCsv{}
+	err = json.Unmarshal(carCsv, &csvRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
+	carHash, err := uploadCarFileIpfs(csvRecord.CarFilePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileAddress := config.GetUserConfig().IpfsGateway + "/ipfs/" + carHash
+	csvRecord.CarFileUrl = carFileAddress
+
+	dataBytes, err := json.Marshal(csvRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	err = db.Put([]byte(graphName+"_deals_car_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func uploadCarFile(carDir string, graphName string) error {
+	records, err := readCsv(filepath.Join(carDir, "car.csv"))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	var newRecords [][]string
+	newRecords = append(newRecords, []string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5", "car_file_url"})
+	for _, record := range records {
+		carHash, err := uploadCarFileIpfs(record[1])
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		carFileAddress := config.GetUserConfig().IpfsGateway + "/ipfs/" + carHash
+		record = append(record, carFileAddress)
+		newRecords = append(newRecords, record)
+	}
+	err = writeCarCsv(filepath.Join(carDir, "car.csv"), newRecords)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+type UploadIpfsResponse struct {
+	Name string
+	Hash string
+	Size string
+}
+
+func uploadCarFileIpfs(carFilePath string) (string, error) {
+	file, err := os.Open(carFilePath)
+
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	defer file.Close()
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	part, err := writer.CreateFormFile("", filepath.Base(file.Name()))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+
+	io.Copy(part, file)
+	writer.Close()
+
+	url := config.GetUserConfig().IpfsApiAddress + "/api/v0/add"
+	request, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+
+	request.Header.Add("Content-Type", writer.FormDataContentType())
+	client := &http.Client{}
+
+	response, err := client.Do(request)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	defer response.Body.Close()
+
+	content, err := ioioutil.ReadAll(response.Body)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	uploadResponse := UploadIpfsResponse{}
+	err = json.Unmarshal(content, &uploadResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return uploadResponse.Hash, err
+}
+
+type CarCsv struct {
+	CarFileName    string
+	CarFilePath    string
+	PieceCid       string
+	DataCid        string
+	CarFileSize    string
+	CarFileMd5     string
+	SourceFileName string
+	SourceFilePath string
+	SourceFileSize string
+	SourceFileMd5  string
+	CarFileUrl     string
+}
+
+func saveCarCsvToDb(carDir string, parentPath string, bucket string) error {
+	manifestPath := filepath.Join(carDir, "manifest.csv")
+	manifestCSV, err := os.Open(manifestPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer manifestCSV.Close()
+
+	reader := csv.NewReader(manifestCSV)
+	reader.LazyQuotes = true
+	reader.Comma = ','
+
+	//ignore values in detail
+	reader.FieldsPerRecord = -1
+
+	csvLines, err := reader.ReadAll()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
+	manifestRecord := csvLines[len(csvLines)-1]
+	carFileName := manifestRecord[0] + ".car"
+	carFilePath := filepath.Join(carDir, carFileName)
+	carFile, err := os.Open(carFilePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer carFile.Close()
+
+	stat, err := carFile.Stat()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileSize := strconv.FormatInt(stat.Size(), 10)
+
+	h := md5.New()
+	if _, err := io.Copy(h, carFile); err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileMd5 := hex.EncodeToString(h.Sum(nil))
+
+	files, err := ioioutil.ReadDir(parentPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	var sourceFiles SourceFiles
+	var sourceFilesPath SourceFilesPath
+	var sourceFilesSize SourceFilesSize
+	var sourceFilesMd5 SourceFilesMd5
+	for _, f := range files {
+		sourceFile := SourceFile{
+			Name: f.Name(),
+		}
+		sourceFilePath := SourceFilePath{
+			Path: filepath.Join(parentPath, f.Name()),
+		}
+		file, err := os.Open(filepath.Join(parentPath, f.Name()))
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileSize := strconv.FormatInt(stat.Size(), 10)
+		sourceFileSize := SourceFileSize{
+			Size: fileSize,
+		}
+
+		h := md5.New()
+		if _, err := io.Copy(h, file); err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileMd5 := hex.EncodeToString(h.Sum(nil))
+		sourceFileMd5 := SourceFileMd5{
+			Md5: fileMd5,
+		}
+		sourceFiles.SourceFilesNames = append(sourceFiles.SourceFilesNames, sourceFile)
+		sourceFilesPath.SourceFilesPaths = append(sourceFilesPath.SourceFilesPaths, sourceFilePath)
+		sourceFilesSize.SourceFilesSizes = append(sourceFilesSize.SourceFilesSizes, sourceFileSize)
+		sourceFilesMd5.SourceFilesMd5s = append(sourceFilesMd5.SourceFilesMd5s, sourceFileMd5)
+	}
+
+	sourceFileName, err := json.Marshal(sourceFiles.SourceFilesNames)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFilesName := string(sourceFileName)
+
+	sourceFilePaths, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFilePath := string(sourceFilePaths)
+
+	sourceFileSizes, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFileSize := string(sourceFileSizes)
+
+	sourceFileMd5s, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFileMd5 := string(sourceFileMd5s)
+
+	expandedDir, err := LevelDbPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	newCarCsv := CarCsv{
+		CarFileName:    carFileName,
+		CarFilePath:    carFilePath,
+		PieceCid:       manifestRecord[2],
+		DataCid:        manifestRecord[0],
+		CarFileSize:    carFileSize,
+		CarFileMd5:     carFileMd5,
+		SourceFileName: sourceFilesName,
+		SourceFilePath: sourceFilePath,
+		SourceFileSize: sourceFileSize,
+		SourceFileMd5:  sourceFileMd5,
+		CarFileUrl:     "",
+	}
+	dataBytes, err := json.Marshal(newCarCsv)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	err = db.Put([]byte(bucket+"_deals_car_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func generateCarCsv(carDir string, parentPath string) error {
+	manifestPath := filepath.Join(carDir, "manifest.csv")
+	carPath := filepath.Join(carDir, "car.csv")
+	manifestCSV, err := os.Open(manifestPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer manifestCSV.Close()
+
+	if _, err := os.Stat(carPath); err == nil {
+		os.Remove(carPath)
+	}
+
+	carCSV, err := os.OpenFile(carPath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer carCSV.Close()
+
+	reader := csv.NewReader(manifestCSV)
+	reader.LazyQuotes = true
+	reader.Comma = ','
+
+	//ignore values in detail
+	reader.FieldsPerRecord = -1
+
+	csvLines, err := reader.ReadAll()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
+	manifestRecord := csvLines[len(csvLines)-1]
+	carFileName := manifestRecord[0] + ".car"
+	carFilePath := filepath.Join(carDir, carFileName)
+	carFile, err := os.Open(carFilePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer carFile.Close()
+
+	stat, err := carFile.Stat()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileSize := strconv.FormatInt(stat.Size(), 10)
+
+	h := md5.New()
+	if _, err := io.Copy(h, carFile); err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	carFileMd5 := hex.EncodeToString(h.Sum(nil))
+
+	files, err := ioioutil.ReadDir(parentPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	var sourceFiles SourceFiles
+	var sourceFilesPath SourceFilesPath
+	var sourceFilesSize SourceFilesSize
+	var sourceFilesMd5 SourceFilesMd5
+	for _, f := range files {
+		sourceFile := SourceFile{
+			Name: f.Name(),
+		}
+		sourceFilePath := SourceFilePath{
+			Path: filepath.Join(parentPath, f.Name()),
+		}
+		file, err := os.Open(filepath.Join(parentPath, f.Name()))
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		defer file.Close()
+
+		stat, err := file.Stat()
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileSize := strconv.FormatInt(stat.Size(), 10)
+		sourceFileSize := SourceFileSize{
+			Size: fileSize,
+		}
+
+		h := md5.New()
+		if _, err := io.Copy(h, file); err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		fileMd5 := hex.EncodeToString(h.Sum(nil))
+		sourceFileMd5 := SourceFileMd5{
+			Md5: fileMd5,
+		}
+		sourceFiles.SourceFilesNames = append(sourceFiles.SourceFilesNames, sourceFile)
+		sourceFilesPath.SourceFilesPaths = append(sourceFilesPath.SourceFilesPaths, sourceFilePath)
+		sourceFilesSize.SourceFilesSizes = append(sourceFilesSize.SourceFilesSizes, sourceFileSize)
+		sourceFilesMd5.SourceFilesMd5s = append(sourceFilesMd5.SourceFilesMd5s, sourceFileMd5)
+	}
+
+	sourceFileName, err := json.Marshal(sourceFiles.SourceFilesNames)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFilesName := string(sourceFileName)
+
+	sourceFilePaths, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFilePath := string(sourceFilePaths)
+
+	sourceFileSizes, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFileSize := string(sourceFileSizes)
+
+	sourceFileMd5s, err := json.Marshal(sourceFilesPath.SourceFilesPaths)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sourceFileMd5 := string(sourceFileMd5s)
+
+	w := csv.NewWriter(carCSV)
+	err = w.Write([]string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5"})
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
+	err = w.Write([]string{carFileName, carFilePath, manifestRecord[2], manifestRecord[0], carFileSize, carFileMd5, sourceFilesName, sourceFilePath, sourceFileSize, sourceFileMd5})
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func readCsvInDb(bucket string) (CarCsv, error) {
+	expandedDir, err := LevelDbPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return CarCsv{}, err
+	}
+	defer db.Close()
+
+	carCsv, err := db.Get([]byte(bucket+"_deals_car_csv"), nil)
+	if err != nil || carCsv == nil {
+		logs.GetLogger().Error(err)
+		return CarCsv{}, err
+	}
+	csvRecord := CarCsv{}
+	err = json.Unmarshal(carCsv, &csvRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return CarCsv{}, err
+	}
+	return csvRecord, err
+}
+
+func readCsv(_filepath string) ([][]string, error) {
+	csvFile, err := os.Open(_filepath)
+	if err != nil {
+		return nil, err
+	}
+	defer csvFile.Close()
+
+	reader := csv.NewReader(csvFile)
+	reader.LazyQuotes = true
+	reader.Comma = ','
+
+	//ignore values in detail
+	reader.FieldsPerRecord = -1
+	csvLines, err := reader.ReadAll()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	csvRecord := csvLines[len(csvLines)-1]
+	csvColumeLen := len(csvLines[0])
+	var records [][]string
+	i := 0
+	for i < len(csvRecord) {
+		record := csvRecord[i : i+csvColumeLen]
+		records = append(records, record)
+		i = i + csvColumeLen
+	}
+	return records, err
+}
+
+func writeCarCsv(_filepath string, records [][]string) error {
+	csvFile, err := os.OpenFile(_filepath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer csvFile.Close()
+
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(records)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func createTask(bucket string, offlineDeals CarCsv, outputDir string, request TaskInfo) ([]byte, error) {
+	taskUuid := uuid.New().String()
+	err := generateMetadataCsvToDb(bucket, offlineDeals, taskUuid, outputDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	err = generateTaskCsvToDb(bucket, offlineDeals, outputDir, taskUuid)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	err = generateTaskCsv(offlineDeals, outputDir, taskUuid)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	response, err := createSwanTask(outputDir, taskUuid, request)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	return response, err
+
+}
+
+type TaskInfo struct {
+	TaskName       string `json:"task_name"`
+	CuratedDataset string `json:"curated_dataset"`
+	Description    string `json:"description"`
+	IsPublic       string `json:"is_public"`
+	Type           string `json:"type"`
+	MinerId        string `json:"miner_id"`
+	MinPrice       string `json:"min_price"`
+	MaxPrice       string `json:"max_price"`
+	Tags           string `json:"tags"`
+	ExpireDays     string `json:"expire_days"`
+}
+
+func createSwanTask(outputDir string, taskUuid string, request TaskInfo) ([]byte, error) {
+	taskCsv, err := os.Open(path.Join(outputDir, taskUuid+".csv"))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	client := http.Client{Timeout: time.Minute}
+	method := "POST"
+	swanUrl := config.GetUserConfig().SwanAddress + "/tasks"
+	token := config.GetUserConfig().SwanToken
+
+	body := &bytes.Buffer{}
+	writer := multipart.NewWriter(body)
+	fw, err := writer.CreateFormField("task_name")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.TaskName))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("curated_dataset")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.CuratedDataset))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("description")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.Description))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("is_public")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	if request.IsPublic == "0" {
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.IsPublic))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("verified_type")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.Type))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("miner_id")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.MinerId))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("min_price")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.MinPrice))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("max_price")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.MaxPrice))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("tags")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.Tags))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormField("expired_days")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, strings.NewReader(request.ExpireDays))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	fw, err = writer.CreateFormFile("file", taskUuid+".csv")
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	_, err = io.Copy(fw, taskCsv)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	writer.Close()
+
+	req, err := http.NewRequest(method, swanUrl, bytes.NewReader(body.Bytes()))
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	res, err := client.Do(req)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	defer res.Body.Close()
+
+	bodyBytes, err := ioioutil.ReadAll(res.Body)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	return bodyBytes, err
+}
+
+type TaskCsv struct {
+	Uuid          string
+	MinerId       string
+	DealCid       string
+	PayloadCid    string
+	FileSourceUrl string
+	Md5           string
+	StartEpoch    string
+}
+
+func generateTaskCsvToDb(bucket string, records CarCsv, outputDir string, taskUuid string) error {
+	expandedDir, err := LevelDbPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	newRecord := TaskCsv{
+		Uuid:          taskUuid,
+		MinerId:       "",
+		DealCid:       "",
+		PayloadCid:    records.DataCid,
+		FileSourceUrl: records.CarFileUrl,
+		Md5:           records.CarFileMd5,
+		StartEpoch:    "",
+	}
+	dataBytes, err := json.Marshal(newRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	err = db.Put([]byte(bucket+"_deals_task_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func generateTaskCsv(records CarCsv, outputDir string, taskUuid string) error {
+	taskCsvPath := filepath.Join(outputDir, taskUuid+".csv")
+	csvFile, err := os.OpenFile(taskCsvPath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer csvFile.Close()
+
+	var taskRecords [][]string
+	taskRecords = append(taskRecords, []string{"uuid", "miner_id", "deal_cid", "payload_cid", "file_source_url", "md5", "start_epoch"})
+	taskRecord := []string{taskUuid, "", "", records.DataCid, records.CarFileUrl, records.CarFileMd5, ""}
+	taskRecords = append(taskRecords, taskRecord)
+
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(taskRecords)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+type MetaDataCsv struct {
+	CarFileName    string
+	CarFilePath    string
+	PieceCid       string
+	DataCid        string
+	CarFileSize    string
+	CarFileMd5     string
+	SourceFileName string
+	SourceFilePath string
+	SourceFileSize string
+	SourceFileMd5  string
+	CarFileUrl     string
+	Uuid           string
+	SourceFileUrl  string
+	DealCid        string
+	MinerId        string
+	StartEpoch     string
+}
+
+func generateMetadataCsvToDb(bucket string, records CarCsv, taskUuid string, outputDir string) error {
+	expandedDir, err := LevelDbPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	newRecord := MetaDataCsv{
+		CarFileName:    records.CarFileName,
+		CarFilePath:    records.CarFilePath,
+		PieceCid:       records.PieceCid,
+		DataCid:        records.DataCid,
+		CarFileSize:    records.DataCid,
+		CarFileMd5:     records.CarFileMd5,
+		SourceFileName: records.SourceFileName,
+		SourceFilePath: records.SourceFilePath,
+		SourceFileSize: records.SourceFileSize,
+		SourceFileMd5:  records.SourceFileMd5,
+		CarFileUrl:     records.CarFileUrl,
+		Uuid:           taskUuid,
+		SourceFileUrl:  "",
+		DealCid:        "",
+		MinerId:        "",
+		StartEpoch:     "",
+	}
+	dataBytes, err := json.Marshal(newRecord)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	err = db.Put([]byte(bucket+"_deals_metadata_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func generateMetadataCsv(records [][]string, taskUuid string, outputDir string) error {
+	var newRecords [][]string
+	newRecords = append(newRecords, []string{"car_file_name", "car_file_path", "piece_cid", "data_cid", "car_file_size", "car_file_md5", "source_file_name", "source_file_path", "source_file_size", "source_file_md5", "car_file_url", "uuid", "source_file_url", "deal_cid", "miner_id", "start_epoch"})
+	for _, record := range records {
+		record = append(record, taskUuid, "", "", "", "")
+		newRecords = append(newRecords, record)
+	}
+
+	metaCsvPath := filepath.Join(outputDir, taskUuid+"-metadata.csv")
+	csvFile, err := os.OpenFile(metaCsvPath, os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer csvFile.Close()
+
+	w := csv.NewWriter(csvFile)
+	err = w.WriteAll(newRecords)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	w.Flush()
+	err = w.Error()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+func IsDirEmpty(name string) (bool, error) {
+	f, err := os.Open(name)
+	if err != nil {
+		return false, err
+	}
+	defer f.Close()
+
+	// read in ONLY one file
+	_, err = f.Readdir(1)
+
+	// and if the file is EOF... well, the dir is empty.
+	if err == io.EOF {
+		return true, nil
+	}
+	return false, err
 }

@@ -45,10 +45,11 @@ const (
 var (
 	errInvalidAccessKeyID   = errors.New("The access key ID you provided does not exist in our records")
 	errChangeCredNotAllowed = errors.New("Changing access key and secret key not allowed")
-	errAuthentication       = errors.New("Authentication failed, check your access credentials")
+	errAuthentication       = errors.New("Authentication failed, check your FS3 credentials")
 	errNoAuthToken          = errors.New("JWT token missing")
 	errIncorrectCreds       = errors.New("Current access key or secret key is incorrect")
 	errPresignedNotAllowed  = errors.New("Unable to generate shareable URL due to lack of read permissions")
+	errIncorrectToken       = "Authentication failed, check your FS3 token"
 )
 
 func authenticateJWTUsers(accessKey, secretKey string, expiry time.Duration) (string, error) {

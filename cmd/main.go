@@ -18,14 +18,18 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
-	"sort"
-
+	"fmt"
+	"github.com/joho/godotenv"
 	"github.com/minio/cli"
+	sysconfig "github.com/minio/minio/config"
+	"github.com/minio/minio/internal/config"
+	"github.com/minio/minio/logs"
 	"github.com/minio/pkg/console"
 	"github.com/minio/pkg/trie"
 	"github.com/minio/pkg/words"
+	"os"
+	"path/filepath"
+	"sort"
 )
 
 // GlobalFlags - global flags for minio.
@@ -164,8 +168,41 @@ func Main(args []string) {
 	// Set the minio app name.
 	appName := filepath.Base(args[0])
 
+	initConfigAndLog()
+	initUserConfig(sysconfig.GetSysConfig().StandAlone)
+
+	fmt.Println(config.GetUserConfig().Fs3VolumeAddress)
+
 	// Run the app - exit on error.
 	if err := newApp(appName).Run(args); err != nil {
 		os.Exit(1)
 	}
+}
+
+func initUserConfig(standAlone bool) {
+	if standAlone {
+		LoadEnv()
+	}
+	swanAddress := os.Getenv("SWAN_ADDRESS")
+	fs3VolumeAddress := os.Getenv("FS3_VOLUME_ADDRESS")
+	fs3WalletAddress := os.Getenv("FS3_WALLET_ADDRESS")
+	carFileSize := os.Getenv("CAR_FILE_SIZE")
+	ipfsApiAddress := os.Getenv("IPFS_API_ADDRESS")
+	ipfsGateway := os.Getenv("IPFS_GATEWAY")
+	swanToken := os.Getenv("SWAN_TOKEN")
+	logs.GetLogger().Println(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken)
+	config.InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken)
+
+}
+
+func LoadEnv() {
+	err := godotenv.Load(".env")
+	if err != nil {
+		logs.GetLogger().Error(err)
+	}
+}
+
+func initConfigAndLog() {
+	logs.InitLogger()
+	sysconfig.InitSysConfig("")
 }

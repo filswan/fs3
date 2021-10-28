@@ -94,7 +94,12 @@ func registerWebRouter(router *mux.Router) error {
 	// RPC handler at URI - /minio/webrpc
 	webBrowserRouter.Methods(http.MethodPost).Path("/webrpc").Handler(webRPC)
 	webBrowserRouter.Methods(http.MethodPut).Path("/upload/{bucket}/{object:.+}").HandlerFunc(httpTraceHdrs(web.Upload))
-	webBrowserRouter.Methods(http.MethodPut).Path("/deal/{bucket}/{object:.+}").HandlerFunc(httpTraceHdrs(web.SendDeal))
+	webBrowserRouter.Methods(http.MethodPost).Path("/deal/{bucket}/{object:.+}").HandlerFunc(httpTraceHdrs(web.SendDeal))
+	webBrowserRouter.Methods(http.MethodPost).Path("/deals/{bucket}").HandlerFunc(httpTraceHdrs(web.SendDeals))
+	webBrowserRouter.Methods(http.MethodGet).Path("/retrieve/{bucket}/{object}").HandlerFunc(httpTraceHdrs(web.RetrieveDeal))
+	webBrowserRouter.Methods(http.MethodGet).Path("/bucket/retrieve/{bucket}").HandlerFunc(httpTraceHdrs(web.RetrieveDeals))
+	webBrowserRouter.Methods(http.MethodPost).Path("/offlinedeal/{bucket}/{object:.+}").HandlerFunc(httpTraceHdrs(web.SendOfflineDeal))
+	webBrowserRouter.Methods(http.MethodPost).Path("/offlinedeals/{bucket}").HandlerFunc(httpTraceHdrs(web.SendOfflineDeals))
 
 	// These methods use short-expiry tokens in the URLs. These tokens may unintentionally
 	// be logged, so a new one must be generated for each request.
@@ -111,6 +116,8 @@ func registerWebRouter(router *mux.Router) error {
 	// Serve javascript files and favicon from assets.
 	webBrowserRouter.Path(fmt.Sprintf("/{assets:%s}", specialAssets)).Handler(compressAssets)
 
+	// vue support
+	webBrowserRouter.Path("/static/{assets:.*}").Handler(compressAssets)
 	// Serve index.html from assets for rest of the requests.
 	webBrowserRouter.Path("/{index:.*}").Handler(indexHandler{compressAssets})
 
