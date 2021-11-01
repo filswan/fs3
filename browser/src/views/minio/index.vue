@@ -390,7 +390,7 @@
       </el-dialog>
 
       <!-- share dialog box -->
-      <share-dialog v-if="isRouterAlive"
+      <share-dialog
         :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
         :shareFileShow="shareFileShow" :num="num" :share_input="share_input"
         :postAdress="postAdress" :sendApi="sendApi"
@@ -414,11 +414,6 @@ import NCWeb3 from "@/utils/web3";
 let that
 export default {
   name: 'landing',
-  provide () {
-      return {
-          reload: this.reload
-      }
-  },
   data() {
     return {
       postUrl: this.data_api + `/minio/webrpc`,
@@ -480,8 +475,7 @@ export default {
       network: {
         name: '',
         unit: 0
-      },
-      isRouterAlive: true
+      }
     }
   },
   components: {
@@ -490,12 +484,6 @@ export default {
   },
   props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick', 'allDealShow'],
   methods: {
-    reload () {
-        this.isRouterAlive = false;
-        this.$nextTick(function () {
-            this.isRouterAlive = true;
-        })
-    },
     exChange(row, rowList) {
       var that = this
       if (rowList.length) {
@@ -750,6 +738,7 @@ export default {
           }
         }
         xhr.send(JSON.stringify(objZip))
+        console.log('xiazai:', JSON.stringify(objZip));
       }else{
         var a = document.createElement("a");
         a.download = _this.currentBucketAll[0];
@@ -929,7 +918,7 @@ export default {
                 if(!_this.addr){
                     NCWeb3.Init(addr=>{
                         //Get the corresponding wallet address
-                        // console.log('Wallet address:', addr)
+                        console.log('Wallet address:', addr)
                         _this.$nextTick(() => {
                             _this.addr = addr
                             _this.walletInfo()
@@ -947,7 +936,7 @@ export default {
               });
 
               web3.eth.net.getId().then(netId => {
-                  // console.log('network ID:', netId)
+                  console.log('network ID:', netId)
                   switch (netId) {
                     case 1:
                       _this.network.name = 'mainnet';
@@ -981,16 +970,8 @@ export default {
                });
             },
             fn() {
-              let _this = this
               ethereum.on("accountsChanged", function(accounts) {
-                  if(sessionStorage.getItem('addrWeb')){
-                    _this.addr = accounts[0]
-                    _this.walletInfo()
-                  }
-                // console.log('account:', accounts[0]);  //Once the account is switched, it will be executed here
-              });
-              ethereum.on("networkChanged", function(networkID) {
-                 _this.walletInfo()
+                console.log('account:', accounts[0]);  //Once the account is switched, it will be executed here
               });
             },
             qm(){
@@ -1111,8 +1092,7 @@ export default {
             _this.editNameFile = true
             _this.$refs.mark.$el.querySelector('input').blur()
           })
-        }
-        if(_this.form.name){
+        }else if(_this.form.name){
             console.log('create bucket')
             _this.getServer();
         }

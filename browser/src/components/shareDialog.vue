@@ -1,5 +1,4 @@
 <template>
-  <div>
       <el-dialog title="" top="50px" :visible.sync="shareDialog" :custom-class="{'ShareObjectMobile': shareFileShowMobile, 'ShareObject': 1 === 1}" :before-close="getDiglogChange">
           <div class="shareContent">
               <el-row class="share_left" v-if="shareObjectShow">
@@ -36,12 +35,8 @@
                 </el-col>
               </el-row>
 
-              <el-tabs v-model="activeOn" @tab-click="handleClick" tab-position="left" v-if="shareFileShow && sendApi == 1">
-                <el-tab-pane label="online" name="online"></el-tab-pane>
-                <el-tab-pane label="offline" name="offline"></el-tab-pane>
-              </el-tabs>
 
-              <el-row class="share_right" v-if="shareFileShow && activeOn == 'online'">
+              <el-row class="share_right" v-if="shareFileShow">
                 <el-button class="shareFileCoinSend" @click="submitForm('ruleForm')">Send</el-button>
                 <el-col :span="24">
                   <!--h4 v-if="shareObjectShow">Share to Filecoin</h4-->
@@ -49,13 +44,12 @@
                 </el-col>
                 <el-col :span="24">
                   <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="110px" class="demo-ruleForm">
-                    <el-form-item label="Provider ID:" prop="minerId" v-if="activeOn == 'online'">
+                    <el-form-item label="Provider ID:" prop="minerId">
                       <!--el-input v-model="ruleForm.minerId"></el-input-->
-                      <el-menu :default-active="'1'" menu-trigger="click" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true"  v-show="activeOn == 'online'" >
+                      <el-menu :default-active="'1'" menu-trigger="click" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true">
                           <el-submenu index="1" popper-class="myMenu" :popper-append-to-body="false">
                               <template slot="title">
-                                 <!-- {{ name }} -->
-                                 <el-input v-model="ruleForm.minerId" placeholder="Please select Provider ID"></el-input>
+                                  {{ name }}
                               </template>
                               <el-submenu :index="'1-'+n" v-for="(item, n) in locationOptions" :key="n" :attr="'1-'+n">
                                   <template slot="title">
@@ -107,102 +101,15 @@
                    </el-input>
                  </el-col>
               </el-row>
-
-
-              <el-row class="share_right" v-if="shareFileShow && activeOn == 'offline'">
-                <el-button class="shareFileCoinSend" @click="submitofflineForm('offlineForm')">Send</el-button>
-                <el-col :span="24">
-                  <!--h4 v-if="shareObjectShow">Share to Filecoin</h4-->
-                  <h4>Backup to Filecoin</h4>
-                </el-col>
-                <el-col :span="24">
-                  <el-form :model="offlineForm" :rules="ruleOfflines" ref="offlineForm" label-width="115px" class="demo-ruleForm">
-                    <el-form-item label="Task Name:" prop="task_name">
-                      <el-input v-model="offlineForm.task_name"></el-input>
-                    </el-form-item>
-                    <el-form-item label="Description:" prop="desc">
-                      <el-input type="textarea" v-model="offlineForm.desc"></el-input>
-                    </el-form-item>
-                    <el-form-item label="Tags:" prop="tags">
-                        <el-tag :key="tag" v-for="tag in offlineForm.tags" closable :disable-transitions="false" @close="handleTagsClose(tag)">
-                            {{tag}}
-                        </el-tag>
-                        <el-input class="input-new-tag" v-if="inputVisibleTask" v-model="inputValueTask" ref="saveTagInput" size="small"
-                                  @blur="handleInputConfirmTask"  @keyup.enter.native="handleInputConfirmTask"
-                                  maxlength="15"
-                        >
-                        </el-input>
-                        <el-button v-else class="button-new-tag" size="small" @click="showInputTask">+ New Tag</el-button>
-
-                    </el-form-item>
-                    <el-form-item label="Curated Dataset:" prop="curated_dataset" class="lineHeight">
-                      <el-input v-model="offlineForm.curated_dataset"></el-input>
-                    </el-form-item>
-                    <el-form-item label="Type:" prop="type">
-                      <el-radio v-model="offlineForm.type" label="regular">Regular</el-radio>
-                      <el-radio v-model="offlineForm.type" label="verified">Verified</el-radio>
-                    </el-form-item>
-                    <el-form-item label="Open Bid:" prop="OpenBidType">
-                      <el-radio v-model="offlineForm.OpenBidType" :label="1">True</el-radio>
-                      <el-radio v-model="offlineForm.OpenBidType" :label="0">False</el-radio>
-                    </el-form-item>
-                    <el-form-item prop="bidDay" v-if="offlineForm.OpenBidType == 1">
-                        <h4 style="margin: 0px 0px 0px -75px;color: #606266;font-size: 14px;">Expect Complete in <el-input v-model="offlineForm.bidDay" style="width:60px"></el-input> days.</h4>
-                    </el-form-item>
-                    <el-form-item label="Estimated Budget" prop="bidprice" v-if="offlineForm.OpenBidType == 1" class="lineHeight">
-                        <h4 style="margin: 0;">
-                            <el-input v-model="offlineForm.min_price" style="width:100px" placeholder="Min"></el-input>
-                            -
-                            <el-input v-model="offlineForm.max_price" style="width:100px" placeholder="Max"></el-input>
-                        </h4>
-                    </el-form-item>
-                    <el-form-item label="Provider ID" prop="providerId" v-show="offlineForm.OpenBidType != 1">
-                      <el-menu :default-active="'1'" menu-trigger="click" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true" v-if="offlineForm.OpenBidType != 1">
-                          <el-submenu index="1" popper-class="myMenu" :popper-append-to-body="false">
-                              <template slot="title">
-                                  <!-- {{ nameOffline }} -->
-                                  <el-input v-model="offlineForm.providerId" placeholder="Please select Provider ID"></el-input>
-                              </template>
-                              <el-submenu :index="'1-'+n" v-for="(item, n) in locationOptions" :key="n" :attr="'1-'+n">
-                                  <template slot="title">
-                                      <span>{{ item.value }}</span>
-                                  </template>
-                                  <el-menu-item :index="'1-'+n+'-1'" :attr="'1-'+n+'-1'">
-                                      <!-- <el-table :cell-class-name="tableCellClassName" @cell-click="cellClick" ref="multipleTable" :data="tableData" v-loading="loading" tooltip-effect="dark" style="width: 100%" @selection-change="handleSelectionChange"> -->
-                                      <el-table ref="singleTable" :cell-class-name="tableCellClassName" @cell-click="cellClick" :data="tableData" v-loadmore="loadMore" v-loading="loading" height="255" highlight-current-row @current-change="handleCurrentChange" style="width: 100%">
-                                          <el-table-column type="index" width="40">
-                                              <template  slot-scope="scope">
-                                                  <el-radio v-model="radio" :label="'1-'+n+'-'+scope.$index"></el-radio>
-                                              </template>
-                                          </el-table-column>
-                                          <el-table-column property="miner_id" label="W3SS ID"></el-table-column>
-                                          <el-table-column property="status" label="Status"></el-table-column>
-                                          <el-table-column property="score" label="Score"></el-table-column>
-                                      </el-table>
-                                  </el-menu-item>
-                              </el-submenu>
-                          </el-submenu>
-                      </el-menu>
-                      <h4 style="margin: 0;color: #f56c6c;font-size: 12px;line-height: 1;clear: both;" v-if="offlineForm.providerId_tips">Please enter Provider ID</h4>
-                    </el-form-item>
-                  </el-form>
-                </el-col>
-              </el-row>
           </div>
       </el-dialog>
 
-      <el-dialog title="" :visible.sync="finishTransaction" :width="width" class="completed">
-        <h1>Completed!</h1>
-        <h3>Please check FilSwan platform, the task {{taskName}} has been successfully added to your FilSwan account.</h3>
-      </el-dialog>
-  </div>
 </template>
 
 <script>
 import axios from 'axios'
 import QRCode from 'qrcodejs2'
 export default {
-    inject:['reload'],
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
@@ -221,7 +128,7 @@ export default {
             },
             rules: {
                minerId: [
-                 { required: true, message: 'Please enter Provider ID', trigger: 'blur' }
+                 { required: true, message: 'Please enter Miner ID', trigger: 'blur' }
                ],
                price: [
                  { required: true, message: 'Please enter Price', trigger: 'blur' }
@@ -264,34 +171,9 @@ export default {
             loading: false,
             bodyWidth: document.documentElement.clientWidth < 1024 ? true : false,
             name: 'Please select Provider ID',
-            nameOffline: 'Please select Provider ID',
             parentLi: '',
             parentName: '',
-            radio: '1',
-            offlineForm: {
-              task_name: '',
-              desc: '',
-              tags: [],
-              curated_dataset: '',
-              type: 'regular',
-              OpenBidType: 1,
-              bidDay: '',
-              min_price: '',
-              max_price: '',
-              providerId: '',
-              providerId_tips: false
-            },
-            ruleOfflines: {
-               task_name: [
-                 { required: true, message: 'Please enter Task Name', trigger: 'blur' }
-               ]
-            },
-            activeOn: 'online',
-            inputVisibleTask: false,
-            inputValueTask: '',
-            width: document.body.clientWidth>600?'400px':'95%',
-            finishTransaction: false,
-            taskName: ''
+            radio: '1'
         }
     },
     props: ['shareDialog','shareObjectShow','shareFileShow', 'num', 'share_input', 'postAdress', 'sendApi'],
@@ -299,7 +181,14 @@ export default {
       'shareDialog': function(){
         let _this = this
         if(!_this.shareDialog){
-          _this.reload();
+          _this.ruleForm = {
+              minerId: '',
+              price: '',
+              duration: '',
+              verified: '2',
+              fastRetirval: '1',
+              dealCID: ''
+          }
         }
       },
       share_input: function(){
@@ -310,84 +199,6 @@ export default {
       },
     },
     methods: {
-      handleClick(tab, event) {
-        this.activeOn = tab.name
-        this.$refs['ruleForm'].resetFields();
-      },
-      handleTagsClose(tag) {
-          this.offlineForm.tags.splice(this.offlineForm.tags.indexOf(tag), 1);
-      },
-      showInputTask() {
-          let _this = this
-          if(_this.offlineForm.tags.length<5){
-              _this.inputVisibleTask = true;
-              _this.$nextTick(_ => {
-                  _this.$refs.saveTagInput.$refs.input.focus();
-              });
-          }
-      },
-      handleInputConfirmTask() {
-          let inputValue = this.inputValueTask;
-          if (inputValue) {
-              this.offlineForm.tags.push(inputValue);
-              this.offlineForm.tags = this.uniqueNew(this.offlineForm.tags)
-          }
-          this.inputVisibleTask = false;
-          this.inputValueTask = '';
-      },
-      uniqueNew(arr) {
-          const res = new Map();
-          return arr.filter((arr) => !res.has(arr) && res.set(arr, 1));
-      },
-      submitofflineForm(formName) {
-          let _this = this;
-          _this.$refs[formName].validate((valid) => {
-              if (valid) {
-                  let params = {
-                    'Task_Name': _this.offlineForm.task_name,
-                    'Curated_Dataset': _this.offlineForm.curated_dataset,
-                    'Description': _this.offlineForm.desc,
-                    'Is_Public': String(_this.offlineForm.OpenBidType),
-                    'Type': _this.offlineForm.type,
-                    'Tags': _this.offlineForm.tags.join(',')
-                  }
-                  if(_this.offlineForm.OpenBidType == 1){
-                    params.Expire_Days = _this.offlineForm.bidDay
-                    params.Max_Price = _this.offlineForm.max_price
-                    params.Min_Price = _this.offlineForm.min_price
-                  }else{
-                    if(!_this.offlineForm.providerId){
-                      _this.offlineForm.providerId_tips = true
-                      return false;
-                    }else{
-                      _this.offlineForm.providerId_tips = false
-                    }
-                    params.Miner_Id = _this.offlineForm.providerId
-                  }
-                  // Initiate request
-                  let postUrl = _this.data_api + `/minio/offlinedeals/` + _this.postAdress
-                  axios.post(postUrl, params, {headers: {
-                       'Authorization':"Bearer "+ _this.$store.getters.accessToken
-                  }}).then((response) => {
-                      let json = response.data
-                      if (json.status == 'success') {
-                        _this.taskName = json.data.deals.data.taskname
-                        _this.finishTransaction = true
-                      }else{
-                          _this.$message.error(json.message);
-                          return false
-                      }
-
-                  }).catch(function (error) {
-                      console.log(error);
-                  });
-
-              } else {
-                  console.log('error submit!!');
-                  return false;
-              }
-          });
-      },
       creatQrCode() {
           let _this = this
           document.getElementById("qrcode").innerHTML = ''
@@ -412,6 +223,7 @@ export default {
             let postUrl = ''
 
             if(_this.sendApi == 1){
+              console.log('backup to filecoin', _this.postAdress);
               postUrl = _this.data_api + `/minio/deals/` + _this.postAdress
             }else{
               postUrl = _this.data_api + `/minio/deal/` + _this.postAdress
@@ -456,6 +268,7 @@ export default {
         this.$emit('getshareDialog', false)
       },
       handleChange(value) {
+          console.log(this.num)
           this.$emit('getShareGet', this.num)
       },
       copyLink(text){
@@ -493,6 +306,7 @@ export default {
           column.index=columnIndex;
       },
       cellClick(row, column, cell, event){
+          console.log(row.index);  //Select row
           let _this = this
           _this.radio = _this.parentLi + '-' + row.index
       },
@@ -507,22 +321,18 @@ export default {
       },
       handleSelectionChange(val) {
           this.multipleSelection = val;
+          console.log('check', val)
       },
       setCurrent(row) {
           this.$refs.singleTable.setCurrentRow(row);
       },
       handleCurrentChange(val) {
-          let _this = this
-          _this.currentRow = val;
+          this.currentRow = val;
+          console.log(val)
           if(val && val.miner_id){
               //this.name = this.parentName + ' / ' + val.miner_id
-              if(_this.activeOn == 'online'){
-                _this.ruleForm.minerId =  val.miner_id
-                _this.name = val.miner_id
-              }else{
-                _this.offlineForm.providerId =  val.miner_id
-                _this.nameOffline = val.miner_id
-              }
+              this.ruleForm.minerId = val.miner_id
+              this.name = val.miner_id
           }
       },
       handleOpen(key, keyPath) {
@@ -540,9 +350,6 @@ export default {
               })
 
               let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
-              // let postURL = _this.data_api + '/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
-              // let postURL = 'https://api.filswan.com/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
-
               axios.get(postURL).then((response) => {
                   let json = response.data.data.miner
                   _this.tableData = json
@@ -564,11 +371,10 @@ export default {
               _this.page++
               if (_this.page >= _this.total) {
                   console.log('finish:', _this.page)
-                  return false
+                  return
               }
 
               _this.loading = true
-              // let postURL = _this.data_api + '/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
               let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
               axios.get(postURL).then((response) => {
                   let json = response.data.data.miner
@@ -634,36 +440,14 @@ export default {
         .el-dialog__body{
           padding: 0;
           .shareContent{
-            position: relative;
             display: flex;
             //align-items: center;
             justify-content: center;
             flex-wrap: wrap;
             width: 100%;
-            .el-tabs{
-              position:absolute;
-              top:0;
-              right: 100%;
-              .el-tabs__header.is-left{
-                float: none;
-                margin: 0;
-                .el-tabs__active-bar.is-left{
-                  width: 0;
-                }
-
-              }
-              .el-tabs__item{
-                background: #eee;
-                border-top-left-radius: 0.05rem;
-                border-bottom-left-radius: 0.05rem;
-              }
-              .el-tabs__item.is-active {
-                   background: #fff;
-               }
-            }
             .el-row{
               position: relative;
-              width: 450px;
+              width: 400px;
               .qrcode{
                   display: inline-block;
                   position: absolute;
@@ -678,7 +462,7 @@ export default {
                   }
               }
               .el-col{
-                padding: 0 0.15rem;
+                padding: 0 0.2rem;
                 margin-bottom: 0.25rem;
                 h4{
                   font-weight: normal;
@@ -821,12 +605,11 @@ export default {
                     padding: 0.1rem;
                     border: 1px solid #eee;
                     border-radius: 0.02rem;
+                    font-size: 13px;
                     cursor: text;
                     transition: border-color;
                     transition-duration: .3s;
                     background-color: transparent;
-                    font-size: 14px;
-                    color: #303133;
                   }
                 }
                 .el-form{
@@ -837,12 +620,6 @@ export default {
                       .el-input{
                         width: calc(100% - 40px);
                       }
-                    }
-                  }
-                  .lineHeight{
-                    .el-form-item__label{
-                      line-height: 20px;
-                      word-break: break-word;
                     }
                   }
                   .el-form-item.is-error, .el-form-item.is-required{
@@ -873,15 +650,7 @@ export default {
                           border: 0;
                           height: 35px;
                           line-height: 35px;
-                          padding: 0 0.1rem;
-                          .el-input{
-                             .el-input__inner{
-                                padding: 0;
-                                border: 0;
-                                font-size: 14px;
-                                color: #303133;
-                             }
-                          }
+                          padding: 0 0.1rem 0 0.2rem;
                       }
                       .el-menu--horizontal{
                           .el-submenu{
@@ -977,7 +746,7 @@ export default {
                 left: 0;
                 top: 0;
                 bottom: 0;
-                width: 0;
+                width: 1px;
                 height: 100%;
                 background-color: #eee;
               }
@@ -986,52 +755,6 @@ export default {
         }
       }
     }
-
-
-.completed /deep/{
-  .el-dialog{
-    margin-top: 0 !important;
-  }
-  text-align: center;
-  .el-dialog__header{
-    display: none;
-  }
-  img{
-    display: block;
-    max-width: 100px;
-    margin: auto;
-  }
-  h1{
-    margin: 0rem auto 0.1rem;
-    font-size: 0.32rem;
-    font-weight: 500;
-    line-height: 1.2;
-    color: #191919;
-    word-break: break-word;
-  }
-  h3, a{
-    font-size: 0.16rem;
-    font-weight: 500;
-    line-height: 1.2;
-    color: #191919;
-    word-break: break-word;
-  }
-  a{
-    text-decoration: underline;
-    color: #007bff;
-  }
-  a.a-close{
-    padding: 5px 45px;
-    background: #5c3cd3;
-    color: #fff;
-    border-radius: 10px;
-    cursor: pointer;
-    margin: 0.2rem auto 0;
-    display: block;
-    width: max-content;
-    text-decoration: unset;
-  }
-}
 
 @media screen and (max-width:769px){
 
@@ -1056,16 +779,6 @@ export default {
         padding: 0;
         .shareContent{
           flex-wrap: wrap;
-          .el-tabs{
-             top: auto;
-             bottom: 100%;
-             right: auto;
-             left: 0;
-            .el-tabs__header.is-left{
-              display: flex;
-              border-bottom: 1px solid #ccc;
-            }
-          }
           .el-row{
             width: 100%;
             max-width: 400px;
