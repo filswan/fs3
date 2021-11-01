@@ -1,4 +1,6 @@
-# FS3 Browser
+# minio
+
+> minio
 
 ## Build Setup
 
