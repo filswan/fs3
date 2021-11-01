@@ -51,7 +51,7 @@
                   <el-form :model="ruleForm" :rules="rules" ref="ruleForm" label-width="110px" class="demo-ruleForm">
                     <el-form-item label="Provider ID:" prop="minerId" v-if="activeOn == 'online'">
                       <!--el-input v-model="ruleForm.minerId"></el-input-->
-                      <el-menu :default-active="'1'" menu-trigger="click" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true"  v-show="activeOn == 'online'" >
+                      <el-menu :default-active="'1'" menu-trigger="click hover" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true"  v-show="activeOn == 'online'" >
                           <el-submenu index="1" popper-class="myMenu" :popper-append-to-body="false">
                               <template slot="title">
                                  <!-- {{ name }} -->
@@ -157,7 +157,7 @@
                         </h4>
                     </el-form-item>
                     <el-form-item label="Provider ID" prop="providerId" v-show="offlineForm.OpenBidType != 1">
-                      <el-menu :default-active="'1'" menu-trigger="click" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true" v-if="offlineForm.OpenBidType != 1">
+                      <el-menu :default-active="'1'" menu-trigger="click hover" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true" v-if="offlineForm.OpenBidType != 1">
                           <el-submenu index="1" popper-class="myMenu" :popper-append-to-body="false">
                               <template slot="title">
                                   <!-- {{ nameOffline }} -->

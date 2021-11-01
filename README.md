@@ -31,20 +31,20 @@ make ffi
 ```
 
 #### Set up FS3 configuration
-Set up or modify FS3 configuration by creating a `.env` file to save as environment varibales. An example config is given as `.env.example`. You can either remove the file extension or create a new file using the following the command. 
+Set up and customize FS3 configuration by making modifications on `.env` file, which stores your information as environment variables. An example config is given as `.env.example` for reference. 
 ``` bash
- vim .env
+vim .env
 ```
 
 Modify the `.env` file based on your use cases:
 
 * __SWAN_ADDRESS__ : The address of filswan platform, default as `https://api.filswan.com`.
-* __FS3_VOLUME_ADDRESS__ : The address of FS3 VOLUME, default as `~/minio-data`. The FS3 server start command will change accordingly.
+* __FS3_VOLUME_ADDRESS__ : The address of FS3 VOLUME, default as `~/minio-data`. If changed, the FS3 server start command has to be changed accordingly.
 * __FS3_WALLET_ADDRESS__ : A wallet address is a must for sending deals to miner. 
 * __CAR_FILE_SIZE__ : A fixed car file size in bytes need to be predefined before generating car files for trunk via variable `CarFileSize`, such as `8589934592` for 8Gb as default.
 * __IPFS_API_ADDRESS__ :  An available ipfs address with port need to be set up. For example, `https://MyIpfsUrl:Port`.
 * __IPFS_GATEWAY__ :  An available ipfs address with port need to be set up for file downloading. For example, `https://MyIpfsGatewayUrl:Port`.
-* __SWAN_TOKEN__ : A valid swan token is required for posting task on swan platform. It can be received after registering on swan website `https://www.filswan.com/`.
+* __SWAN_TOKEN__ : A valid swan token is required for posting task on swan platform. It can be received after creating an account on [Filswan](https://www.filswan.com). Check [Filswan APIs](https://documenter.getpostman.com/view/13140808/TWDZJbzV) for more details on how to get authorization token.
 
 If the configuration is changed in the future, build up the FS3 server again to make the changes take effect.
 
@@ -58,7 +58,7 @@ make
  ./minio server ~/minio-data
 ```
 
-The default FS3 volume address `Fs3VolumeAddress` is set as `~/minio-data`, which can be changed in `fs3/internal/config/config.go`. If the volume address is changed in the future, build up the FS3 server again to make the changes take effect.
+The default FS3 volume address `Fs3VolumeAddress` is set as `~/minio-data`, which can be changed in `.env`. If the volume address is changed in the future, build up the FS3 server again to make the changes take effect.
 
 
 
@@ -336,7 +336,7 @@ Bearer Token = MY_FS3_TOKEN
     "Task_Name":"test_name",
     "Curated_Dataset":"test_dataset",
 	"Description":"test_description",
-	"Is_Public": "0",             // public: "1", private: "0"
+	"Is_Public": "1",             // public: "1", private: "0"
 	"Type": "regular",            // "verified" if deal is verified else "regular"
 	"Miner_Id" : "test_miner",    // miner id is ignored if <Is_Public> is set to "1"    
 	"Min_Price" : "0.000005",
@@ -357,7 +357,7 @@ Response from POSTMAN
                 "uuid": "d2d79d42-6f79-46fe-97bd-cd6f69c25116"
             },
             "status": "success",
-            "message": "Task created successfully.A notification email has been sent to the storage provider"
+            "message": "Task created successfully."
         }
     },
     "status": "success",
