@@ -15,6 +15,7 @@
 ```
 git clone https://github.com/filswan/fs3
 cd fs3
+git checkout <release_branch>
 ```
 
 ## Build the Source Code
