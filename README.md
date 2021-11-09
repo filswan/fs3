@@ -1,4 +1,9 @@
 # FS3 Quickstart Guide
+[![Made by FilSwan](https://img.shields.io/badge/made%20by-FilSwan-green.svg)](https://www.filswan.com/)
+[![Chat on Slack](https://img.shields.io/badge/slack-filswan.slack.com-green.svg)](https://filswan.slack.com)
+
+- Join us on our [public Slack channel](https://filswan.slack.com) for news, discussions, and status updates. 
+- [Check out our medium](https://filswan.medium.com) for the latest posts and announcements.
 
 ## How to use
 ### Prerequisite
@@ -10,6 +15,7 @@
 ```
 git clone https://github.com/filswan/fs3
 cd fs3
+git checkout <release_branch>
 ```
 
 ## Build the Source Code
@@ -436,4 +442,6 @@ The above statement is also valid for all gateway backends.
 ## Test using FS3 Browser
 FS3 Server comes with an embedded web based object browser. Point your web browser to http://127.0.0.1:9000 to ensure your server has started successfully.
 
+## License
 
+[AGPL](https://github.com/filswan/fs3/blob/master/LICENSE)
