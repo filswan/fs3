@@ -5796,3 +5796,150 @@ func IsDirEmpty(name string) (bool, error) {
 	}
 	return false, err
 }
+
+func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebSendOfflineDeals")
+
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	// generate car file using ipfs
+	volumePath := config.GetUserConfig().Fs3VolumeAddress
+	commandLine := "ipfs add -r --nocopy=false --pin=false -Q -p=false " + volumePath
+	dataCID, err := ExecCommand(commandLine)
+	if err != nil {
+		noDataCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDataCidResponse,
+			Status:  FailResponseStatus,
+			Message: "Sending deal failed during lotus importing",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
+	fmt.Println("------------datacid: ", dataCID)
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+	volumnCarPath := "/home/peware/swan-gh/gotest/test/sc" + "/volumn_" + timestamp + ".car"
+	commandLine = "ipfs dag export " + dataCID + " >" + volumnCarPath
+	_, err = ExecCommand(commandLine)
+	if err != nil {
+		noDataCidResponse := OnlineDealResponse{}
+		sendResponse := SendResponse{
+			Data:    noDataCidResponse,
+			Status:  FailResponseStatus,
+			Message: "Sending deal failed during lotus importing",
+		}
+		bodyByte, err := json.Marshal(sendResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
+	if _, err := os.Stat(volumnCarPath); errors.Is(err, os.ErrNotExist) {
+		fmt.Println("+++++++++", "car file generation failed")
+	}
+	fmt.Println("------------datacid: ", dataCID)
+}
+
+func authorization(w http.ResponseWriter, r *http.Request, ctx context.Context, bucket string, object string) string {
+	claims, owner, authErr := webRequestAuthenticate(r)
+	defer logger.AuditLog(ctx, w, r, claims.Map())
+
+	if authErr != nil {
+		if authErr == errNoAuthToken {
+			// Check if anonymous (non-owner) has access to download objects.
+			if !globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+				w.WriteHeader(http.StatusUnauthorized)
+				sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, FS3 token missing"}
+				errJson, _ := json.Marshal(sendResponse)
+				w.Write(errJson)
+				return "No authorization"
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectRetentionAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+			if globalPolicySys.IsAllowed(policy.Args{
+				Action:          policy.GetObjectLegalHoldAction,
+				BucketName:      bucket,
+				ConditionValues: getConditionValues(r, "", "", nil),
+				IsOwner:         false,
+				ObjectName:      object,
+			}) {
+
+			}
+		} else {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponse := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJson, _ := json.Marshal(sendResponse)
+			w.Write(errJson)
+			return "No authorization"
+		}
+	}
+
+	// For authenticated users apply IAM policy.
+	if authErr == nil {
+		if !globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+			w.WriteHeader(http.StatusUnauthorized)
+			sendResponseIam := AuthToken{Status: FailResponseStatus, Message: "Authentication failed, check your FS3 token"}
+			errJsonIam, _ := json.Marshal(sendResponseIam)
+			w.Write(errJsonIam)
+			return "No authorization"
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectRetentionAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+		if globalIAMSys.IsAllowed(iampolicy.Args{
+			AccountName:     claims.AccessKey,
+			Action:          iampolicy.GetObjectLegalHoldAction,
+			BucketName:      bucket,
+			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
+			IsOwner:         owner,
+			ObjectName:      "",
+			Claims:          claims.Map(),
+		}) {
+
+		}
+	}
+	return ""
+}
