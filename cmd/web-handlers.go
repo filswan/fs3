@@ -26,12 +26,18 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/codingsince1985/checksum"
 	"github.com/filedrive-team/go-graphsplit"
+	"github.com/filswan/go-swan-lib/client/lotus"
+	libconstants "github.com/filswan/go-swan-lib/constants"
+	libutils "github.com/filswan/go-swan-lib/utils"
 	"github.com/google/uuid"
+	files "github.com/ipfs/go-ipfs-files"
 	csv "github.com/minio/csvparser"
 	"github.com/minio/minio/internal/config"
 	"github.com/minio/minio/logs"
 	oshomedir "github.com/mitchellh/go-homedir"
+	"github.com/shopspring/decimal"
 	"github.com/syndtr/goleveldb/leveldb"
 	"mime/multipart"
 
@@ -73,6 +79,10 @@ import (
 	iampolicy "github.com/minio/pkg/iam/policy"
 	"github.com/minio/rpc/json2"
 
+	clientmodel "github.com/filswan/go-swan-client/model"
+	"github.com/filswan/go-swan-client/subcommand"
+	libmodel "github.com/filswan/go-swan-lib/model"
+	ipfsClient "github.com/ipfs/go-ipfs-http-client"
 	ioioutil "io/ioutil"
 	"os/exec"
 )
@@ -3889,6 +3899,16 @@ func JsonPath(bucket string, object string) (string, error) {
 	return expandedDir, nil
 }
 
+func VolumePath() (string, error) {
+	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
+	expandedFs3VolumeAddress, err := oshomedir.Expand(fs3VolumeAddress)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return expandedFs3VolumeAddress, nil
+}
+
 func BucketJsonPath() (string, error) {
 
 	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
@@ -5806,52 +5826,109 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		return
 	}
 
-	// generate car file using ipfs
-	volumePath := config.GetUserConfig().Fs3VolumeAddress
-	commandLine := "ipfs add -r --nocopy=false --pin=false -Q -p=false " + volumePath
-	dataCID, err := ExecCommand(commandLine)
+	// get volume path
+	volumePath, err := VolumePath()
 	if err != nil {
-		noDataCidResponse := OnlineDealResponse{}
-		sendResponse := SendResponse{
-			Data:    noDataCidResponse,
-			Status:  FailResponseStatus,
-			Message: "Sending deal failed during lotus importing",
-		}
-		bodyByte, err := json.Marshal(sendResponse)
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	// create backup folder if not exist
+	volumeBackupPath := "/home/peware/swan-gh/gotest/test/sc/fs3test"
+	if _, err := os.Stat(volumeBackupPath); os.IsNotExist(err) {
+		err := os.Mkdir(volumeBackupPath, 0775)
 		if err != nil {
 			logs.GetLogger().Error(err)
 			writeWebErrorResponse(w, err)
 			return
 		}
-		w.Write(bodyByte)
-		return
 	}
-	fmt.Println("------------datacid: ", dataCID)
 
-	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
-	volumnCarPath := "/home/peware/swan-gh/gotest/test/sc" + "/volumn_" + timestamp + ".car"
-	commandLine = "ipfs dag export " + dataCID + " >" + volumnCarPath
-	_, err = ExecCommand(commandLine)
+	// generate car file using ipfs
+	// generate datacid for volume folder
+	fmt.Println("---------here1")
+	ipfsApiAddress := config.GetUserConfig().IpfsApiAddress
+	hash, err := IpfsAddFolder(volumePath, ipfsApiAddress)
 	if err != nil {
-		noDataCidResponse := OnlineDealResponse{}
-		sendResponse := SendResponse{
-			Data:    noDataCidResponse,
-			Status:  FailResponseStatus,
-			Message: "Sending deal failed during lotus importing",
-		}
-		bodyByte, err := json.Marshal(sendResponse)
-		if err != nil {
-			logs.GetLogger().Error(err)
-			writeWebErrorResponse(w, err)
-			return
-		}
-		w.Write(bodyByte)
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
 		return
 	}
-	if _, err := os.Stat(volumnCarPath); errors.Is(err, os.ErrNotExist) {
-		fmt.Println("+++++++++", "car file generation failed")
+	logs.GetLogger().Info("FS3 volume backup payload cid: ", hash)
+
+	// generate car file for the volume folder
+	confCar := &clientmodel.ConfCar{
+		LotusClientApiUrl:      config.GetUserConfig().LotusClientApiUrl,
+		LotusClientAccessToken: config.GetUserConfig().LotusClientAccessToken,
+		OutputDir:              volumeBackupPath,
+		InputDir:               volumePath,
 	}
-	fmt.Println("------------datacid: ", dataCID)
+
+	err = generateCarFileWithIpfs(ipfsApiAddress, hash, volumeBackupPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	logs.GetLogger().Info("FS3 volume backup car file generation succeed")
+
+	//generate car.csv
+	_, err = generate_car_info(hash, confCar)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	logs.GetLogger().Info("car files created in ", confCar.OutputDir)
+
+	//upload to ipfs
+	confUpload := &clientmodel.ConfUpload{
+		StorageServerType:           libconstants.STORAGE_SERVER_TYPE_IPFS_SERVER,
+		IpfsServerDownloadUrlPrefix: config.GetUserConfig().IpfsGateway,
+		IpfsServerUploadUrl:         config.GetUserConfig().IpfsApiAddress,
+		OutputDir:                   confCar.OutputDir,
+		InputDir:                    confCar.OutputDir,
+	}
+	_, err = subcommand.UploadCarFiles(confUpload)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	logs.GetLogger().Info("car files uploaded")
+
+	// create public task on swan
+	startEpochIntervalHours := 96
+	startEpoch := libutils.GetCurrentEpoch() + (startEpochIntervalHours+1)*libconstants.EPOCH_PER_HOUR
+	confTask := &clientmodel.ConfTask{
+		SwanApiUrl:                 config.GetUserConfig().SwanAddress,
+		SwanJwtToken:               config.GetUserConfig().SwanToken,
+		PublicDeal:                 true,
+		BidMode:                    libconstants.TASK_BID_MODE_AUTO,
+		VerifiedDeal:               false,
+		OfflineMode:                false,
+		FastRetrieval:              true,
+		MaxPrice:                   decimal.NewFromFloat(0.00005),
+		StorageServerType:          libconstants.STORAGE_SERVER_TYPE_IPFS_SERVER,
+		WebServerDownloadUrlPrefix: confUpload.IpfsServerDownloadUrlPrefix,
+		ExpireDays:                 4,
+		OutputDir:                  confCar.OutputDir,
+		InputDir:                   confCar.OutputDir,
+		TaskName:                   "20211104-02",
+		StartEpochIntervalHours:    startEpochIntervalHours,
+		StartEpoch:                 startEpoch,
+	}
+
+	_, _, err = subcommand.CreateTask(confTask, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	logs.GetLogger().Info("task created")
+	logs.GetLogger().Error(err)
+	writeWebErrorResponse(w, err)
+	return
 }
 
 func authorization(w http.ResponseWriter, r *http.Request, ctx context.Context, bucket string, object string) string {
@@ -5942,4 +6019,168 @@ func authorization(w http.ResponseWriter, r *http.Request, ctx context.Context, 
 		}
 	}
 	return ""
+}
+
+func generateCarFileWithIpfs(ipfsApiAddress string, hash string, volumeBackupPath string) error {
+	logs.GetLogger().Info("volume backup car file generation begins")
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+	volumeCarPath := volumeBackupPath + "/volume_" + timestamp + ".car"
+
+	commandLine := "curl -X POST \"" + ipfsApiAddress + "/api/v0/dag/export?arg=" + hash + "&progress=true\" >" + volumeCarPath
+	fmt.Println(commandLine)
+	_, err := ExecCommand(commandLine)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	if _, err := os.Stat(volumeCarPath); errors.Is(err, os.ErrNotExist) {
+		logs.GetLogger().Error("volume backup car file generation failed")
+	}
+	logs.GetLogger().Info("volume backup car file generation success")
+	return nil
+}
+
+func IpfsAddFolder(volumePath string, ipfsApiUrl string) (string, error) {
+	fmt.Println("---------here2")
+	ipfsApi := NewApi()
+	api, err := ipfsClient.NewURLApiWithClient(ipfsApiUrl, ipfsApi)
+	//api, err := IpfsAddFiles("http://192.168.88.41:5001")
+	c(err)
+	fmt.Println("---------here3")
+	stat, err := os.Stat(volumePath)
+	c(err)
+	// This walks the filesystem at /tmp/example/ and create a list of the files / directories we have.
+	fmt.Println("---------here4")
+	node, err := files.NewSerialFile(volumePath, true, stat)
+	c(err)
+	// Add the files / directory to IPFS
+	fmt.Println("---------here5")
+	path, err := api.Unixfs().Add(context.Background(), node)
+	c(err)
+	// Output the resulting CID
+	fmt.Println(path.Root().String())
+	return fmt.Sprint(path.Root().String()), nil
+}
+
+func c(err error) {
+	if err != nil {
+		fmt.Println(err)
+	}
+}
+
+type HttpApi struct {
+	url         string
+	httpcli     http.Client
+	Headers     http.Header
+	applyGlobal func(*requestBuilder)
+}
+
+type requestBuilder struct {
+	command string
+	args    []string
+	opts    map[string]string
+	headers map[string]string
+	body    io.Reader
+
+	shell *HttpApi
+}
+
+// ApiAddr reads api file in specified ipfs path
+
+func NewApi() *http.Client {
+	c := &http.Client{
+		Transport: &http.Transport{
+			Proxy:             http.ProxyFromEnvironment,
+			DisableKeepAlives: true,
+		},
+	}
+	return c
+}
+
+func NewURLApiWithClient(url string, c *http.Client) (*HttpApi, error) {
+	api := &HttpApi{
+		url:         url,
+		httpcli:     *c,
+		Headers:     make(map[string][]string),
+		applyGlobal: func(*requestBuilder) {},
+	}
+
+	// We don't support redirects.
+	api.httpcli.CheckRedirect = func(_ *http.Request, _ []*http.Request) error {
+		return fmt.Errorf("unexpected redirect")
+	}
+	return api, nil
+}
+
+func DirSize(path string) (int64, error) {
+	var size int64
+	err := filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		if !info.IsDir() {
+			size += info.Size()
+		}
+		return err
+	})
+	return size, err
+}
+
+func generate_car_info(hash string, confCar *clientmodel.ConfCar) ([]*libmodel.FileDesc, error) {
+	srcFiles, err := ioioutil.ReadDir(confCar.OutputDir)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	carFiles := []*libmodel.FileDesc{}
+	lotusClient, err := lotus.LotusGetClient(confCar.LotusClientApiUrl, confCar.LotusClientAccessToken)
+
+	for _, srcFile := range srcFiles {
+		carFile := libmodel.FileDesc{}
+		carFile.SourceFileName = filepath.Base(confCar.InputDir)
+		carFile.SourceFilePath = confCar.InputDir
+		carFile.SourceFileSize, _ = DirSize(confCar.InputDir)
+		carFile.CarFileName = srcFile.Name()
+		carFile.CarFilePath = filepath.Join(confCar.OutputDir, carFile.CarFileName)
+
+		pieceCid := lotusClient.LotusClientCalcCommP(carFile.CarFilePath)
+		if pieceCid == nil {
+			err := fmt.Errorf("failed to generate piece cid")
+			logs.GetLogger().Error(err)
+			return nil, err
+		}
+
+		carFile.PieceCid = *pieceCid
+		carFile.DataCid = hash
+		carFile.CarFileSize = libutils.GetFileSize(carFile.CarFilePath)
+
+		if confCar.GenerateMd5 {
+			srcFileMd5, err := checksum.MD5sum(carFile.SourceFilePath)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return nil, err
+			}
+			carFile.SourceFileMd5 = srcFileMd5
+
+			carFileMd5, err := checksum.MD5sum(carFile.CarFilePath)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return nil, err
+			}
+			carFile.CarFileMd5 = carFileMd5
+		}
+
+		carFiles = append(carFiles, &carFile)
+	}
+
+	_, err = subcommand.WriteCarFilesToFiles(carFiles, confCar.OutputDir, libconstants.JSON_FILE_NAME_BY_CAR, libconstants.CSV_FILE_NAME_BY_CAR)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	logs.GetLogger().Info(len(carFiles), " car files have been created to directory:", confCar.OutputDir)
+	logs.GetLogger().Info("Please upload car files to web server or ipfs server.")
+
+	return carFiles, nil
 }

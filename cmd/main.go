@@ -190,8 +190,10 @@ func initUserConfig(standAlone bool) {
 	ipfsApiAddress := os.Getenv("IPFS_API_ADDRESS")
 	ipfsGateway := os.Getenv("IPFS_GATEWAY")
 	swanToken := os.Getenv("SWAN_TOKEN")
-	logs.GetLogger().Println(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken)
-	config.InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken)
+	lotusClientApiUrl := os.Getenv("LOTUS_CLIENT_API_URL")
+	lotusClientAccessToken := os.Getenv("LOTUS_CLIENT_ACCESS_TOKEN")
+	logs.GetLogger().Println(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken)
+	config.InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken)
 
 }
 
