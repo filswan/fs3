@@ -15,6 +15,7 @@ require (
 	github.com/bits-and-blooms/bloom/v3 v3.0.1
 	github.com/cespare/xxhash/v2 v2.1.1
 	github.com/cheggaaa/pb v1.0.29
+	github.com/codingsince1985/checksum v1.2.3
 	github.com/colinmarc/hdfs/v2 v2.2.0
 	github.com/coredns/coredns v1.4.0
 	github.com/dchest/siphash v1.2.1
@@ -26,8 +27,8 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.12.0
 	github.com/fatih/color v1.12.0
 	github.com/filedrive-team/go-graphsplit v0.4.1
-	github.com/filswan/go-swan-client v0.0.29
-	github.com/filswan/go-swan-lib v0.2.34
+	github.com/filswan/go-swan-client v0.0.33
+	github.com/filswan/go-swan-lib v0.2.39
 	github.com/go-ldap/ldap/v3 v3.2.4
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gomodule/redigo v2.0.0+incompatible
@@ -78,6 +79,7 @@ require (
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
 	github.com/rs/cors v1.7.0
 	github.com/secure-io/sio-go v0.3.1
+	github.com/shopspring/decimal v1.3.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/streadway/amqp v1.0.0
 	github.com/syndtr/goleveldb v1.0.0

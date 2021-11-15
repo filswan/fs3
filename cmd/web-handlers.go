@@ -5902,7 +5902,7 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 	startEpoch := libutils.GetCurrentEpoch() + (startEpochIntervalHours+1)*libconstants.EPOCH_PER_HOUR
 	confTask := &clientmodel.ConfTask{
 		SwanApiUrl:                 config.GetUserConfig().SwanAddress,
-		SwanJwtToken:               config.GetUserConfig().SwanToken,
+		SwanToken:                  config.GetUserConfig().SwanToken,
 		PublicDeal:                 true,
 		BidMode:                    libconstants.TASK_BID_MODE_AUTO,
 		VerifiedDeal:               false,

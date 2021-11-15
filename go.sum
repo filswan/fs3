@@ -159,6 +159,7 @@ github.com/clbanning/x2j v0.0.0-20191024224557-825249438eec/go.mod h1:jMjuTZXRI4
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=
 github.com/cockroachdb/datadriven v0.0.0-20190809214429-80d97fb3cbaa/go.mod h1:zn76sxSg3SzpJ0PPJaLDCu+Bu0Lg3sKTORVIj19EIF8=
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
+github.com/codingsince1985/checksum v1.2.3 h1:BTqAK2E4ALvlRJ7qOQxrkDQ9KGn0QaytIy0UsKYYlDg=
 github.com/codingsince1985/checksum v1.2.3/go.mod h1:ndgq6j/rW3sNk4mAX04SElqXfFJkXuVvwKq1G4BPfVM=
 github.com/colinmarc/hdfs/v2 v2.2.0 h1:4AaIlTq+/sWmeqYhI0dX8bD4YrMQM990tRjm636FkGM=
 github.com/colinmarc/hdfs/v2 v2.2.0/go.mod h1:Wss6n3mtaZyRwWaqtSH+6ge01qT0rw9dJJmvoUnIQ/E=
@@ -281,11 +282,10 @@ github.com/filecoin-project/specs-actors/v5 v5.0.0-20210512015452-4fe3889fff57 h
 github.com/filecoin-project/specs-actors/v5 v5.0.0-20210512015452-4fe3889fff57/go.mod h1:283yBMMUSDB2abcjP/hhrwTkhb9h3sfM6KGrep/ZlBI=
 github.com/filedrive-team/go-graphsplit v0.4.1 h1:TxzaOrJk/SDK8vfRFu/v46z/2Za5xSpoHC0UF135Oyk=
 github.com/filedrive-team/go-graphsplit v0.4.1/go.mod h1:W+ivPZK6/qa7I7n34DSLVMjTrszpeZv7UaP98QbQ++A=
-github.com/filswan/go-swan-client v0.0.29 h1:7BZrpLn3pSjOG5GNbmBMQG5PwrNqBxBqD+XdI0HcQB4=
-github.com/filswan/go-swan-client v0.0.29/go.mod h1:cKxWRdFgBmp8SQSqq6nTVyfjKRILdvqXY9ekhl4OmpU=
-github.com/filswan/go-swan-lib v0.2.32/go.mod h1:+roryt281JKxvfWI6O5gxTMpKaDNMad9MMiOYDtsrfw=
-github.com/filswan/go-swan-lib v0.2.34 h1:nIRzUFie8nX8Q0SpUqb03Od9QGj4Up3Gy0lCkyRvcUY=
-github.com/filswan/go-swan-lib v0.2.34/go.mod h1:+roryt281JKxvfWI6O5gxTMpKaDNMad9MMiOYDtsrfw=
+github.com/filswan/go-swan-client v0.0.33 h1:eQwIwlwYZKglZaCxYHlRsXi6zz82s+bmKn2ohVKHJZg=
+github.com/filswan/go-swan-client v0.0.33/go.mod h1:DSNZXZ3u5b8FW0WfCkG56wXyomVJwNSJj6WIW0TIDXg=
+github.com/filswan/go-swan-lib v0.2.39 h1:ZM6pHMIMzTPPR1719iFkyDJYhhkLdfKt0NwjqIFp0UE=
+github.com/filswan/go-swan-lib v0.2.39/go.mod h1:+roryt281JKxvfWI6O5gxTMpKaDNMad9MMiOYDtsrfw=
 github.com/flynn/go-shlex v0.0.0-20150515145356-3f9db97f8568/go.mod h1:xEzjJPgXI435gkrCt3MPfRiAkVrwSbHsst4LCFVfpJc=
 github.com/flynn/noise v0.0.0-20180327030543-2492fe189ae6/go.mod h1:1i71OnUq3iUe1ma7Lr6yG6/rjvM3emb6yoL7xLFzcVQ=
 github.com/fortytw2/leaktest v1.3.0 h1:u8491cBMTQ8ft8aeV+adlcytMZylmA5nnwwkRZjI8vw=
