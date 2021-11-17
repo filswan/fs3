@@ -5860,6 +5860,7 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		return
 	}
 
+	backupPlanName, backupPlanId := volumeBackupRequest.BackupPlanName, volumeBackupRequest.BackupPlanId
 	// get volume path
 	volumePath, err := VolumePath()
 	if err != nil {
@@ -5984,7 +5985,7 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		ExpireDays:                 4,
 		OutputDir:                  confCar.OutputDir,
 		InputDir:                   confCar.OutputDir,
-		TaskName:                   "20211104-02",
+		TaskName:                   backupPlanName,
 		StartEpochIntervalHours:    startEpochIntervalHours,
 		StartEpoch:                 startEpoch,
 		SourceId:                   FS3SourceId,
@@ -6004,8 +6005,6 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		return
 	}
 
-	backupPlanId := 1
-	backupPlanName := "p1"
 	SaveBackupTaskToDb(taskCsvStructList, backupPlanId, backupPlanName)
 	logs.GetLogger().Info("task created")
 
