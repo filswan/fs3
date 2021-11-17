@@ -5,6 +5,13 @@
 </template>
 <script>
 export default {
+  name: 'APP',
+  data() {
+      return{
+      }
+  },
+  methods: {
+  },
   mounted() {
     /* window.onbeforeunload = function(){
       sessionStorage.removeItem('addrWeb')

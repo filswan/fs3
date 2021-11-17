@@ -69,7 +69,7 @@
             </div>
           </li>
         </ul>
-        <div :class="{'online': addr, 'feh-metamask': 1==1}">
+        <!--div :class="{'online': addr, 'feh-metamask': 1==1}">
             <el-tooltip class="item" effect="dark" content="Connect to your MetaMask Wallet" placement="bottom" v-if="!addr">
               <img src="@/assets/images/metamask.png" @click="signFun" />
             </el-tooltip>
@@ -92,7 +92,7 @@
 
                <img src="@/assets/images/metamask.png" slot="reference" />
            </el-popover>
-        </div>
+        </div-->
       </header>
 
       <div class="table" v-if="allDealShow">
@@ -390,7 +390,7 @@
       </el-dialog>
 
       <!-- share dialog box -->
-      <share-dialog
+      <share-dialog v-if="isRouterAlive"
         :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
         :shareFileShow="shareFileShow" :num="num" :share_input="share_input"
         :postAdress="postAdress" :sendApi="sendApi"
@@ -410,10 +410,15 @@ import axios from 'axios'
 import Moment from 'moment'
 import shareDialog from '@/components/shareDialog.vue';
 import changePassword from '@/components/changePassword.vue';
-import NCWeb3 from "@/utils/web3";
+// import NCWeb3 from "@/utils/web3";
 let that
 export default {
   name: 'landing',
+  provide () {
+      return {
+          reload: this.reload
+      }
+  },
   data() {
     return {
       postUrl: this.data_api + `/minio/webrpc`,
@@ -475,7 +480,8 @@ export default {
       network: {
         name: '',
         unit: 0
-      }
+      },
+      isRouterAlive: true,
     }
   },
   components: {
@@ -484,6 +490,12 @@ export default {
   },
   props: ['aboutServer','aboutListObjects','dialogFormVisible','currentBucket','userd', 'slideListClick', 'addFileClick', 'uploadClick', 'allDealShow'],
   methods: {
+    reload () {
+        this.isRouterAlive = false;
+        this.$nextTick(function () {
+            this.isRouterAlive = true;
+        })
+    },
     exChange(row, rowList) {
       var that = this
       if (rowList.length) {
@@ -498,6 +510,23 @@ export default {
         //retract
       }
     },
+    changeTableSort(column){
+         console.log(column);
+
+         // Gets the field name and sort type
+         var fieldName = column.prop;
+         var sortingType = column.order;
+
+         //descending
+         if(sortingType == "descending"){
+             this.tableData = this.tableData.sort((a, b) => b[fieldName] - a[fieldName]);
+
+         }else{
+             this.tableData = this.tableData.sort((a, b) => a[fieldName] - b[fieldName]);
+         }
+
+         console.log(this.tableData);
+     },
     tableJson(name) {
         let _this = this
         _this.exChangeList = []
@@ -738,7 +767,6 @@ export default {
           }
         }
         xhr.send(JSON.stringify(objZip))
-        console.log('xiazai:', JSON.stringify(objZip));
       }else{
         var a = document.createElement("a");
         a.download = _this.currentBucketAll[0];
@@ -918,7 +946,7 @@ export default {
                 if(!_this.addr){
                     NCWeb3.Init(addr=>{
                         //Get the corresponding wallet address
-                        console.log('Wallet address:', addr)
+                        // console.log('Wallet address:', addr)
                         _this.$nextTick(() => {
                             _this.addr = addr
                             _this.walletInfo()
@@ -936,7 +964,7 @@ export default {
               });
 
               web3.eth.net.getId().then(netId => {
-                  console.log('network ID:', netId)
+                  // console.log('network ID:', netId)
                   switch (netId) {
                     case 1:
                       _this.network.name = 'mainnet';
@@ -970,8 +998,16 @@ export default {
                });
             },
             fn() {
+              let _this = this
               ethereum.on("accountsChanged", function(accounts) {
-                console.log('account:', accounts[0]);  //Once the account is switched, it will be executed here
+                  if(sessionStorage.getItem('addrWeb')){
+                    _this.addr = accounts[0]
+                    _this.walletInfo()
+                  }
+                // console.log('account:', accounts[0]);  //Once the account is switched, it will be executed here
+              });
+              ethereum.on("networkChanged", function(networkID) {
+                 _this.walletInfo()
               });
             },
             qm(){
@@ -1081,10 +1117,10 @@ export default {
     that = _this
     _this.aboutListData()
     _this.currentBucketAll = _this.currentBucket.split('/')
-    if(sessionStorage.getItem('addrWeb')){
+    /*if(sessionStorage.getItem('addrWeb')){
       _this.signFun()
     }
-    _this.fn()
+    _this.fn()*/
     document.onkeydown = function(e) {
       if (e.keyCode === 13) {
         if(!_this.editNameFile){
@@ -1092,13 +1128,14 @@ export default {
             _this.editNameFile = true
             _this.$refs.mark.$el.querySelector('input').blur()
           })
-        }else if(_this.form.name){
+        }
+        if(_this.form.name){
             console.log('create bucket')
             _this.getServer();
         }
         if(_this.user.name_file && !_this.editNameFile){
           if(_this.user.name_file){
-              console.log('bucket prefix:', _this.user.name_file.split('/'))
+              // console.log('bucket prefix:', _this.user.name_file.split('/'))
               let fileAll = _this.user.name_file.split('/')
               _this.currentBucketAll = []
               if(fileAll) {
@@ -1109,7 +1146,7 @@ export default {
                 })
               }
               _this.prefixName = _this.currentBucketAll.slice(1).join('/');
-              console.log('prefix:', _this.prefixName, 'currentBucketAll:', _this.currentBucketAll[0]);
+              // console.log('prefix:', _this.prefixName, 'currentBucketAll:', _this.currentBucketAll[0]);
               if(_this.currentBucketAll[0] == _this.currentBucket){
                 _this.$emit('getListObjects', _this.currentBucket, _this.prefixName);
               }else{

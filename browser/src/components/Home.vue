@@ -60,7 +60,7 @@
             <el-backtop target=".wrapper"></el-backtop>
         </div>
 
-        <share-dialog
+        <share-dialog  v-if="isRouterAlive"
           :shareDialog="shareDialog" :shareObjectShow="shareObjectShow"
           :shareFileShow="shareFileShow" :postAdress="currentBucket" :sendApi="sendApi"
           @getshareDialog="getshareDialog">
@@ -80,6 +80,11 @@ import Moment from "moment"
 import shareDialog from '@/components/shareDialog.vue';
 import retrievalDialog from '@/components/retrievalDialog.vue';
 export default {
+    provide () {
+        return {
+            reload: this.reload
+        }
+    },
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
@@ -133,7 +138,8 @@ export default {
             uploadClick: 0,
             sendApi: 1,
             allDealShow: true,
-            retrievalDialog: false
+            retrievalDialog: false,
+            isRouterAlive: true
         }
     },
     components: {
@@ -150,6 +156,12 @@ export default {
         },
     },
     methods: {
+        reload () {
+            this.isRouterAlive = false;
+            this.$nextTick(function () {
+                this.isRouterAlive = true;
+            })
+        },
         getshareDialog(shareDialog) {
           this.shareDialog = shareDialog
         },
@@ -200,7 +212,7 @@ export default {
                 }
 
             }).catch(function (error) {
-                console.log(error.request.status);
+                // console.log(error.request.status);
                 if(error.request.status == '401'){
                   _this.$store.dispatch("FedLogOut").then(() => {
                     _this.$router.push("/minio/login")
@@ -370,11 +382,23 @@ export default {
 
     //File upload
     httpRequest(file) {
-      console.log('httpRequest', file);
+      // console.log('httpRequest', file);
     },
     onChange(file, fileList) {
-      console.log('onChange', file, fileList);
         let _this = this
+      // console.log('onChange', file, fileList);
+      let regexp = /[#\\?]/
+      if(regexp.test(file.name)){
+        _this.$message.error('The filename cannot contain any of the following characters # ? \\');
+        return false
+      }
+
+      let reg=new RegExp(" ","g");
+      if(file.name.indexOf(" ") > -1){
+        file.name=file.name.replace(reg,"_");
+        file.raw = new File([file.raw], file.name)
+      }
+
         let $hgh
         if(!_this.minioListBuckets.buckets || _this.minioListBuckets.buckets.length < 1){
             _this.$message({

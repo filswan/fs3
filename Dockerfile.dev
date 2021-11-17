@@ -1,4 +1,12 @@
-FROM minio/minio:edge
+FROM ubuntu:latest
+
+RUN \
+     apt-get update -y && \
+     apt-get install -y --no-install-recommends apt-utils && \
+     apt-get install curl ca-certificates libvshadow-utils util-linux iproute2 iputils-ping software-properties-common -y && \
+     apt-get autoclean
+
+RUN apt-get install gcc git bzr jq pkg-config curl clang build-essential hwloc wget libhwloc-dev ocl-icd-opencl-dev -y
 
 LABEL maintainer="MinIO Inc <dev@min.io>"
 
