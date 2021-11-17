@@ -171,7 +171,7 @@ func Main(args []string) {
 	initConfigAndLog()
 	initUserConfig(sysconfig.GetSysConfig().StandAlone)
 
-	fmt.Println(config.GetUserConfig().Fs3VolumeAddress)
+	fmt.Println("Your FS3 Server is running successfully. Please copy and paste the url below to open in a browser")
 
 	// Run the app - exit on error.
 	if err := newApp(appName).Run(args); err != nil {
@@ -192,8 +192,9 @@ func initUserConfig(standAlone bool) {
 	swanToken := os.Getenv("SWAN_TOKEN")
 	lotusClientApiUrl := os.Getenv("LOTUS_CLIENT_API_URL")
 	lotusClientAccessToken := os.Getenv("LOTUS_CLIENT_ACCESS_TOKEN")
-	logs.GetLogger().Println(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken)
-	config.InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken)
+	volumeBackupAddress := os.Getenv("VOLUME_BACKUP_ADDRESS")
+	logs.GetLogger().Println(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken, volumeBackupAddress)
+	config.InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken, volumeBackupAddress)
 
 }
 

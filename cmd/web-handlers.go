@@ -91,6 +91,8 @@ const (
 	SuccessResponseStatus = "success"
 	FailResponseStatus    = "fail"
 	NoFileInBucket        = "No file in the bucket.Please upload files"
+	Duration              = 1512000
+	FS3SourceId           = 3
 )
 
 func extractBucketObject(args reflect.Value) (bucketName, objectName string) {
@@ -3909,6 +3911,16 @@ func VolumePath() (string, error) {
 	return expandedFs3VolumeAddress, nil
 }
 
+func VolumeBackUpPath() (string, error) {
+	volumeBackUpAddress := config.GetUserConfig().VolumeBackupAddress
+	expandedVolumeBackUpAddresss, err := oshomedir.Expand(volumeBackUpAddress)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return expandedVolumeBackUpAddresss, nil
+}
+
 func BucketJsonPath() (string, error) {
 
 	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
@@ -3926,6 +3938,18 @@ func LevelDbPath() (string, error) {
 	fs3VolumeAddress := config.GetUserConfig().Fs3VolumeAddress
 	levelDbName := ".leveldb.db"
 	levelDbPath := filepath.Join(fs3VolumeAddress, levelDbName)
+	expandedDir, err := oshomedir.Expand(levelDbPath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return "", err
+	}
+	return expandedDir, nil
+}
+
+func LevelDbBackupPath() (string, error) {
+	volumeBackUpAddress := config.GetUserConfig().VolumeBackupAddress
+	levelDbName := ".leveldb.db"
+	levelDbPath := filepath.Join(volumeBackUpAddress, levelDbName)
 	expandedDir, err := oshomedir.Expand(levelDbPath)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -5826,6 +5850,16 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		return
 	}
 
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var volumeBackupRequest VolumeBackupRequest
+	err := decoder.Decode(&volumeBackupRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
 	// get volume path
 	volumePath, err := VolumePath()
 	if err != nil {
@@ -5833,10 +5867,16 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		writeWebErrorResponse(w, err)
 		return
 	}
+
 	// create backup folder if not exist
-	volumeBackupPath := "/home/peware/swan-gh/gotest/test/sc/fs3test"
-	if _, err := os.Stat(volumeBackupPath); os.IsNotExist(err) {
-		err := os.Mkdir(volumeBackupPath, 0775)
+	volumeBackupFolderPath, err := VolumeBackUpPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	if _, err := os.Stat(volumeBackupFolderPath); os.IsNotExist(err) {
+		err := os.Mkdir(volumeBackupFolderPath, 0775)
 		if err != nil {
 			logs.GetLogger().Error(err)
 			writeWebErrorResponse(w, err)
@@ -5860,11 +5900,11 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 	confCar := &clientmodel.ConfCar{
 		LotusClientApiUrl:      config.GetUserConfig().LotusClientApiUrl,
 		LotusClientAccessToken: config.GetUserConfig().LotusClientAccessToken,
-		OutputDir:              volumeBackupPath,
+		OutputDir:              volumeBackupFolderPath,
 		InputDir:               volumePath,
 	}
 
-	err = generateCarFileWithIpfs(ipfsApiAddress, hash, volumeBackupPath)
+	volumeCarPath, err := generateCarFileWithIpfs(ipfsApiAddress, hash, volumeBackupFolderPath)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
@@ -5873,13 +5913,35 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 	logs.GetLogger().Info("FS3 volume backup car file generation succeed")
 
 	//generate car.csv
-	_, err = generate_car_info(hash, confCar)
+	carCsvStructList, err := generate_car_info(hash, volumeCarPath, confCar)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
 	logs.GetLogger().Info("car files created in ", confCar.OutputDir)
+
+	expandedDir, err := LevelDbBackupPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer db.Close()
+
+	dataBytes, err := json.Marshal(&carCsvStructList)
+	err = db.Put([]byte("volume_backup_deals_car_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 
 	//upload to ipfs
 	confUpload := &clientmodel.ConfUpload{
@@ -5889,13 +5951,21 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		OutputDir:                   confCar.OutputDir,
 		InputDir:                    confCar.OutputDir,
 	}
-	_, err = subcommand.UploadCarFiles(confUpload)
+	uploadedCarCsvStructList, err := subcommand.UploadCarFiles(confUpload)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
 	logs.GetLogger().Info("car files uploaded")
+
+	dataBytes, err = json.Marshal(&uploadedCarCsvStructList)
+	err = db.Put([]byte("volume_backup_deals_car_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 
 	// create public task on swan
 	startEpochIntervalHours := 96
@@ -5917,17 +5987,28 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		TaskName:                   "20211104-02",
 		StartEpochIntervalHours:    startEpochIntervalHours,
 		StartEpoch:                 startEpoch,
+		SourceId:                   FS3SourceId,
 	}
 
-	_, _, err = subcommand.CreateTask(confTask, nil)
+	_, metadataCsvStructList, taskCsvStructList, err := subcommand.CreateTask(confTask, nil)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
+	dataBytes, err = json.Marshal(&metadataCsvStructList)
+	err = db.Put([]byte("volume_backup_deals_metadata_csv"), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	backupPlanId := 1
+	backupPlanName := "p1"
+	SaveBackupTaskToDb(taskCsvStructList, backupPlanId, backupPlanName)
 	logs.GetLogger().Info("task created")
-	logs.GetLogger().Error(err)
-	writeWebErrorResponse(w, err)
+
 	return
 }
 
@@ -5986,7 +6067,7 @@ func authorization(w http.ResponseWriter, r *http.Request, ctx context.Context, 
 			BucketName:      bucket,
 			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
 			IsOwner:         owner,
-			ObjectName:      "",
+			ObjectName:      object,
 			Claims:          claims.Map(),
 		}) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -6001,7 +6082,7 @@ func authorization(w http.ResponseWriter, r *http.Request, ctx context.Context, 
 			BucketName:      bucket,
 			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
 			IsOwner:         owner,
-			ObjectName:      "",
+			ObjectName:      object,
 			Claims:          claims.Map(),
 		}) {
 
@@ -6012,7 +6093,7 @@ func authorization(w http.ResponseWriter, r *http.Request, ctx context.Context, 
 			BucketName:      bucket,
 			ConditionValues: getConditionValues(r, "", claims.AccessKey, claims.Map()),
 			IsOwner:         owner,
-			ObjectName:      "",
+			ObjectName:      object,
 			Claims:          claims.Map(),
 		}) {
 
@@ -6021,23 +6102,24 @@ func authorization(w http.ResponseWriter, r *http.Request, ctx context.Context, 
 	return ""
 }
 
-func generateCarFileWithIpfs(ipfsApiAddress string, hash string, volumeBackupPath string) error {
+func generateCarFileWithIpfs(ipfsApiAddress string, hash string, volumeBackupPath string) (string, error) {
 	logs.GetLogger().Info("volume backup car file generation begins")
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
-	volumeCarPath := volumeBackupPath + "/volume_" + timestamp + ".car"
+	volumeCarName := "volume_" + timestamp + ".car"
+	volumeCarPath := filepath.Join(volumeBackupPath, volumeCarName)
 
 	commandLine := "curl -X POST \"" + ipfsApiAddress + "/api/v0/dag/export?arg=" + hash + "&progress=true\" >" + volumeCarPath
 	fmt.Println(commandLine)
 	_, err := ExecCommand(commandLine)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		return err
+		return "", err
 	}
 	if _, err := os.Stat(volumeCarPath); errors.Is(err, os.ErrNotExist) {
 		logs.GetLogger().Error("volume backup car file generation failed")
 	}
-	logs.GetLogger().Info("volume backup car file generation success")
-	return nil
+	logs.GetLogger().Info("volume backup car file generation success. Car file path: %s", volumeCarPath)
+	return volumeCarPath, nil
 }
 
 func IpfsAddFolder(volumePath string, ipfsApiUrl string) (string, error) {
@@ -6126,61 +6208,176 @@ func DirSize(path string) (int64, error) {
 	return size, err
 }
 
-func generate_car_info(hash string, confCar *clientmodel.ConfCar) ([]*libmodel.FileDesc, error) {
-	srcFiles, err := ioioutil.ReadDir(confCar.OutputDir)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
+func generate_car_info(hash string, volumeCarPath string, confCar *clientmodel.ConfCar) ([]*libmodel.FileDesc, error) {
 	carFiles := []*libmodel.FileDesc{}
 	lotusClient, err := lotus.LotusGetClient(confCar.LotusClientApiUrl, confCar.LotusClientAccessToken)
 
-	for _, srcFile := range srcFiles {
-		carFile := libmodel.FileDesc{}
-		carFile.SourceFileName = filepath.Base(confCar.InputDir)
-		carFile.SourceFilePath = confCar.InputDir
-		carFile.SourceFileSize, _ = DirSize(confCar.InputDir)
-		carFile.CarFileName = srcFile.Name()
-		carFile.CarFilePath = filepath.Join(confCar.OutputDir, carFile.CarFileName)
+	carFile := libmodel.FileDesc{}
+	carFile.SourceFileName = filepath.Base(confCar.InputDir)
+	carFile.SourceFilePath = confCar.InputDir
+	carFile.SourceFileSize, _ = DirSize(confCar.InputDir)
+	carFile.CarFileName = filepath.Base(volumeCarPath)
+	carFile.CarFilePath = filepath.Join(confCar.OutputDir, carFile.CarFileName)
 
-		pieceCid := lotusClient.LotusClientCalcCommP(carFile.CarFilePath)
-		if pieceCid == nil {
-			err := fmt.Errorf("failed to generate piece cid")
+	pieceCid := lotusClient.LotusClientCalcCommP(carFile.CarFilePath)
+	if pieceCid == nil {
+		err := fmt.Errorf("failed to generate piece cid")
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+
+	carFile.PieceCid = *pieceCid
+	carFile.DataCid = hash
+	carFile.CarFileSize = libutils.GetFileSize(carFile.CarFilePath)
+
+	if confCar.GenerateMd5 {
+		srcFileMd5, err := checksum.MD5sum(carFile.SourceFilePath)
+		if err != nil {
 			logs.GetLogger().Error(err)
 			return nil, err
 		}
+		carFile.SourceFileMd5 = srcFileMd5
 
-		carFile.PieceCid = *pieceCid
-		carFile.DataCid = hash
-		carFile.CarFileSize = libutils.GetFileSize(carFile.CarFilePath)
-
-		if confCar.GenerateMd5 {
-			srcFileMd5, err := checksum.MD5sum(carFile.SourceFilePath)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return nil, err
-			}
-			carFile.SourceFileMd5 = srcFileMd5
-
-			carFileMd5, err := checksum.MD5sum(carFile.CarFilePath)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return nil, err
-			}
-			carFile.CarFileMd5 = carFileMd5
+		carFileMd5, err := checksum.MD5sum(carFile.CarFilePath)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return nil, err
 		}
-
-		carFiles = append(carFiles, &carFile)
+		carFile.CarFileMd5 = carFileMd5
 	}
 
-	_, err = subcommand.WriteCarFilesToFiles(carFiles, confCar.OutputDir, libconstants.JSON_FILE_NAME_BY_CAR, libconstants.CSV_FILE_NAME_BY_CAR)
+	carFiles = append(carFiles, &carFile)
+
+	_, err = subcommand.WriteCarFilesToFiles(carFiles, confCar.OutputDir, libconstants.JSON_FILE_NAME_BY_CAR, libconstants.CSV_FILE_NAME_BY_CAR, subcommand.SUBCOMMAND_CAR)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return nil, err
 	}
 
-	logs.GetLogger().Info(len(carFiles), " car files have been created to directory:", confCar.OutputDir)
-	logs.GetLogger().Info("Please upload car files to web server or ipfs server.")
+	logs.GetLogger().Info(len(carFiles), " car files info has been created to directory:", confCar.OutputDir)
 
 	return carFiles, nil
+}
+
+func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanName string) error {
+	expandedDir, err := LevelDbBackupPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer db.Close()
+
+	dbVolumeBackupTasks := "volume_backup_task"
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+	volumeBackupTasks, err := db.Get([]byte(dbVolumeBackupTasks), nil)
+	if err == nil {
+		data := VolumeBackupTasks{}
+		err = json.Unmarshal(volumeBackupTasks, &data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		if backupPlanId > data.VolumeBackupPlansCounts {
+			data.VolumeBackupPlansCounts = data.VolumeBackupPlansCounts + 1
+			data.VolumeBackupTasksCounts = data.VolumeBackupTasksCounts + 1
+			newVolumeBackupPlanTask := VolumeBackupPlanTask{
+				Data:      task,
+				TimeStamp: timestamp,
+			}
+			newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
+			newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
+			newVolumeBackupPlan := VolumeBackupPlan{
+				BackupPlanName:        backupPlanName,
+				BackupPlanId:          backupPlanId,
+				BackupPlanTasks:       newVolumeBackupPlanTasks,
+				BackupPlanTasksCounts: 1,
+			}
+			data.VolumeBackupPlans = append(data.VolumeBackupPlans, newVolumeBackupPlan)
+		} else {
+			data.VolumeBackupTasksCounts = data.VolumeBackupTasksCounts + 1
+			newVolumeBackupPlanTask := VolumeBackupPlanTask{
+				Data:      task,
+				TimeStamp: timestamp,
+			}
+			planIndex := -1
+			for i, v := range data.VolumeBackupPlans {
+				if v.BackupPlanId == backupPlanId {
+					planIndex = i
+				}
+			}
+			data.VolumeBackupPlans[planIndex].BackupPlanTasks = append(data.VolumeBackupPlans[planIndex].BackupPlanTasks, newVolumeBackupPlanTask)
+		}
+		dataBytes, err := json.Marshal(data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		return err
+	} else {
+		newVolumeBackupPlanTask := VolumeBackupPlanTask{
+			Data:      task,
+			TimeStamp: timestamp,
+		}
+		newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
+		newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
+		newVolumeBackupPlan := VolumeBackupPlan{
+			BackupPlanName:        backupPlanName,
+			BackupPlanId:          backupPlanId,
+			BackupPlanTasks:       newVolumeBackupPlanTasks,
+			BackupPlanTasksCounts: 1,
+		}
+		newVolumeBackupPlans := []VolumeBackupPlan{}
+		newVolumeBackupPlans = append(newVolumeBackupPlans, newVolumeBackupPlan)
+		newVolumeBackupTasks := VolumeBackupTasks{
+			VolumeBackupPlans:       newVolumeBackupPlans,
+			VolumeBackupTasksCounts: 1,
+			VolumeBackupPlansCounts: 1,
+		}
+
+		dataBytes, err := json.Marshal(newVolumeBackupTasks)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return err
+		}
+		return err
+	}
+}
+
+type VolumeBackupPlanTask struct {
+	Data         []*subcommand.Deal `json:"data"`
+	TimeStamp    string             `json:"timeStamp"`
+	BackupTaskId string             `json:"backupTaskId"`
+}
+
+type VolumeBackupPlan struct {
+	BackupPlanName        string                 `json:"backupPlanName"`
+	BackupPlanId          int                    `json:"backupPlanId"`
+	BackupPlanTasks       []VolumeBackupPlanTask `json:"backupPlanTasks"`
+	BackupPlanTasksCounts int                    `json:"backupPlanTasksCounts"`
+}
+
+type VolumeBackupTasks struct {
+	VolumeBackupPlans       []VolumeBackupPlan `json:"volumeBackupPlans"`
+	VolumeBackupTasksCounts int                `json:"backupTasksCounts"`
+	VolumeBackupPlansCounts int                `json:"backupPlansCounts"`
+}
+
+type VolumeBackupRequest struct {
+	BackupPlanId   int    `json:"backupPlanId"`
+	BackupPlanName string `json:"backupPlanName"`
 }

@@ -27,8 +27,8 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.12.0
 	github.com/fatih/color v1.12.0
 	github.com/filedrive-team/go-graphsplit v0.4.1
-	github.com/filswan/go-swan-client v0.0.33
-	github.com/filswan/go-swan-lib v0.2.39
+	github.com/filswan/go-swan-client v0.0.36
+	github.com/filswan/go-swan-lib v0.2.45
 	github.com/go-ldap/ldap/v3 v3.2.4
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gomodule/redigo v2.0.0+incompatible

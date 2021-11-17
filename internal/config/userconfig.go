@@ -10,11 +10,12 @@ type UserConfigParams struct {
 	SwanToken              string `json:"swan_token"`
 	LotusClientApiUrl      string `json:"lotus_client_api_url"`
 	LotusClientAccessToken string `json:"lotus_client_access_token"`
+	VolumeBackupAddress    string `json:"volume_backup_address"`
 }
 
 var UserConfig *UserConfigParams
 
-func InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken string) *UserConfigParams {
+func InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken, volumeBackupAddress string) *UserConfigParams {
 	UserConfig = new(UserConfigParams)
 	UserConfig.SwanAddress = swanAddress
 	UserConfig.Fs3VolumeAddress = fs3VolumeAddress
@@ -25,6 +26,7 @@ func InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize
 	UserConfig.SwanToken = swanToken
 	UserConfig.LotusClientApiUrl = lotusClientApiUrl
 	UserConfig.LotusClientAccessToken = lotusClientAccessToken
+	UserConfig.VolumeBackupAddress = volumeBackupAddress
 	return UserConfig
 }
 
