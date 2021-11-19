@@ -88,11 +88,16 @@ import (
 )
 
 const (
-	SuccessResponseStatus = "success"
-	FailResponseStatus    = "fail"
-	NoFileInBucket        = "No file in the bucket.Please upload files"
-	Duration              = 1512000
-	FS3SourceId           = 3
+	SuccessResponseStatus             = "success"
+	FailResponseStatus                = "fail"
+	NoFileInBucket                    = "No file in the bucket.Please upload files"
+	Duration                          = 1512000
+	FS3SourceId                       = 3
+	TableVolumeBackupTask             = "volume_backup_task"
+	TableVolumeBackupDealsMetadataCsv = "volume_backup_deals_metadata_csv"
+	TableVolumeBackupDealsCarCsv      = "volume_backup_deals_car_csv"
+	TableVolumeRebuildTask            = "volume_rebuild_task"
+	StatusRebuildTaskInProgress       = "InProgress"
 )
 
 func extractBucketObject(args reflect.Value) (bucketName, objectName string) {
@@ -3967,6 +3972,12 @@ func BucketZipPath(outputBucketZipPath string) (string, error) {
 	return expandedDir, nil
 }
 
+type RetrieveVolumeResponse struct {
+	Data    VolumeBackupTasks `json:"data"`
+	Status  string            `json:"status"`
+	Message string            `json:"message"`
+}
+
 type RetrieveResponse struct {
 	Data    BucketFileList `json:"data"`
 	Status  string         `json:"status"`
@@ -3999,6 +4010,18 @@ type CreateTaskResponse struct {
 	Data    TaskResponse `json:"data"`
 	Status  string       `json:"status"`
 	Message string       `json:"message"`
+}
+
+type BackupTaskResponse struct {
+	TaskName string `json:"taskname"`
+	FileName string `json:"filename"`
+	Uuid     string `json:"uuid"`
+}
+
+type CreateBackupTaskResponse struct {
+	Data    VolumeBackupPlanTask `json:"data"`
+	Status  string               `json:"status"`
+	Message string               `json:"message"`
 }
 
 type BucketInfoResponse struct {
@@ -5885,6 +5908,20 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		}
 	}
 
+	//open backup db
+	expandedDir, err := LevelDbBackupPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer db.Close()
+
 	// generate car file using ipfs
 	// generate datacid for volume folder
 	fmt.Println("---------here1")
@@ -5922,22 +5959,8 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 	}
 	logs.GetLogger().Info("car files created in ", confCar.OutputDir)
 
-	expandedDir, err := LevelDbBackupPath()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-		return
-	}
-
-	db, err := leveldb.OpenFile(expandedDir, nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-	}
-	defer db.Close()
-
 	dataBytes, err := json.Marshal(&carCsvStructList)
-	err = db.Put([]byte("volume_backup_deals_car_csv"), []byte(dataBytes), nil)
+	err = db.Put([]byte(TableVolumeBackupDealsCarCsv), []byte(dataBytes), nil)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
@@ -5961,7 +5984,7 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 	logs.GetLogger().Info("car files uploaded")
 
 	dataBytes, err = json.Marshal(&uploadedCarCsvStructList)
-	err = db.Put([]byte("volume_backup_deals_car_csv"), []byte(dataBytes), nil)
+	err = db.Put([]byte(TableVolumeBackupDealsCarCsv), []byte(dataBytes), nil)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
@@ -5998,16 +6021,33 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		return
 	}
 	dataBytes, err = json.Marshal(&metadataCsvStructList)
-	err = db.Put([]byte("volume_backup_deals_metadata_csv"), []byte(dataBytes), nil)
+	err = db.Put([]byte(TableVolumeBackupDealsMetadataCsv), []byte(dataBytes), nil)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
 
-	SaveBackupTaskToDb(taskCsvStructList, backupPlanId, backupPlanName)
+	newVolumeBackupPlanTask, err := SaveBackupTaskToDb(taskCsvStructList, backupPlanId, backupPlanName, db)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 	logs.GetLogger().Info("task created")
 
+	createBackupTaskResponse := CreateBackupTaskResponse{
+		Data:    newVolumeBackupPlanTask,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
+	}
+	dataBytes, err = json.Marshal(createBackupTaskResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	w.Write(dataBytes)
 	return
 }
 
@@ -6258,20 +6298,13 @@ func generate_car_info(hash string, volumeCarPath string, confCar *clientmodel.C
 	return carFiles, nil
 }
 
-func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanName string) error {
-	expandedDir, err := LevelDbBackupPath()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
+func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanName string, db *leveldb.DB) (VolumeBackupPlanTask, error) {
+	tasks := []subcommand.Deal{}
+	for _, v := range task {
+		tasks = append(tasks, *v)
 	}
-	db, err := leveldb.OpenFile(expandedDir, nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	defer db.Close()
 
-	dbVolumeBackupTasks := "volume_backup_task"
+	dbVolumeBackupTasks := TableVolumeBackupTask
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 	volumeBackupTasks, err := db.Get([]byte(dbVolumeBackupTasks), nil)
 	if err == nil {
@@ -6279,14 +6312,15 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanNam
 		err = json.Unmarshal(volumeBackupTasks, &data)
 		if err != nil {
 			logs.GetLogger().Error(err)
-			return err
+			return VolumeBackupPlanTask{}, err
 		}
 		if backupPlanId > data.VolumeBackupPlansCounts {
 			data.VolumeBackupPlansCounts = data.VolumeBackupPlansCounts + 1
 			data.VolumeBackupTasksCounts = data.VolumeBackupTasksCounts + 1
 			newVolumeBackupPlanTask := VolumeBackupPlanTask{
-				Data:      task,
-				TimeStamp: timestamp,
+				Data:         tasks,
+				TimeStamp:    timestamp,
+				BackupTaskId: data.VolumeBackupTasksCounts,
 			}
 			newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
 			newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
@@ -6297,11 +6331,23 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanNam
 				BackupPlanTasksCounts: 1,
 			}
 			data.VolumeBackupPlans = append(data.VolumeBackupPlans, newVolumeBackupPlan)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return VolumeBackupPlanTask{}, err
+			}
+			err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataBytes), nil)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return VolumeBackupPlanTask{}, err
+			}
+			return newVolumeBackupPlanTask, err
 		} else {
 			data.VolumeBackupTasksCounts = data.VolumeBackupTasksCounts + 1
 			newVolumeBackupPlanTask := VolumeBackupPlanTask{
-				Data:      task,
-				TimeStamp: timestamp,
+				Data:         tasks,
+				TimeStamp:    timestamp,
+				BackupTaskId: data.VolumeBackupTasksCounts,
 			}
 			planIndex := -1
 			for i, v := range data.VolumeBackupPlans {
@@ -6310,22 +6356,23 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanNam
 				}
 			}
 			data.VolumeBackupPlans[planIndex].BackupPlanTasks = append(data.VolumeBackupPlans[planIndex].BackupPlanTasks, newVolumeBackupPlanTask)
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return VolumeBackupPlanTask{}, err
+			}
+			err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataBytes), nil)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return VolumeBackupPlanTask{}, err
+			}
+			return newVolumeBackupPlanTask, err
 		}
-		dataBytes, err := json.Marshal(data)
-		if err != nil {
-			logs.GetLogger().Error(err)
-			return err
-		}
-		err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataBytes), nil)
-		if err != nil {
-			logs.GetLogger().Error(err)
-			return err
-		}
-		return err
 	} else {
 		newVolumeBackupPlanTask := VolumeBackupPlanTask{
-			Data:      task,
-			TimeStamp: timestamp,
+			Data:         tasks,
+			TimeStamp:    timestamp,
+			BackupTaskId: 1,
 		}
 		newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
 		newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
@@ -6346,21 +6393,21 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanNam
 		dataBytes, err := json.Marshal(newVolumeBackupTasks)
 		if err != nil {
 			logs.GetLogger().Error(err)
-			return err
+			return VolumeBackupPlanTask{}, err
 		}
 		err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataBytes), nil)
 		if err != nil {
 			logs.GetLogger().Error(err)
-			return err
+			return VolumeBackupPlanTask{}, err
 		}
-		return err
+		return newVolumeBackupPlanTask, err
 	}
 }
 
 type VolumeBackupPlanTask struct {
-	Data         []*subcommand.Deal `json:"data"`
-	TimeStamp    string             `json:"timeStamp"`
-	BackupTaskId string             `json:"backupTaskId"`
+	Data         []subcommand.Deal `json:"data"`
+	TimeStamp    string            `json:"timeStamp"`
+	BackupTaskId int               `json:"backupTaskId"`
 }
 
 type VolumeBackupPlan struct {
@@ -6379,4 +6426,389 @@ type VolumeBackupTasks struct {
 type VolumeBackupRequest struct {
 	BackupPlanId   int    `json:"backupPlanId"`
 	BackupPlanName string `json:"backupPlanName"`
+}
+
+type AddVolumeRebuildRequest struct {
+	BackupTaskId int `json:"backupTaskId"`
+	BackupPlanId int `json:"backupPlanId"`
+}
+
+type AddVolumeRebuildResponse struct {
+	Data    VolumeRebuildTask `json:"data"`
+	Status  string            `json:"status"`
+	Message string            `json:"message"`
+}
+
+type VolumeRebuildJobs struct {
+	VolumeRebuildTasks       []VolumeRebuildTask `json:"volumeRebuildTasks"`
+	VolumeRebuildTasksCounts int                 `json:"volumeRebuildTasksCounts"`
+}
+
+type VolumeRebuildJobsResponse struct {
+	Data    VolumeRebuildJobs `json:"data"`
+	Status  string            `json:"status"`
+	Message string            `json:"message"`
+}
+
+type VolumeRebuildTask struct {
+	RebuildTaskID int    `json:"rebuildTaskID"`
+	TimeStamp     string `json:"timeStamp"`
+	MinerId       string `json:"miner_id"`
+	DealCid       string `json:"deal_cid"`
+	PayloadCid    string `json:"payload_cid"`
+	BackupTaskId  int    `json:"backupTaskId"`
+	Status        string `json:"status"`
+}
+
+type VolumeRebuildRequest struct {
+	MinerId    string `json:"miner_id"`
+	PayloadCid string `json:"payload_cid"`
+	DealCid    string `json:"dealcid"`
+}
+
+type VolumeRebuildResponse struct {
+	Data    VolumeRebuildJobResponse `json:"data"`
+	Status  string                   `json:"status"`
+	Message string                   `json:"message"`
+}
+
+type VolumeRebuildJobResponse struct {
+	VolumeRebuildAddress string `json:"volume_rebuild_address"`
+	VolumeRebuildName    string `json:"volume_rebuild_name"`
+	MinerId              string `json:"miner_id"`
+	DealCid              string `json:"deal_cid"`
+	PayloadCid           string `json:"payload_cid"`
+}
+
+func (web *webAPIHandlers) RetrieveOfflineDealsVolume(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRetrieveOfflineDealsVolume")
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	expandedDir, err := LevelDbBackupPath()
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+	defer db.Close()
+	backupTasksKey := TableVolumeBackupTask
+	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
+	if err != nil || backupTasks == nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	data := VolumeBackupTasks{}
+	err = json.Unmarshal(backupTasks, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	retrieveVolumeResponse := RetrieveVolumeResponse{Data: data, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
+	dataBytes, err := json.Marshal(retrieveVolumeResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	w.Write(dataBytes)
+	return
+}
+
+func (web *webAPIHandlers) RebuildVolume(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRetrieveOfflineDealsVolume")
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var volumeRebuildRequest VolumeRebuildRequest
+	err := decoder.Decode(&volumeRebuildRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	//check if deal is activated
+	dealActivated, err := exec.Command("lotus", "client", "inspect-deal", "--proposal-cid", volumeRebuildRequest.DealCid, "|", "grep", "activated").Output()
+	if dealActivated == nil {
+		retrieveFullDealResponse := VolumeRebuildResponse{
+			Data:    VolumeRebuildJobResponse{},
+			Status:  FailResponseStatus,
+			Message: fmt.Sprintf("Retrieve deal failed due to deal not activated. Deal cid: %s", volumeRebuildRequest.DealCid),
+		}
+		bodyByte, err := json.Marshal(retrieveFullDealResponse)
+		if err != nil {
+			writeWebErrorResponse(w, err)
+			logs.GetLogger().Error(err)
+			return
+		}
+		w.Write(bodyByte)
+		return
+	}
+
+	// get volume path
+	volumePath, err := VolumePath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+
+	//rename previous version volume
+	if _, err := os.Stat(volumePath); !os.IsNotExist(err) {
+		dir, file := filepath.Split(volumePath)
+		fileBase, fileExt := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)), filepath.Ext(file)
+		_, err = exec.Command("mv", volumePath, dir+fileBase+"_"+timestamp+fileExt).Output()
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeOfflineDealsErrorResponse(w, err)
+			return
+		}
+	}
+
+	// retrieve deal
+	_, err = exec.Command("lotus", "client", "retrieve", "--miner", volumeRebuildRequest.MinerId, volumeRebuildRequest.PayloadCid, volumePath).Output()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	volumeRebuildJobResponse := VolumeRebuildJobResponse{
+		VolumeRebuildAddress: volumePath,
+		VolumeRebuildName:    filepath.Base(volumePath),
+		MinerId:              volumeRebuildRequest.MinerId,
+		DealCid:              volumeRebuildRequest.DealCid,
+		PayloadCid:           volumeRebuildRequest.PayloadCid,
+	}
+	volumeRebuildResponse := VolumeRebuildResponse{
+		Data:    volumeRebuildJobResponse,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
+	}
+	bodyByte, err := json.Marshal(volumeRebuildResponse)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+	w.Write(bodyByte)
+	return
+}
+
+func (web *webAPIHandlers) RebuildAddJob(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRebuildAddJob")
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var addVolumeRebuildRequest AddVolumeRebuildRequest
+	err := decoder.Decode(&addVolumeRebuildRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	//open backup db
+	expandedDir, err := LevelDbBackupPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer db.Close()
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+
+	backupTasksKey := TableVolumeBackupTask
+	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
+	if err != nil || backupTasks == nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	data := VolumeBackupTasks{}
+	err = json.Unmarshal(backupTasks, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	backupTask := VolumeBackupPlanTask{}
+	for _, v := range data.VolumeBackupPlans {
+		if v.BackupPlanId == addVolumeRebuildRequest.BackupPlanId {
+			for _, value := range v.BackupPlanTasks {
+				if value.BackupTaskId == addVolumeRebuildRequest.BackupTaskId {
+					backupTask = value
+					break
+				}
+			}
+		}
+	}
+
+	newVolumeRebuildTask := VolumeRebuildTask{
+		TimeStamp:    timestamp,
+		MinerId:      backupTask.Data[0].MinerId,
+		DealCid:      backupTask.Data[0].MinerId,
+		PayloadCid:   backupTask.Data[0].MinerId,
+		BackupTaskId: backupTask.BackupTaskId,
+		Status:       StatusRebuildTaskInProgress,
+	}
+
+	volumeBackupTasks, err := db.Get([]byte(TableVolumeRebuildTask), nil)
+	if err == nil {
+		data := VolumeRebuildJobs{}
+		err = json.Unmarshal(volumeBackupTasks, &data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		newVolumeRebuildTask.RebuildTaskID = data.VolumeRebuildTasksCounts + 1
+		data.VolumeRebuildTasks = append(data.VolumeRebuildTasks, newVolumeRebuildTask)
+		data.VolumeRebuildTasksCounts = data.VolumeRebuildTasksCounts + 1
+		dataBytes, err := json.Marshal(data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		err = db.Put([]byte(TableVolumeRebuildTask), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	} else {
+		newVolumeRebuildTasks := []VolumeRebuildTask{}
+		newVolumeRebuildTask.RebuildTaskID = 1
+		newVolumeRebuildTasks = append(newVolumeRebuildTasks, newVolumeRebuildTask)
+		newVolumeRebuildJob := VolumeRebuildJobs{
+			VolumeRebuildTasks:       newVolumeRebuildTasks,
+			VolumeRebuildTasksCounts: 1,
+		}
+		dataBytes, err := json.Marshal(newVolumeRebuildJob)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		err = db.Put([]byte(TableVolumeRebuildTask), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
+	addVolumeRebuildResponse := AddVolumeRebuildResponse{
+		Data:    newVolumeRebuildTask,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
+	}
+	dataBytes, err := json.Marshal(addVolumeRebuildResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	w.Write(dataBytes)
+	return
+
+}
+
+func (web *webAPIHandlers) RetrieveRebuildVolume(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRebuildAddJob")
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	//open backup db
+	expandedDir, err := LevelDbBackupPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer db.Close()
+
+	volumeRebuildTasks, err := db.Get([]byte(TableVolumeRebuildTask), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	data := VolumeRebuildJobs{}
+	err = json.Unmarshal(volumeRebuildTasks, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	volumeRebuildJobsResponse := VolumeRebuildJobsResponse{
+		Data:    data,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
+	}
+	dataBytes, err := json.Marshal(volumeRebuildJobsResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	w.Write(dataBytes)
+	return
+
+}
+
+func (web *webAPIHandlers) Test(w http.ResponseWriter, r *http.Request) {
+	expandedDir, err := LevelDbBackupPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer db.Close()
+
+	carCSV, _ := db.Get([]byte("volume_backup_deals_car_csv"), nil)
+	fmt.Println("Car CSV: ", string(carCSV))
+	metadataCSV, _ := db.Get([]byte("volume_backup_deals_metadata_csv"), nil)
+	fmt.Println("Metadata CSV: ", string(metadataCSV))
+	taskCSV, _ := db.Get([]byte("volume_backup_task"), nil)
+	fmt.Println("Task CSV: ", string(taskCSV))
+	return
 }

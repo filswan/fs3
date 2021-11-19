@@ -101,6 +101,11 @@ func registerWebRouter(router *mux.Router) error {
 	webBrowserRouter.Methods(http.MethodPost).Path("/offlinedeal/{bucket}/{object:.+}").HandlerFunc(httpTraceHdrs(web.SendOfflineDeal))
 	webBrowserRouter.Methods(http.MethodPost).Path("/offlinedeals/{bucket}").HandlerFunc(httpTraceHdrs(web.SendOfflineDeals))
 	webBrowserRouter.Methods(http.MethodPost).Path("/backup/volume").HandlerFunc(httpTraceHdrs(web.SendOfflineDealsVolume))
+	webBrowserRouter.Methods(http.MethodGet).Path("/retrieve/volume").HandlerFunc(httpTraceHdrs(web.RetrieveOfflineDealsVolume))
+	webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/add/job").HandlerFunc(httpTraceHdrs(web.RebuildAddJob))
+	webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/volume").HandlerFunc(httpTraceHdrs(web.RebuildVolume))
+	webBrowserRouter.Methods(http.MethodPost).Path("/retrieve/rebuild/volume").HandlerFunc(httpTraceHdrs(web.RetrieveRebuildVolume))
+	webBrowserRouter.Methods(http.MethodPost).Path("/test").HandlerFunc(httpTraceHdrs(web.Test))
 
 	// These methods use short-expiry tokens in the URLs. These tokens may unintentionally
 	// be logged, so a new one must be generated for each request.
