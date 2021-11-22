@@ -24,6 +24,7 @@ import (
 	sysconfig "github.com/minio/minio/config"
 	"github.com/minio/minio/internal/config"
 	"github.com/minio/minio/logs"
+	"github.com/minio/minio/scheduler"
 	"github.com/minio/pkg/console"
 	"github.com/minio/pkg/trie"
 	"github.com/minio/pkg/words"
@@ -170,6 +171,7 @@ func Main(args []string) {
 
 	initConfigAndLog()
 	initUserConfig(sysconfig.GetSysConfig().StandAlone)
+	scheduler.SendDealScheduler()
 
 	fmt.Println("Your FS3 Server is running successfully. Please copy and paste the url below to open in a browser")
 

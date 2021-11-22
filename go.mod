@@ -77,6 +77,7 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/procfs v0.6.0
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
+	github.com/robfig/cron v1.2.0
 	github.com/rs/cors v1.7.0
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shopspring/decimal v1.3.1
