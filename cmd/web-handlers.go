@@ -97,7 +97,10 @@ const (
 	TableVolumeBackupDealsMetadataCsv = "volume_backup_deals_metadata_csv"
 	TableVolumeBackupDealsCarCsv      = "volume_backup_deals_car_csv"
 	TableVolumeRebuildTask            = "volume_rebuild_task"
-	StatusRebuildTaskInProgress       = "InProgress"
+	StatusRebuildTaskCreated          = "Created"
+	StatusRebuildTaskRunning          = "Running"
+	StatusBackupTaskCreated           = "Created"
+	StatusBackupTaskRunning           = "Running"
 )
 
 func extractBucketObject(args reflect.Value) (bucketName, objectName string) {
@@ -5950,6 +5953,14 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 	}
 	logs.GetLogger().Info("FS3 volume backup car file generation succeed")
 
+	// lotus import car file
+	_, err = exec.Command("lotus", "client", "import", "--car", volumeCarPath).Output()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
 	//generate car.csv
 	carCsvStructList, err := generate_car_info(hash, volumeCarPath, confCar)
 	if err != nil {
@@ -6319,8 +6330,10 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanNam
 			data.VolumeBackupTasksCounts = data.VolumeBackupTasksCounts + 1
 			newVolumeBackupPlanTask := VolumeBackupPlanTask{
 				Data:         tasks,
-				TimeStamp:    timestamp,
+				CreatedOn:    timestamp,
+				UpdatedOn:    timestamp,
 				BackupTaskId: data.VolumeBackupTasksCounts,
+				Status:       StatusBackupTaskCreated,
 			}
 			newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
 			newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
@@ -6346,8 +6359,10 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanNam
 			data.VolumeBackupTasksCounts = data.VolumeBackupTasksCounts + 1
 			newVolumeBackupPlanTask := VolumeBackupPlanTask{
 				Data:         tasks,
-				TimeStamp:    timestamp,
+				CreatedOn:    timestamp,
+				UpdatedOn:    timestamp,
 				BackupTaskId: data.VolumeBackupTasksCounts,
+				Status:       StatusBackupTaskCreated,
 			}
 			planIndex := -1
 			for i, v := range data.VolumeBackupPlans {
@@ -6371,8 +6386,10 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanNam
 	} else {
 		newVolumeBackupPlanTask := VolumeBackupPlanTask{
 			Data:         tasks,
-			TimeStamp:    timestamp,
+			CreatedOn:    timestamp,
+			UpdatedOn:    timestamp,
 			BackupTaskId: 1,
+			Status:       StatusBackupTaskCreated,
 		}
 		newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
 		newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
@@ -6406,8 +6423,10 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupPlanNam
 
 type VolumeBackupPlanTask struct {
 	Data         []subcommand.Deal `json:"data"`
-	TimeStamp    string            `json:"timeStamp"`
+	CreatedOn    string            `json:"createdOn"`
+	UpdatedOn    string            `json:"createdOn"`
 	BackupTaskId int               `json:"backupTaskId"`
+	Status       string            `json:"status"`
 }
 
 type VolumeBackupPlan struct {
@@ -6452,7 +6471,8 @@ type VolumeRebuildJobsResponse struct {
 
 type VolumeRebuildTask struct {
 	RebuildTaskID int    `json:"rebuildTaskID"`
-	TimeStamp     string `json:"timeStamp"`
+	CreatedOn     string `json:"createdOn"`
+	UpdatedOn     string `json:"updatedOn"`
 	MinerId       string `json:"miner_id"`
 	DealCid       string `json:"deal_cid"`
 	PayloadCid    string `json:"payload_cid"`
@@ -6669,12 +6689,13 @@ func (web *webAPIHandlers) RebuildAddJob(w http.ResponseWriter, r *http.Request)
 	}
 
 	newVolumeRebuildTask := VolumeRebuildTask{
-		TimeStamp:    timestamp,
+		CreatedOn:    timestamp,
+		UpdatedOn:    timestamp,
 		MinerId:      backupTask.Data[0].MinerId,
-		DealCid:      backupTask.Data[0].MinerId,
-		PayloadCid:   backupTask.Data[0].MinerId,
+		DealCid:      backupTask.Data[0].DealCid,
+		PayloadCid:   backupTask.Data[0].PayloadCid,
 		BackupTaskId: backupTask.BackupTaskId,
-		Status:       StatusRebuildTaskInProgress,
+		Status:       StatusRebuildTaskCreated,
 	}
 
 	volumeBackupTasks, err := db.Get([]byte(TableVolumeRebuildTask), nil)
