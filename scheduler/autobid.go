@@ -113,13 +113,19 @@ func UpdateActiveBackupTasksInDb() error {
 	//update backuptasks
 	for i, value := range data.VolumeBackupPlans {
 		for j, values := range value.BackupPlanTasks {
-			status, err := CheckDealStatus(values.Data[0].DealCid)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return err
-			}
-			if status == StatusStorageDealActive {
-				data.VolumeBackupPlans[i].BackupPlanTasks[j].Data[0].DealCid = StatusBackupTaskCompleted
+			if values.Status == StatusBackupTaskRunning {
+				status, err := CheckDealStatus(values.Data[0].DealCid)
+				if err != nil {
+					logs.GetLogger().Error(err)
+					return err
+				}
+				if status == StatusStorageDealActive {
+					data.VolumeBackupPlans[i].BackupPlanTasks[j].Data[0].DealCid = StatusBackupTaskCompleted
+					timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+					data.VolumeBackupPlans[i].BackupPlanTasks[j].UpdatedOn = timestamp
+					data.InProcessVolumeBackupTasksCounts = data.InProcessVolumeBackupTasksCounts - 1
+					data.CompletedVolumeBackupTasksCounts = data.CompletedVolumeBackupTasksCounts + 1
+				}
 			}
 		}
 	}
@@ -258,9 +264,12 @@ func LevelDbBackupPath() (string, error) {
 }
 
 type VolumeBackupTasks struct {
-	VolumeBackupPlans       []VolumeBackupPlan `json:"volumeBackupPlans"`
-	VolumeBackupTasksCounts int                `json:"backupTasksCounts"`
-	VolumeBackupPlansCounts int                `json:"backupPlansCounts"`
+	VolumeBackupPlans                []VolumeBackupPlan `json:"volumeBackupPlans"`
+	VolumeBackupTasksCounts          int                `json:"backupTasksCounts"`
+	VolumeBackupPlansCounts          int                `json:"backupPlansCounts"`
+	CompletedVolumeBackupTasksCounts int                `json:"completedVolumeBackupTasksCounts"`
+	InProcessVolumeBackupTasksCounts int                `json:"inProcessVolumeBackupTasksCounts"`
+	FailedVolumeBackupTasksCounts    int                `json:"failedVolumeBackupTasksCounts"`
 }
 
 type VolumeBackupPlan struct {
