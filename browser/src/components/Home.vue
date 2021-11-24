@@ -316,6 +316,7 @@ export default {
                 }
             }
             _this.dialogFormVisible = dialogFormVisible
+            console.log('create api request start')
             axios.post(_this.postUrl, dataMakeBucket, {headers: {
                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
@@ -547,7 +548,8 @@ export default {
     display: flex;
     flex-wrap: wrap;
     .content{
-        width: calc(100% - 3rem);
+        position: relative;
+        width: calc(100% - 3.2rem);
         height: 100%;
         overflow-y: scroll;
         transition: all;

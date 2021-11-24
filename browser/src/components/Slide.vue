@@ -2,7 +2,16 @@
     <div class="slide" @click="caozuoFun()">
         <div class="fes-header">
             <img :src="logo" alt="">
-            <h2>FS3 Browser</h2>
+        </div>
+        <div class="fs3_backup">
+            <div class="introduce">
+                <router-link :to="{name: 'fs3_backup'}" :style="{'color': introduceColor?'#2f85e5':'#fff'}">FS3 Backup</router-link>
+            </div>
+            <!-- :default-checked-keys="activeTree" -->
+            <el-tree :data="dataBackup" :props="defaultProps" @node-click="handleNodeClick"
+                node-key="id" ref="my-tree"
+                :default-expanded-keys="activeTree?[1]:[]"
+                :current-node-key="activeTree"></el-tree>
         </div>
         <div class="fes-search">
             <el-input
@@ -27,7 +36,7 @@
                     </ul>
                 </el-col>
 
-                <el-col :span="24" :class="{'active': !allActive}"
+                <el-col :span="24" class="active"
                   style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false)">
                   All Deals
                 </el-col>
@@ -79,7 +88,7 @@ export default {
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
-            logo: require("@/assets/images/title.png"),
+            logo: require("@/assets/images/logo.png"),
             activeIndex: '1',
             mobileMenuShow: false,
             search: '',
@@ -109,7 +118,30 @@ export default {
             shareFileShow: false,
             sendApi: 1,
             retrievalDialog: false,
-            allActive: true
+            allActive: true,
+            dataBackup: [{
+                label: 'My account',
+                id: 1,
+                children: [{
+                    label: 'Dashboard',
+                    id: 2,
+                    urlName: 'my_account_dashboard'
+                },{
+                    label: 'Backup Plans',
+                    id: 3,
+                    urlName: 'my_account_backupPlans'
+                },{
+                    label: 'My Plans',
+                    id: 4,
+                    urlName: 'my_account_myPlans'
+                }]
+            }],
+            activeTree: '',
+            defaultProps: {
+                children: 'children',
+                label: 'label'
+            },
+            introduceColor: false
         };
     },
     props: ['minioListBuckets', 'currentBucket', 'homeClick'],
@@ -121,6 +153,7 @@ export default {
     },
     watch: {
         $route: function (to, from) {
+            this.productName()
             if(this.bodyWidth){
                 this.collapse = true
                 this.collapseChage();
@@ -129,8 +162,33 @@ export default {
         'minioListBuckets': function (to, from) {
             this.getMinioData()
         },
+        activeTree(id) {
+            // Tree 内部使用了 Node 类型的对象来包装用户传入的数据，用来保存目前节点的状态。可以用 $refs 获取 Tree 实例
+            if (id.toString()) {
+                this.$refs["my-tree"].setCurrentKey(id);
+            } else {
+                this.$refs["my-tree"].setCurrentKey(null);
+            }
+        }
     },
     methods: {
+      handleNodeClick(data) {
+        if(data.urlName) this.$router.push({name: data.urlName})
+      },
+      productName() {
+        let _this = this
+        _this.introduceColor = _this.$route.name == 'fs3_backup'?true:false
+        _this.activeTree = ''
+        if(_this.$route.name.indexOf('my_account') > -1){
+            if(_this.$route.name == 'my_account_backupPlans') {
+                _this.activeTree = '3'
+            }else if(_this.$route.name == 'my_account_myPlans') {
+                _this.activeTree = '4'
+            }else {
+                _this.activeTree = '2'
+            }
+        }
+      },
       getshareDialog(shareDialog) {
         this.shareDialog = shareDialog
       },
@@ -358,25 +416,27 @@ export default {
     },
     mounted() {
       this.getMinioData()
+      this.productName()
     },
 };
 </script>
 <style lang="scss" scoped>
 .slide{
-    width: 2.5rem;
-    background-color: #00303f;
-    height: calc(100% - 0.5rem);
+    width: 3.2rem;
+    background-color: #003040;
+    height: 100%;
     overflow: hidden;
-    padding: 0.25rem;
+    padding: 0;
     transition: all;
     transition-duration: .3s;
     .fes-header{
         display: flex;
-        width: 100%;
-        margin-bottom: 40px;
+        width: calc(100% - 0.6rem);
+        padding: 0.25rem 0.3rem 0.3rem;
         img{
-            width: 20px;
-            margin-top: 5px;
+            width: auto;
+            max-width: 100%;
+            height: 0.4rem;
         }
         h2{
             margin: 10px 0 0 13px;
@@ -385,10 +445,61 @@ export default {
             font-size: 0.2rem;
         }
     }
+    .fs3_backup{
+        margin: 0 0 0.1rem;
+        .introduce{
+            margin: 0 0 0.2rem;
+            text-indent: 0.3rem;
+            background: #002a39;
+            // font-family: 'm-semibold';
+            font-weight: bold;
+            a{
+                display: block;
+                line-height: 2;
+                font-size: 0.23rem;
+                color: #2f85e5;
+            }
+        }
+        .el-tree /deep/{
+            padding: 0 0.35rem;
+            background: transparent;
+            color: #fff;
+            .el-tree-node {
+                .el-tree-node__content{
+                    background: transparent !important;
+                    margin: 0 0 0.08rem;
+                    .el-tree-node__expand-icon{
+                        padding: 0 0.05rem;
+                        &:before{
+                            font-size: 0.2rem;
+                        }
+                    }
+                    .el-tree-node__label{
+                        font-size: 0.18rem;
+                    }
+                    &:hover{
+                        color: #5f9dcc;
+                    }
+                }
+                .el-tree-node__children{
+                    .el-tree-node__content{
+                        .el-tree-node__label{
+                            font-size: 0.14rem;
+                        }
+                    }
+                }
+                .is-current, .is-checked{
+                        color: #5f9dcc;
+                }
+            }
+        }
+    }
     .fes-search{
-        height: calc(100% - 1.5rem);
+        height: calc(100% - 1.7rem);
         .el-input /deep/{
             display: block;
+            width: calc(100% - 0.4rem);
+            margin: 0 0.2rem;
             clear: both;
             .el-input__inner{
                 background-color: transparent;
@@ -398,7 +509,11 @@ export default {
                 border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                 color: #fff;
                 text-align: left;
-                font-size: 0.13rem;
+                font-family: 'm-regular';
+                font-size: 0.18rem;
+            }
+            .el-input__prefix{
+                color: #fff;
             }
         }
         .el-row /deep/{
@@ -406,7 +521,7 @@ export default {
             margin-left: -0.25rem;
             margin-right: -0.25rem;
             font-size: 0.13rem;
-            height: calc(100% - 0.6rem);
+            height: calc(100% - 1.3rem);
             overflow: hidden;
             overflow-y: scroll;
             .el-col{
@@ -414,7 +529,7 @@ export default {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 0.1rem 0.05rem 0.1rem 0.25rem;
+                padding: 0.1rem 0.25rem 0.1rem 0.45rem;
                 color: rgba(255, 255, 255, 0.75);
                 word-wrap: break-word;
                 font-size: 0.14rem;
@@ -517,7 +632,7 @@ export default {
         background-color: rgba(0,0,0,.1);
         font-size: 15px;
         font-weight: 400;
-        width: calc(3rem - 0.4rem);
+        width: calc(3.2rem - 0.4rem);
         padding: 0.2rem;
         overflow: hidden;
         text-overflow: ellipsis;
