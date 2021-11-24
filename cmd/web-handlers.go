@@ -28,6 +28,7 @@ import (
 	"fmt"
 	"github.com/codingsince1985/checksum"
 	"github.com/filedrive-team/go-graphsplit"
+	"github.com/filswan/go-swan-lib/client"
 	"github.com/filswan/go-swan-lib/client/lotus"
 	libconstants "github.com/filswan/go-swan-lib/constants"
 	libutils "github.com/filswan/go-swan-lib/utils"
@@ -94,6 +95,7 @@ const (
 	Duration                          = 1512000
 	FS3SourceId                       = 3
 	TableVolumeBackupTask             = "volume_backup_task"
+	TableVolumeBackupPlan             = "volume_backup_plan"
 	TableVolumeBackupDealsMetadataCsv = "volume_backup_deals_metadata_csv"
 	TableVolumeBackupDealsCarCsv      = "volume_backup_deals_car_csv"
 	TableVolumeRebuildTask            = "volume_rebuild_task"
@@ -101,6 +103,9 @@ const (
 	StatusRebuildTaskRunning          = "Running"
 	StatusBackupTaskCreated           = "Created"
 	StatusBackupTaskRunning           = "Running"
+	LOTUS_JSON_RPC_ID                 = 7878
+	LOTUS_JSON_RPC_VERSION            = "2.0"
+	LOTUS_CLIENT_Retrieve_DEAL        = "Filecoin.ClientRetrieve"
 )
 
 func extractBucketObject(args reflect.Value) (bucketName, objectName string) {
@@ -3975,6 +3980,26 @@ func BucketZipPath(outputBucketZipPath string) (string, error) {
 	return expandedDir, nil
 }
 
+type VolumeBackupJobPlans struct {
+	VolumeBackupJobPlans       []VolumeBackupJobPlan `json:"volumeBackupJobPlans"`
+	VolumeBackupJobPlansCounts int                   `json:"backupTasksCounts"`
+}
+
+type VolumeBackupJobPlan struct {
+	BackupPlanId   int      `json:"backupPlanId"`
+	BackupPlanName string   `json:"backupPlanName"`
+	BackupInterval int      `json:"backupInterval"`
+	MinerRegion    []string `json:"minerRegion"`
+	CreatedOn      string   `json:"createdOn"`
+	UpdatedOn      string   `json:"createdOn"`
+}
+
+type VolumeBackupTasks struct {
+	VolumeBackupPlans       []VolumeBackupPlan `json:"volumeBackupPlans"`
+	VolumeBackupTasksCounts int                `json:"backupTasksCounts"`
+	VolumeBackupPlansCounts int                `json:"backupPlansCounts"`
+}
+
 type RetrieveVolumeResponse struct {
 	Data    VolumeBackupTasks `json:"data"`
 	Status  string            `json:"status"`
@@ -6436,15 +6461,21 @@ type VolumeBackupPlan struct {
 	BackupPlanTasksCounts int                    `json:"backupPlanTasksCounts"`
 }
 
-type VolumeBackupTasks struct {
-	VolumeBackupPlans       []VolumeBackupPlan `json:"volumeBackupPlans"`
-	VolumeBackupTasksCounts int                `json:"backupTasksCounts"`
-	VolumeBackupPlansCounts int                `json:"backupPlansCounts"`
-}
-
 type VolumeBackupRequest struct {
 	BackupPlanId   int    `json:"backupPlanId"`
 	BackupPlanName string `json:"backupPlanName"`
+}
+
+type AddVolumeBackupPlanRequest struct {
+	BackupPlanName string   `json:"backupPlanName"`
+	BackupInterval int      `json:"backupInterval"`
+	MinerRegion    []string `json:"minerRegion"`
+}
+
+type AddVolumeBackupPlanResponse struct {
+	Data    VolumeBackupJobPlan `json:"data"`
+	Status  string              `json:"status"`
+	Message string              `json:"message"`
 }
 
 type AddVolumeRebuildRequest struct {
@@ -6559,24 +6590,6 @@ func (web *webAPIHandlers) RebuildVolume(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	//check if deal is activated
-	dealActivated, err := exec.Command("lotus", "client", "inspect-deal", "--proposal-cid", volumeRebuildRequest.DealCid, "|", "grep", "activated").Output()
-	if dealActivated == nil {
-		retrieveFullDealResponse := VolumeRebuildResponse{
-			Data:    VolumeRebuildJobResponse{},
-			Status:  FailResponseStatus,
-			Message: fmt.Sprintf("Retrieve deal failed due to deal not activated. Deal cid: %s", volumeRebuildRequest.DealCid),
-		}
-		bodyByte, err := json.Marshal(retrieveFullDealResponse)
-		if err != nil {
-			writeWebErrorResponse(w, err)
-			logs.GetLogger().Error(err)
-			return
-		}
-		w.Write(bodyByte)
-		return
-	}
-
 	// get volume path
 	volumePath, err := VolumePath()
 	if err != nil {
@@ -6597,6 +6610,14 @@ func (web *webAPIHandlers) RebuildVolume(w http.ResponseWriter, r *http.Request)
 			writeOfflineDealsErrorResponse(w, err)
 			return
 		}
+	}
+
+	//retrieve deal
+	err = LotusRpcClientRetrieve(volumeRebuildRequest.MinerId, volumeRebuildRequest.PayloadCid, volumePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
 	}
 
 	// retrieve deal
@@ -6626,6 +6647,128 @@ func (web *webAPIHandlers) RebuildVolume(w http.ResponseWriter, r *http.Request)
 	}
 	w.Write(bodyByte)
 	return
+}
+
+func (web *webAPIHandlers) BackupVolumeAddPlan(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRebuildAddJob")
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var addVolumeBackupPlanRequest AddVolumeBackupPlanRequest
+	err := decoder.Decode(&addVolumeBackupPlanRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	//open backup db
+	expandedDir, err := LevelDbBackupPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer db.Close()
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+
+	backupPlansKey := TableVolumeBackupPlan
+	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
+	if err == nil {
+		data := VolumeBackupJobPlans{}
+		err = json.Unmarshal(backupPlans, &data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		newVolumeBackupJobPlan := VolumeBackupJobPlan{
+			BackupPlanId:   data.VolumeBackupJobPlansCounts + 1,
+			BackupPlanName: addVolumeBackupPlanRequest.BackupPlanName,
+			BackupInterval: addVolumeBackupPlanRequest.BackupInterval,
+			MinerRegion:    addVolumeBackupPlanRequest.MinerRegion,
+			CreatedOn:      timestamp,
+			UpdatedOn:      timestamp,
+		}
+		data.VolumeBackupJobPlans = append(data.VolumeBackupJobPlans, newVolumeBackupJobPlan)
+		data.VolumeBackupJobPlansCounts = data.VolumeBackupJobPlansCounts + 1
+		dataBytes, err := json.Marshal(data)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		err = db.Put([]byte(TableVolumeBackupPlan), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		addVolumeBackupPlanResponse := AddVolumeBackupPlanResponse{
+			Data:    newVolumeBackupJobPlan,
+			Status:  SuccessResponseStatus,
+			Message: SuccessResponseStatus,
+		}
+		dataBytes, err = json.Marshal(addVolumeBackupPlanResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeOfflineDealsErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	} else {
+		newVolumeBackupJobPlan := VolumeBackupJobPlan{
+			BackupPlanId:   1,
+			BackupPlanName: addVolumeBackupPlanRequest.BackupPlanName,
+			BackupInterval: addVolumeBackupPlanRequest.BackupInterval,
+			MinerRegion:    addVolumeBackupPlanRequest.MinerRegion,
+			CreatedOn:      timestamp,
+			UpdatedOn:      timestamp,
+		}
+		newVolumeBackupJobPlans := []VolumeBackupJobPlan{}
+		newVolumeBackupJobPlans = append(newVolumeBackupJobPlans, newVolumeBackupJobPlan)
+		volumeBackupJobPlans := VolumeBackupJobPlans{
+			VolumeBackupJobPlans:       newVolumeBackupJobPlans,
+			VolumeBackupJobPlansCounts: 1,
+		}
+		dataBytes, err := json.Marshal(volumeBackupJobPlans)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		err = db.Put([]byte(TableVolumeBackupPlan), []byte(dataBytes), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		addVolumeBackupPlanResponse := AddVolumeBackupPlanResponse{
+			Data:    newVolumeBackupJobPlan,
+			Status:  SuccessResponseStatus,
+			Message: SuccessResponseStatus,
+		}
+		dataBytes, err = json.Marshal(addVolumeBackupPlanResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeOfflineDealsErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	}
 }
 
 func (web *webAPIHandlers) RebuildAddJob(w http.ResponseWriter, r *http.Request) {
@@ -6664,11 +6807,6 @@ func (web *webAPIHandlers) RebuildAddJob(w http.ResponseWriter, r *http.Request)
 
 	backupTasksKey := TableVolumeBackupTask
 	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
-	if err != nil || backupTasks == nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-		return
-	}
 	data := VolumeBackupTasks{}
 	err = json.Unmarshal(backupTasks, &data)
 	if err != nil {
@@ -6808,6 +6946,85 @@ func (web *webAPIHandlers) RetrieveRebuildVolume(w http.ResponseWriter, r *http.
 	w.Write(dataBytes)
 	return
 
+}
+
+func LotusRpcClientRetrieve(minerId string, payloadCid string, outputPath string) error {
+	clientRetrieveDealParamDataPartOne := ClientRetrieveDealParamDataPartOne{
+		Root: Cid{
+			Cid: payloadCid,
+		},
+		Size:        42,
+		Total:       "0",
+		UnsealPrice: "0",
+		Client:      minerId,
+		Miner:       minerId,
+	}
+	clientRetrieveDealParamDataPartTwo := ClientRetrieveDealParamDataPartTwo{
+		Path:  "/home/peware/gh-minio-backup/retrievetest",
+		IsCAR: false,
+	}
+	var params []interface{}
+	params = append(params, clientRetrieveDealParamDataPartOne, clientRetrieveDealParamDataPartTwo)
+	jsonRpcParams := LotusJsonRpcParams{
+		JsonRpc: LOTUS_JSON_RPC_VERSION,
+		Method:  LOTUS_CLIENT_Retrieve_DEAL,
+		Params:  params,
+		Id:      LOTUS_JSON_RPC_ID,
+	}
+	response := client.HttpGet(config.GetUserConfig().LotusClientApiUrl, config.GetUserConfig().LotusClientAccessToken, jsonRpcParams)
+	if response == "" {
+		err := fmt.Errorf("failed to retrieve data %s from miner %s, no response", payloadCid, minerId)
+		logs.GetLogger().Error(err)
+		return err
+	}
+	lotusJsonRpcResult := LotusJsonRpcResult{}
+	err := json.Unmarshal([]byte(response), lotusJsonRpcResult)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	if lotusJsonRpcResult.Error != nil {
+		err := fmt.Errorf("failed to retrieve data %s from miner %s, message: %s", payloadCid, minerId, lotusJsonRpcResult.Error.Message)
+		logs.GetLogger().Error(err)
+		return err
+	}
+	return err
+}
+
+type LotusJsonRpcResult struct {
+	Id      int           `json:"id"`
+	JsonRpc string        `json:"jsonrpc"`
+	Error   *JsonRpcError `json:"error"`
+}
+
+type JsonRpcError struct {
+	Code    int    `json:"code"`
+	Message string `json:"message"`
+}
+
+type LotusJsonRpcParams struct {
+	JsonRpc string        `json:"jsonrpc"`
+	Method  string        `json:"method"`
+	Params  []interface{} `json:"params"`
+	Id      int           `json:"id"`
+}
+
+type Cid struct {
+	Cid string `json:"/"`
+}
+
+type ClientRetrieveDealParamDataPartOne struct {
+	Root        Cid
+	Size        int
+	Total       string
+	UnsealPrice string
+	Client      string
+	Miner       string
+}
+
+type ClientRetrieveDealParamDataPartTwo struct {
+	Path  string
+	IsCAR bool
 }
 
 func (web *webAPIHandlers) Test(w http.ResponseWriter, r *http.Request) {
