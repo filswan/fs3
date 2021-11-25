@@ -21,6 +21,8 @@ import (
 
 const (
 	TableVolumeBackupTask     = "volume_backup_task"
+	TableVolumeBackupPlan     = "volume_backup_plan"
+	StatusBackupPlanRunning   = "Running"
 	StatusBackupTaskRunning   = "Running"
 	StatusStorageDealActive   = "StorageDealActive"
 	StatusBackupTaskCompleted = "Completed"
@@ -45,6 +47,7 @@ func SendDealScheduler() {
 	confDeal.DealSourceIds = append(confDeal.DealSourceIds, libconstants.TASK_SOURCE_ID_SWAN_FS3)
 
 	c := cron.New()
+	// autobid scheduler
 	err = c.AddFunc("0 */3 * * * ?", func() {
 		logs.GetLogger().Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ send deal scheduler is running at " + time.Now().Format("2006-01-02 15:04:05"))
 		err := SendAutobidDealScheduler(confDeal)
@@ -59,6 +62,7 @@ func SendDealScheduler() {
 	}
 	c.Start()
 }
+
 func SendAutobidDealScheduler(confDeal *clientmodel.ConfDeal) error {
 	startEpoch := libutils.GetCurrentEpoch() + (96+1)*libconstants.EPOCH_PER_HOUR
 	fmt.Println(startEpoch)
@@ -99,10 +103,6 @@ func UpdateActiveBackupTasksInDb() error {
 	//get backuptasks
 	backupTasksKey := TableVolumeBackupTask
 	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
-	if err != nil || backupTasks == nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
 	data := VolumeBackupTasks{}
 	err = json.Unmarshal(backupTasks, &data)
 	if err != nil {
@@ -282,7 +282,7 @@ type VolumeBackupPlan struct {
 type VolumeBackupPlanTask struct {
 	Data         []subcommand.Deal `json:"data"`
 	CreatedOn    string            `json:"createdOn"`
-	UpdatedOn    string            `json:"createdOn"`
+	UpdatedOn    string            `json:"updatedOn"`
 	BackupTaskId int               `json:"backupTaskId"`
 	Status       string            `json:"status"`
 }

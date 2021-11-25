@@ -3997,6 +3997,7 @@ type VolumeBackupJobPlan struct {
 	VerifiedDeal   bool   `json:"verifiedDeal"`
 	FastRetrieval  bool   `json:"fastRetrieval"`
 	Status         string `json:"status"`
+	LastBackupOn   string `json:"lastBackupOn"`
 	CreatedOn      string `json:"createdOn"`
 	UpdatedOn      string `json:"updatedOn"`
 }
@@ -5962,7 +5963,6 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 
 	// generate car file using ipfs
 	// generate datacid for volume folder
-	fmt.Println("---------here1")
 	ipfsApiAddress := config.GetUserConfig().IpfsApiAddress
 	hash, err := IpfsAddFolder(volumePath, ipfsApiAddress)
 	if err != nil {
@@ -5997,7 +5997,7 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 	}
 
 	//generate car.csv
-	carCsvStructList, err := generate_car_info(hash, volumeCarPath, confCar)
+	carCsvStructList, err := generateCarInfo(hash, volumeCarPath, confCar)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
@@ -6037,21 +6037,41 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 		return
 	}
 
+	backupPlanInfo, err := GetBackupPlanInfo(db, backupPlanId)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
 	// create public task on swan
 	startEpochIntervalHours := 96
 	startEpoch := libutils.GetCurrentEpoch() + (startEpochIntervalHours+1)*libconstants.EPOCH_PER_HOUR
+	maxPrice, err := decimal.NewFromString(backupPlanInfo.Price)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	duration, err := strconv.Atoi(backupPlanInfo.Duration)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 	confTask := &clientmodel.ConfTask{
 		SwanApiUrl:                 config.GetUserConfig().SwanAddress,
 		SwanToken:                  config.GetUserConfig().SwanToken,
 		PublicDeal:                 true,
 		BidMode:                    libconstants.TASK_BID_MODE_AUTO,
-		VerifiedDeal:               false,
+		VerifiedDeal:               backupPlanInfo.VerifiedDeal,
 		OfflineMode:                false,
-		FastRetrieval:              true,
-		MaxPrice:                   decimal.NewFromFloat(0.00005),
+		FastRetrieval:              backupPlanInfo.FastRetrieval,
+		MaxPrice:                   maxPrice,
 		StorageServerType:          libconstants.STORAGE_SERVER_TYPE_IPFS_SERVER,
 		WebServerDownloadUrlPrefix: confUpload.IpfsServerDownloadUrlPrefix,
 		ExpireDays:                 4,
+		Duration:                   duration,
 		OutputDir:                  confCar.OutputDir,
 		InputDir:                   confCar.OutputDir,
 		TaskName:                   backupPlanName,
@@ -6209,20 +6229,15 @@ func generateCarFileWithIpfs(ipfsApiAddress string, hash string, volumeBackupPat
 }
 
 func IpfsAddFolder(volumePath string, ipfsApiUrl string) (string, error) {
-	fmt.Println("---------here2")
 	ipfsApi := NewApi()
 	api, err := ipfsClient.NewURLApiWithClient(ipfsApiUrl, ipfsApi)
-	//api, err := IpfsAddFiles("http://192.168.88.41:5001")
 	c(err)
-	fmt.Println("---------here3")
 	stat, err := os.Stat(volumePath)
 	c(err)
 	// This walks the filesystem at /tmp/example/ and create a list of the files / directories we have.
-	fmt.Println("---------here4")
 	node, err := files.NewSerialFile(volumePath, true, stat)
 	c(err)
 	// Add the files / directory to IPFS
-	fmt.Println("---------here5")
 	path, err := api.Unixfs().Add(context.Background(), node)
 	c(err)
 	// Output the resulting CID
@@ -6294,7 +6309,7 @@ func DirSize(path string) (int64, error) {
 	return size, err
 }
 
-func generate_car_info(hash string, volumeCarPath string, confCar *clientmodel.ConfCar) ([]*libmodel.FileDesc, error) {
+func generateCarInfo(hash string, volumeCarPath string, confCar *clientmodel.ConfCar) ([]*libmodel.FileDesc, error) {
 	carFiles := []*libmodel.FileDesc{}
 	lotusClient, err := lotus.LotusGetClient(confCar.LotusClientApiUrl, confCar.LotusClientAccessToken)
 
@@ -6392,7 +6407,7 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupTaskId 
 type VolumeBackupPlanTask struct {
 	Data         []subcommand.Deal `json:"data"`
 	CreatedOn    string            `json:"createdOn"`
-	UpdatedOn    string            `json:"createdOn"`
+	UpdatedOn    string            `json:"updatedOn"`
 	BackupTaskId int               `json:"backupTaskId"`
 	Status       string            `json:"status"`
 }
@@ -6700,7 +6715,6 @@ func (web *webAPIHandlers) BackupVolumeAddPlan(w http.ResponseWriter, r *http.Re
 	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
 	fmt.Println(string(backupPlans))
 	if err == nil {
-		fmt.Println("exist")
 		data := VolumeBackupJobPlans{}
 		err = json.Unmarshal(backupPlans, &data)
 		if err != nil {
@@ -6749,7 +6763,6 @@ func (web *webAPIHandlers) BackupVolumeAddPlan(w http.ResponseWriter, r *http.Re
 		w.Write(dataBytes)
 		return
 	} else {
-		fmt.Println("not exist")
 		newVolumeBackupJobPlan := VolumeBackupJobPlan{
 			BackupPlanId:   1,
 			BackupPlanName: addVolumeBackupPlanRequest.BackupPlanName,
@@ -6849,8 +6862,21 @@ func (web *webAPIHandlers) BackupAddJob(w http.ResponseWriter, r *http.Request) 
 	for i, v := range data.VolumeBackupJobPlans {
 		if v.BackupPlanId == addVolumeBackupRequest.BackupPlanId {
 			backupPlan = data.VolumeBackupJobPlans[i]
+			data.VolumeBackupJobPlans[i].LastBackupOn = timestamp
 			break
 		}
+	}
+	dataByte, err := json.Marshal(data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	err = db.Put([]byte(backupPlanssKey), []byte(dataByte), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
 	}
 
 	dbVolumeBackupTasks := TableVolumeBackupTask
@@ -7271,6 +7297,27 @@ func LotusRpcClientRetrieve(minerId string, payloadCid string, outputPath string
 		return err
 	}
 	return err
+}
+
+func GetBackupPlanInfo(db *leveldb.DB, backupPlanId int) (VolumeBackupJobPlan, error) {
+	backupPlanssKey := TableVolumeBackupPlan
+	backupPlans, err := db.Get([]byte(backupPlanssKey), nil)
+	if err != nil || backupPlans == nil {
+		logs.GetLogger().Error(err)
+		return VolumeBackupJobPlan{}, err
+	}
+	data := VolumeBackupJobPlans{}
+	err = json.Unmarshal(backupPlans, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return VolumeBackupJobPlan{}, err
+	}
+	for i, v := range data.VolumeBackupJobPlans {
+		if v.BackupPlanId == backupPlanId {
+			return data.VolumeBackupJobPlans[i], err
+		}
+	}
+	return VolumeBackupJobPlan{}, err
 }
 
 type LotusJsonRpcResult struct {

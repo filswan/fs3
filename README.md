@@ -409,6 +409,7 @@ Response from POSTMAN
         "verifiedDeal": false,
         "fastRetrieval": true,
         "status": "Running",
+        "lastBackupOn":""
         "createdOn": "1637790990711492",
         "updatedOn": "1637790990711492"
     },
@@ -447,6 +448,7 @@ Response from POSTMAN
                 "verifiedDeal": false,
                 "fastRetrieval": true,
                 "status": "Running",
+                "lastBackupOn":""
                 "createdOn": "1637790861901038",
                 "updatedOn": "1637790861901038"
             },
@@ -460,6 +462,7 @@ Response from POSTMAN
                 "verifiedDeal": false,
                 "fastRetrieval": true,
                 "status": "Running",
+                "lastBackupOn":"1637790990711494"
                 "createdOn": "1637790990711492",
                 "updatedOn": "1637790990711492"
             }
@@ -650,8 +653,8 @@ Response from POSTMAN
 }
 ```
 
-### Retrieve Volume Backup Jobs
-GET `/rebuild/retrieve/volume`
+### Retrieve Volume Rebuild Jobs
+GET `minio/rebuild/retrieve/volume`
 
 #### Example:
 
