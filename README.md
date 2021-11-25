@@ -371,9 +371,364 @@ Response from POSTMAN
 }
 ```
 
+### Add Volume Backup Plan
+POST `/minio/backup/add/plan`
 
+#### Example:
 
+Send request using POSTMAN
 
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+   "BackupPlanName":"daily",
+   "BackupInterval":"1",      //unit in day
+   "Price":"0.0005",          //unit in FIL
+   "Duration":"518400",       //unit in epoch
+   "VerifiedDeal":false,
+   "FastRetrieval":true
+}
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "backupPlanId": 2,
+        "backupPlanName": "daily",
+        "backupInterval": "1",
+        "minerRegion": "",
+        "price": "0.0005",
+        "duration": "518400",
+        "verifiedDeal": false,
+        "fastRetrieval": true,
+        "status": "Running",
+        "createdOn": "1637790990711492",
+        "updatedOn": "1637790990711492"
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Retrieve Volume Backup Plans
+GET `/minio/backup/retrieve/plan`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "volumeBackupJobPlans": [
+            {
+                "backupPlanId": 1,
+                "backupPlanName": "monthly",
+                "backupInterval": "1",
+                "minerRegion": "",
+                "price": "0.0005",
+                "duration": "518400",
+                "verifiedDeal": false,
+                "fastRetrieval": true,
+                "status": "Running",
+                "createdOn": "1637790861901038",
+                "updatedOn": "1637790861901038"
+            },
+            {
+                "backupPlanId": 2,
+                "backupPlanName": "daily",
+                "backupInterval": "1",
+                "minerRegion": "",
+                "price": "0.0005",
+                "duration": "518400",
+                "verifiedDeal": false,
+                "fastRetrieval": true,
+                "status": "Running",
+                "createdOn": "1637790990711492",
+                "updatedOn": "1637790990711492"
+            }
+        ],
+        "backupPlansCounts": 2
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Add Volume Backup Job
+POST `/minio/backup/add/job`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+   "BackupPlanId":1
+}
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "data": null,         
+        "backupTaskId": 2,
+        "status": "Created"
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Retrieve Volume Backup Jobs
+GET `/minio/backup/retrieve/volume`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "volumeBackupPlans": [
+            {
+                "backupPlanName": "monthly",
+                "backupPlanId": 1,
+                "backupPlanTasks": [
+                    {
+                        "data": [
+                            {
+                                "uuid": "56f-63-42-b3-b48",
+                                "source_file_name": "minio-data",
+                                "miner_id": "t00000",
+                                "deal_cid": "bafy",
+                                "payload_cid": "QmU759Bk5ZT",
+                                "file_source_url": "https://ipfs.io/ipfs/QmXo3ZKSnR",
+                                "md5": "",
+                                "start_epoch": 1328131,
+                                "piece_cid": "baga",
+                                "file_size": 2050927,
+                                "cost": ""
+                            }
+                        ],
+                        "backupTaskId": 1,
+                        "status": "Created"
+                    }
+                ],
+                "backupPlanTasksCounts": 1
+            }
+        ],
+        "backupTasksCounts": 1,
+        "backupPlansCounts": 1,
+        "completedVolumeBackupTasksCounts": 0,
+        "inProcessVolumeBackupTasksCounts": 1,
+        "failedVolumeBackupTasksCounts": 0
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Backup Volume
+POST `/minio/backup/volume`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+   "BackupTaskId": 1,
+   "BackupPlanId": 1,
+   "BackupPlanName":"test"
+}
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "data": [
+            {
+                "uuid": "56-6e-43-b4-b4",
+                "source_file_name": "minio-data",
+                "miner_id": "",
+                "deal_cid": "",
+                "payload_cid": "QmU75",
+                "file_source_url": "https://ipfs.io/ipfs/QmXo3",
+                "md5": "",
+                "start_epoch": 1328131,
+                "piece_cid": "baga",
+                "file_size": 2050927,
+                "cost": ""
+            }
+        ],
+        "backupTaskId": 3,
+        "status": "Created"
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Add Volume Rebuild Job
+POST `/minio/rebuild/add/job`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+
+# Body
+{ 
+    "BackupTaskId": 1,
+    "BackupPlanId": 1
+}
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "rebuildTaskID": 4,
+        "createdOn": "1637801932084525",
+        "updatedOn": "1637801932084525",
+        "miner_id": "t0000",
+        "deal_cid": "bafy",
+        "payload_cid": "Qmag",
+        "backupTaskId": 1,
+        "status": "Created"
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Retrieve Volume Backup Jobs
+GET `/rebuild/retrieve/volume`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "volumeRebuildTasks": [
+            {
+                "rebuildTaskID": 1,
+                "createdOn": "1637801932084525",
+                "updatedOn": "1637801932084525",
+                "miner_id": "t00000",
+                "deal_cid": "bafy",
+                "payload_cid": "Qmag",
+                "backupTaskId": 1,
+                "status": "Created"
+            }
+        ],
+        "volumeRebuildTasksCounts": 1,
+        "completedVolumeRebuildTasksCounts": 0,
+        "inProcessVolumeRebuildTasksCounts": 1,
+        "failedVolumeRebuildTasksCounts": 0
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
+### Rebuild Volume
+POST `/minio/rebuild/volume`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+
+# Body
+{ 
+    "VolumeRebuildTaskId":1,
+    "MinerId": "t024557",
+    "PayloadCid": "QmXbeefGNYavf6R3WBpSNtadN6m2mtLaAhKJJFtE9kfkHn",
+    "DealCid": "bafyreifo2pp5d4se44xu32p5ikm3qjzmfv7ihbmdsilz7j5wii7h7ne3gm"
+}
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "volume_rebuild_address": "/home/test/minio-data",
+        "volume_rebuild_name": "minio-data",
+        "miner_id": "t00000",
+        "deal_cid": "bafy",
+        "payload_cid": "QmXb",
+        "timeStamp": "1637802544000230"
+    },
+    "status": "success",
+    "message": "success"
+}
+```
 
 # Deployment Recommendations
 
