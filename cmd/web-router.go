@@ -101,6 +101,7 @@ func registerWebRouter(router *mux.Router) error {
 	webBrowserRouter.Methods(http.MethodPost).Path("/offlinedeal/{bucket}/{object:.+}").HandlerFunc(httpTraceHdrs(web.SendOfflineDeal))
 	webBrowserRouter.Methods(http.MethodPost).Path("/offlinedeals/{bucket}").HandlerFunc(httpTraceHdrs(web.SendOfflineDeals))
 	webBrowserRouter.Methods(http.MethodPost).Path("/backup/add/plan").HandlerFunc(httpTraceHdrs(web.BackupVolumeAddPlan))
+	webBrowserRouter.Methods(http.MethodPost).Path("/backup/update/plan").HandlerFunc(httpTraceHdrs(web.BackupVolumeUpdatePlan))
 	webBrowserRouter.Methods(http.MethodGet).Path("/backup/retrieve/plan").HandlerFunc(httpTraceHdrs(web.RetrieveBackupPlan))
 	webBrowserRouter.Methods(http.MethodPost).Path("/backup/add/job").HandlerFunc(httpTraceHdrs(web.BackupAddJob))
 	webBrowserRouter.Methods(http.MethodPost).Path("/backup/volume").HandlerFunc(httpTraceHdrs(web.SendOfflineDealsVolume))

@@ -418,6 +418,49 @@ Response from POSTMAN
 }
 ```
 
+### Update Volume Backup Plan
+POST `/minio/backup/update/plan`
+
+#### Example:
+
+Send request using POSTMAN
+
+``` bash
+# Headers
+## Use a new User-Agent instead of the default User-Agent in Postman
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
+
+#Authorization
+Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+   "BackupPlanId":"2",
+   "Status":"Stopped"
+}
+```
+Response from POSTMAN
+```bash
+{
+    "data": {
+        "backupPlanId": 2,
+        "backupPlanName": "daily",
+        "backupInterval": "1",
+        "minerRegion": "",
+        "price": "0.0005",
+        "duration": "518400",
+        "verifiedDeal": false,
+        "fastRetrieval": true,
+        "status": "Stopped",
+        "lastBackupOn":""
+        "createdOn": "1637790990711492",
+        "updatedOn": "1637790990711492"
+    },
+    "status": "success",
+    "message": "success"
+}
+```
+
 ### Retrieve Volume Backup Plans
 GET `/minio/backup/retrieve/plan`
 

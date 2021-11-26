@@ -8,6 +8,7 @@ import (
 	"github.com/codingsince1985/checksum"
 	clientmodel "github.com/filswan/go-swan-client/model"
 	"github.com/filswan/go-swan-client/subcommand"
+	"github.com/filswan/go-swan-lib/client"
 	"github.com/filswan/go-swan-lib/client/lotus"
 	libconstants "github.com/filswan/go-swan-lib/constants"
 	libmodel "github.com/filswan/go-swan-lib/model"
@@ -30,11 +31,15 @@ import (
 )
 
 const (
-	EpochPerDay                       = 2880
+	MicroSecondPerDay                 = 86400000000
+	MicroSecondPerMinute              = 60000000
 	FS3SourceId                       = 3
 	TableVolumeBackupDealsMetadataCsv = "volume_backup_deals_metadata_csv"
 	TableVolumeBackupDealsCarCsv      = "volume_backup_deals_car_csv"
 	StatusBackupTaskCreated           = "Created"
+	LOTUS_JSON_RPC_ID                 = 7878
+	LOTUS_JSON_RPC_VERSION            = "2.0"
+	LOTUS_CLIENT_IMPORT_CAR           = "Filecoin.ClientImport"
 )
 
 func BackupScheduler() {
@@ -98,7 +103,7 @@ func BackupVolumeScheduler() error {
 			logs.GetLogger().Error(err)
 			return err
 		}
-		if timestamp > int64(LastBackupOn)+int64(EpochPerDay)*int64(backupInterval) {
+		if timestamp > int64(LastBackupOn)+3*int64(MicroSecondPerMinute)*int64(backupInterval) {
 			ExecuteBackupPlansId = append(ExecuteBackupPlansId, v.BackupPlanId)
 		}
 	}
@@ -175,7 +180,7 @@ func BackupVolumeJobs(db *leveldb.DB, volumeBackupRequests []VolumeBackupRequest
 		logs.GetLogger().Info("FS3 volume backup car file generation succeed")
 
 		// lotus import car file
-		_, err = exec.Command("lotus", "client", "import", "--car", volumeCarPath).Output()
+		err = LotusRpcClientImportCar(volumeCarPath)
 		if err != nil {
 			logs.GetLogger().Error(err)
 			return err
@@ -728,4 +733,29 @@ func GetBackupPlanInfo(db *leveldb.DB, backupPlanId int) (VolumeBackupJobPlan, e
 		}
 	}
 	return VolumeBackupJobPlan{}, err
+}
+
+func LotusRpcClientImportCar(carPath string) error {
+	clientImportCar := ClientImportCar{
+		Path:  carPath,
+		IsCAR: true,
+	}
+	var params []interface{}
+	params = append(params, clientImportCar)
+	jsonRpcParams := LotusJsonRpcParams{
+		JsonRpc: LOTUS_JSON_RPC_VERSION,
+		Method:  LOTUS_CLIENT_IMPORT_CAR,
+		Params:  params,
+		Id:      LOTUS_JSON_RPC_ID,
+	}
+	bodyByte, _ := json.Marshal(jsonRpcParams)
+	fmt.Println(string(bodyByte))
+	response := client.HttpGet(config.GetUserConfig().LotusClientApiUrl, config.GetUserConfig().LotusClientAccessToken, jsonRpcParams)
+	fmt.Println(response)
+	return nil
+}
+
+type ClientImportCar struct {
+	Path  string
+	IsCAR bool
 }

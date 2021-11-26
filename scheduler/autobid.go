@@ -2,13 +2,11 @@ package scheduler
 
 import (
 	"encoding/json"
-	"fmt"
 	clientmodel "github.com/filswan/go-swan-client/model"
 	"github.com/filswan/go-swan-client/subcommand"
 	"github.com/filswan/go-swan-lib/client/lotus"
 	libconstants "github.com/filswan/go-swan-lib/constants"
 	libmodel "github.com/filswan/go-swan-lib/model"
-	libutils "github.com/filswan/go-swan-lib/utils"
 	"github.com/minio/minio/internal/config"
 	"github.com/minio/minio/logs"
 	oshomedir "github.com/mitchellh/go-homedir"
@@ -64,8 +62,6 @@ func SendDealScheduler() {
 }
 
 func SendAutobidDealScheduler(confDeal *clientmodel.ConfDeal) error {
-	startEpoch := libutils.GetCurrentEpoch() + (96+1)*libconstants.EPOCH_PER_HOUR
-	fmt.Println(startEpoch)
 	csvFilepaths, tasks, err := subcommand.SendAutoBidDeals(confDeal)
 	if err != nil {
 		logs.GetLogger().Error(err)

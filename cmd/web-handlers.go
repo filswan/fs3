@@ -6441,6 +6441,11 @@ type AddVolumeBackupPlanRequest struct {
 	FastRetrieval  bool   `json:"fastRetrieval"`
 }
 
+type UpdateVolumeBackupPlanRequest struct {
+	BackupPlanId int    `json:"backupPlanId"`
+	Status       string `json:"backupInterval"`
+}
+
 type AddVolumeBackupPlanResponse struct {
 	Data    VolumeBackupJobPlan `json:"data"`
 	Status  string              `json:"status"`
@@ -6684,7 +6689,7 @@ func (web *webAPIHandlers) RebuildVolume(w http.ResponseWriter, r *http.Request)
 }
 
 func (web *webAPIHandlers) BackupVolumeAddPlan(w http.ResponseWriter, r *http.Request) {
-	ctx := newContext(r, w, "WebRebuildAddJob")
+	ctx := newContext(r, w, "WebRebuildAddPlan")
 	// check authorization
 	auth := authorization(w, r, ctx, "", "")
 	if auth != "" {
@@ -6719,7 +6724,7 @@ func (web *webAPIHandlers) BackupVolumeAddPlan(w http.ResponseWriter, r *http.Re
 
 	backupPlansKey := TableVolumeBackupPlan
 	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
-	fmt.Println(string(backupPlans))
+
 	if err == nil {
 		data := VolumeBackupJobPlans{}
 		err = json.Unmarshal(backupPlans, &data)
@@ -6813,6 +6818,86 @@ func (web *webAPIHandlers) BackupVolumeAddPlan(w http.ResponseWriter, r *http.Re
 		}
 		w.Write(dataBytes)
 		return
+	}
+}
+
+func (web *webAPIHandlers) BackupVolumeUpdatePlan(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebRebuildUpdatePlan")
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var updateVolumeBackupPlanRequest UpdateVolumeBackupPlanRequest
+	err := decoder.Decode(&updateVolumeBackupPlanRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	//open backup db
+	expandedDir, err := LevelDbBackupPath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	db, err := leveldb.OpenFile(expandedDir, nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer db.Close()
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+
+	backupPlansKey := TableVolumeBackupPlan
+	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	data := VolumeBackupJobPlans{}
+	err = json.Unmarshal(backupPlans, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	for i, v := range data.VolumeBackupJobPlans {
+		if v.BackupPlanId == updateVolumeBackupPlanRequest.BackupPlanId {
+			data.VolumeBackupJobPlans[i].Status = updateVolumeBackupPlanRequest.Status
+			data.VolumeBackupJobPlans[i].UpdatedOn = timestamp
+			dataBytes, err := json.Marshal(data)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			err = db.Put([]byte(TableVolumeBackupPlan), []byte(dataBytes), nil)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+			updateVolumeBackupPlanResponse := AddVolumeBackupPlanResponse{
+				Data:    data.VolumeBackupJobPlans[i],
+				Status:  SuccessResponseStatus,
+				Message: SuccessResponseStatus,
+			}
+			dataBytes, err = json.Marshal(updateVolumeBackupPlanResponse)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				writeOfflineDealsErrorResponse(w, err)
+				return
+			}
+			w.Write(dataBytes)
+			return
+		}
 	}
 }
 
