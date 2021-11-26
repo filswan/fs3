@@ -54,7 +54,7 @@ export default {
     watch: {},
     methods: {
       link(index) {
-        let type = index ? 'backup_job' : 'rebuild_job'
+        let type = index ? 'rebuild_job' : 'backup_job'
         this.$router.push({name: 'my_account_dashboard_detail', params: { type: type}})
       }
     },
@@ -164,6 +164,7 @@ export default {
               width: 100%;
               padding: 0.1rem 0;
               font-size: 0.18rem;
+              font-family: 'm-regular';
               line-height: 0.3rem;
               text-align: center;
               border-radius: 0.06rem;
@@ -194,9 +195,16 @@ export default {
   }
 }
 
-@media screen and (max-width:769px){
+@media screen and (max-width:999px){
   .fs3_back{
-
+    .fs3_cont {
+      .el-row /deep/ {
+        .el-col{
+            width: 95%;
+            margin: 0 auto 0.5rem;
+        }
+      }
+    }
   }
 }
 @media screen and (max-width:600px){

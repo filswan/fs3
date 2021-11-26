@@ -784,6 +784,7 @@ export default {
                     padding: 0.05rem 0.1rem;
                     margin: 0 0.03rem;
                     font-size: 12px;
+                    font-family: 'm-regular';
                     color: #fff;
                     border: 0;
                     background-color: #33d46f;

@@ -88,7 +88,7 @@ export default {
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
-            logo: require("@/assets/images/title.png"),
+            logo: require("@/assets/images/logo.png"),
             bodyWidth: document.body.clientWidth<=1024?true:false,
             addFileShow: false,
             dialogFormVisible: false,
@@ -316,7 +316,6 @@ export default {
                 }
             }
             _this.dialogFormVisible = dialogFormVisible
-            console.log('create api request start')
             axios.post(_this.postUrl, dataMakeBucket, {headers: {
                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
@@ -355,12 +354,15 @@ export default {
             let _this = this
             _this.aboutListObjects.objects = JSON.parse(JSON.stringify(data))
         },
-        getminioListBucket(listName, all) {
+        getminioListBucket(listName, all, silde, push) {
+          if(push) this.$router.push({name: 'minio'})
           if(listName){
+            this.$router.push({name: 'minio'})
             this.getListObjects(listName)
             this.slideListClick += 1
           }
           this.allDealShow = all
+          if(silde) this.slideShow=false
         },
         addToggle() {
            this.addFileShow = !this.addFileShow
@@ -700,7 +702,8 @@ export default {
 .wrapper{
     .content{
         width: 100%;
-        padding-top: 0.55rem;
+        height: calc(100% - 65px);
+        padding-top: 65px;
         .headStyle.el-row /deep/{
             display: block;
             background-color: #32393f;
@@ -717,7 +720,7 @@ export default {
                 img{
                     display: block;
                     height: 35px;
-                    margin: auto;
+                    margin: 5px auto 0;
                 }
                 .el-button{
                     display: block;
@@ -730,6 +733,7 @@ export default {
                     background: none;
                     color: #fff;
                     font-size: 21px;
+                    font-family: 'm-regular';
                     line-height: 45px;
                     -webkit-transition: all;
                     transition: all;

@@ -22,7 +22,7 @@
               </el-option>
             </el-select>
           </el-form-item>
-          <el-form-item label="Choose your backup region:" prop="region">
+          <!-- <el-form-item label="Choose your backup region:" prop="region">
             <el-select v-model="ruleForm.region" placeholder="">
               <el-option
                 v-for="item in ruleForm.regionOptions"
@@ -31,7 +31,7 @@
                 :value="item.value">
               </el-option>
             </el-select>
-          </el-form-item>
+          </el-form-item> -->
           <el-form-item label="Price:" prop="price">
             <el-input v-model="ruleForm.price" class="input" onkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,20})?).*$/g, '$1')"></el-input> FIL
           </el-form-item>
@@ -58,8 +58,8 @@
         :width="dialogWidth">
         <el-card class="box-card">
           <div class="statusStyle">
-            <div class="list"><span>Backup frequency:</span> {{ruleForm.frequency}}</div>
-            <div class="list"><span>Backup region:</span> {{ruleForm.region}}</div>
+            <div class="list"><span>Backup frequency:</span> {{ruleForm.frequency == '1'?'Backup Daily':'Backup Weekly'}}</div>
+            <!-- <div class="list"><span>Backup region:</span> {{ruleForm.region}}</div> -->
             <div class="list"><span>Price:</span> {{ruleForm.price}} FIL</div>
             <div class="list"><span>Duration:</span> {{ruleForm.duration}} days</div>
             <div class="list"><span>Verified deal:</span> {{ruleForm.verified == '2'? 'No' : 'Yes'}}</div>
@@ -77,7 +77,7 @@
         :width="dialogWidth">
         <span class="span">Your backup has created successfully</span>
         <div slot="footer" class="dialog-footer">
-          <el-button>VIEW</el-button>
+          <router-link :to="{name: 'my_account_myPlans'}">VIEW</router-link>
           <el-button @click="dialogConfirm=false">OK</el-button>
         </div>
       </el-dialog>
@@ -99,12 +99,12 @@ export default {
             duration: '',
             verified: '2',
             fastRetirval: '1',
-            frequency: 'Backup Daily',
+            frequency: '1',
             frequencyOptions: [{
-              value: 'Backup Daily',
+              value: '1',
               label: 'Backup Daily'
             },{
-              value: 'Backup Weekly',
+              value: '7',
               label: 'Backup Weekly'
             }],
             region: 'Global',
@@ -149,19 +149,38 @@ export default {
       confirm() {
         this.dialogVisible = false
         this.dialogConfirm = true
-        // let minioDeal = {
-        //     "VerifiedDeal": _this.ruleForm.verified == '2'? 'No' : 'Yes',
-        //     "FastRetrieval": _this.ruleForm.fastRetirval == '2'? 'No' : 'Yes',
-        //     "MinerId": _this.ruleForm.minerId,
-        //     "Price": _this.ruleForm.price,
-        //     "Duration": String(_this.ruleForm.duration*24*60*2)   //（UI上用户输入天数，需要转化成epoch给后端。例如10天, 就是 10*24*60*2）
-        // }
       },
       submitForm(formName) {
         let _this = this
         _this.$refs[formName].validate((valid) => {
           if (valid) {
-            _this.dialogVisible = true
+
+            let minioDeal = {
+              "BackupPlanName": _this.ruleForm.name,
+              "BackupInterval": _this.ruleForm.frequency,      //unit in day
+              "Price": _this.ruleForm.price,          //unit in FIL
+              "Duration":  String(_this.ruleForm.duration*24*60*2),   //（The number of days entered by the user on the UI needs to be converted into epoch to the backend. For example, 10 days is 10*24*60*2）
+              "VerifiedDeal": _this.ruleForm.verified == '2'? false : true,
+              "FastRetrieval": _this.ruleForm.fastRetirval == '2'? false : true
+            }
+
+            let postUrl = _this.data_api + `/minio/backup/add/plan`
+
+            axios.post(postUrl, minioDeal, {headers: {
+                  'Authorization':"Bearer "+ _this.$store.getters.accessToken
+            }}).then((response) => {
+                let json = response.data
+                if (json.status == 'success') {
+                  _this.dialogVisible = true
+                }else{
+                    _this.$message.error(json.message);
+                    return false
+                }
+
+            }).catch(function (error) {
+                console.log(error);
+            });
+
           } else {
             console.log('error submit!!');
             return false;
@@ -178,12 +197,18 @@ export default {
     display: flex;
     align-items: center;
     left: 3.2rem;
+    background: url('../../../assets/images/page_bg01.png') no-repeat center 16vh;
+    background-size: 400px;
+    @media screen and (max-width:600px){
+      left: 0;
+      background-size: 95%;
+    }
     .formStyle{
       border-radius: 0.06rem;
       overflow: hidden;
       .el-dialog__header{
         padding: 0;
-        line-height: 0.4rem;
+        line-height: 2.2;
         background: #eeeeee;
         text-align: center;
         font-size: 0.18rem;
@@ -216,6 +241,9 @@ export default {
                 margin: 0.05rem 0 0;
                 font-size: 0.14rem;
                 line-height: 2;
+                @media screen and (max-width:600px){
+                  font-size: 14px;
+                }
                 span{
                   display: block;
                   width: 55%;
@@ -235,17 +263,21 @@ export default {
         justify-content: center;
         align-items: center;
         padding: 0 0 0.1rem;
-        .el-button{
+        .el-button, a{
           display: block;
           margin: 0 5%;
           padding: 0 0.2rem;
           font-size: 0.14rem;
+          font-family: 'm-regular';
           line-height: 2.3;
           color: #fff;
           text-align: center;
           border-radius: 0.06rem;
           background: #84d088;
           border: 1px solid #84d088;
+                @media screen and (max-width:600px){
+                  font-size: 16px;
+                }
         }
       }
     }
@@ -308,24 +340,31 @@ export default {
           padding: 0 2% 0 0;
           font-size: 0.14rem;
           color: #333;
-          line-height: 0.37rem;
         }
         .el-form-item__content{
           color: #333;
           width: 60%;
+          font-size: 0.14rem;
+          .el-radio{
+            .el-radio__label{
+              font-size: inherit;
+            }
+          }
           .el-select{
             width: 95%;
             max-width: 440px;
             .el-input{
               width: 100%;
+              font-size: inherit;
             }
           }
           .el-input{
             width: 95%;
             max-width: 440px;
             .el-input__inner{
-              height: 0.35rem;
-              line-height: 0.35rem;
+              font-size: inherit;
+              // height: 0.35rem;
+              // line-height: 0.35rem;
             }
           }
           .input{
@@ -337,6 +376,7 @@ export default {
             margin: 0.4rem auto 0;
             padding: 0.1rem 0.2rem;
             font-size: 0.18rem;
+            font-family: 'm-regular';
             line-height: 1.2;
             color: #fff;
             text-align: center;
@@ -361,6 +401,25 @@ export default {
   }
 }
 @media screen and (max-width:600px){
-
+  .fs3_back{
+    .fs3_cont{
+        padding: 0.8rem 4%;
+        .el-form /deep/ {
+          .el-form-item{
+            flex-wrap: wrap;
+            padding: 0 5%;
+            .el-form-item__label{
+              width: 100%;
+              text-align: left;
+            }
+            .el-form-item__content{
+              .el-button{
+                font-size: 16px;
+              }
+            }
+          }
+        }
+    }
+  }
 }
 </style>

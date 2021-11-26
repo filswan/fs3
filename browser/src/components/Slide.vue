@@ -37,7 +37,7 @@
                 </el-col>
 
                 <el-col :span="24" class="active"
-                  style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false)">
+                  style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false, false, true)">
                   All Deals
                 </el-col>
             </el-row>
@@ -173,7 +173,10 @@ export default {
     },
     methods: {
       handleNodeClick(data) {
-        if(data.urlName) this.$router.push({name: data.urlName})
+        if(data.urlName){
+            this.$router.push({name: data.urlName})
+            this.getListBucket('', false, true)
+        } 
       },
       productName() {
         let _this = this
@@ -397,8 +400,8 @@ export default {
               _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
           }
       },
-      getListBucket(name, allDeal) {
-          this.$emit('getminioListBucket', name, allDeal);
+      getListBucket(name, allDeal, silde, push) {
+          this.$emit('getminioListBucket', name, allDeal, silde, push);
           this.allActive = allDeal ? true : false
       },
       getMinioData() {
@@ -448,20 +451,20 @@ export default {
     .fs3_backup{
         margin: 0 0 0.1rem;
         .introduce{
-            margin: 0 0 0.2rem;
+            margin: 0 0 0.1rem;
             text-indent: 0.3rem;
             background: #002a39;
             // font-family: 'm-semibold';
             font-weight: bold;
             a{
                 display: block;
-                line-height: 2;
-                font-size: 0.23rem;
+                line-height: 2.5;
+                font-size: 0.18rem;
                 color: #2f85e5;
             }
         }
         .el-tree /deep/{
-            padding: 0 0.35rem;
+            padding: 0 0.25rem;
             background: transparent;
             color: #fff;
             .el-tree-node {
@@ -475,7 +478,7 @@ export default {
                         }
                     }
                     .el-tree-node__label{
-                        font-size: 0.18rem;
+                        font-size: 0.15rem;
                     }
                     &:hover{
                         color: #5f9dcc;
@@ -510,7 +513,7 @@ export default {
                 color: #fff;
                 text-align: left;
                 font-family: 'm-regular';
-                font-size: 0.18rem;
+                font-size: 0.14rem;
             }
             .el-input__prefix{
                 color: #fff;
@@ -555,7 +558,7 @@ export default {
                 }
                 ul{
                     position: absolute;
-                    right: 0;
+                    right: 0.2rem;
                     top: 0;
                     padding: 0.15rem 0;
                     background-color: #fff;
@@ -715,6 +718,7 @@ export default {
                         line-height: 0.3rem;
                         color: #fff;
                         font-size: 12px;
+                        font-family: 'm-regular';
                         border: 0;
                         border-radius: 0.02rem;
                         text-align: center;
@@ -726,6 +730,11 @@ export default {
 }
 .sliMobile{
     transform: translate3d(0,0,0) !important;
+    width: 80%;
+    .fes-header{
+        padding: 0;
+        height: 65px;
+    }
 }
 
 @media screen and (max-width:1024px){
@@ -737,7 +746,7 @@ export default {
     left: 0;
     top: 0;
     z-index: 20;
-    transform: translate3d(-3rem,0,0);
+    transform: translate3d(-3.2rem,0,0);
     .fes-search {
       .el-row /deep/{
         .el-col{

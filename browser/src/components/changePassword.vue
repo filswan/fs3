@@ -215,6 +215,7 @@ export default {
                           padding: 0.07rem 0.13rem;
                           border-radius: 0;
                           font-size: 13px;
+                          font-family: 'm-regular';
                           margin: 0 0.03rem;
                           opacity: 0.9;
                           i{

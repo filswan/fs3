@@ -9,25 +9,49 @@
         <img src="@/assets/images/page_bg.png" class="bg" alt="">
       </div>
       <div class="fs3_cont">
-        <el-card class="box-card" v-for="n in 3" :key="n">
-          <div class="title">My backup plan name {{n}}</div>
-          <el-button @click="planSubmit(n)" :class="{'active': dialogIndex == n}">View details</el-button>
+        <el-card class="box-card" v-for="(item, index) in plan_list" :key="index">
+          <div class="title">{{ item.backupPlanName }}</div>
+          <div class="button">
+            <div class="statusStyle"
+                  v-if="item.status == 'Created'"
+                  style="color: #0a318e">
+                {{ item.status }}
+            </div>
+            <div class="statusStyle"
+                  v-else-if="item.status == 'Running'"
+                  style="color: #ffb822">
+                {{ item.status }}
+            </div>
+            <div class="statusStyle"
+                  v-else-if="item.status == 'Completed'"
+                  style="color: #1dc9b7">
+                {{ item.status }}
+            </div>
+            <div class="statusStyle" v-else style="color: rgb(255, 184, 34)">
+                {{ item.status }}
+            </div>
+            <el-button @click="planSubmit(index, item)" :class="{'active': dialogIndex == index}">View details</el-button>
+          </div>
         </el-card>
+        <div v-if="plan_list.length<=0" style="text-align: center;">No Data</div>
       </div>
 
       <el-dialog
-        :title="ruleForm.name" custom-class="formStyle"
+        :title="ruleForm.backupPlanName" custom-class="formStyle"
         :visible.sync="dialogVisible"
         :width="dialogWidth"
         :before-close="handleClose">
         <el-card class="box-card">
           <div class="statusStyle">
-            <div class="list"><span>Backup frequency:</span> {{ruleForm.frequency}}</div>
-            <div class="list"><span>Backup region:</span> {{ruleForm.region}}</div>
+            <div class="list"><span>Add backup Plan ID:</span> {{ruleForm.backupPlanId}}</div>
+            <div class="list"><span>Backup frequency:</span> {{ruleForm.frequency == '1'?'Backup Daily':'Backup Weekly'}}</div>
+            <!-- <div class="list"><span>Backup region:</span> {{ruleForm.region}}</div> -->
             <div class="list"><span>Price:</span> {{ruleForm.price}} FIL</div>
-            <div class="list"><span>Duration:</span> {{ruleForm.duration}} days</div>
-            <div class="list"><span>Verified deal:</span> {{ruleForm.verified == '2'? 'No' : 'Yes'}}</div>
-            <div class="list"><span>Fast retrieval:</span> {{ruleForm.fastRetirval == '2'? 'No' : 'Yes'}}</div>
+            <div class="list"><span>Duration:</span> {{ruleForm.duration/24/60/2}} days</div>
+            <div class="list"><span>Verified deal:</span> {{ !ruleForm.verifiedDeal ? 'No' : 'Yes'}}</div>
+            <div class="list"><span>Fast retrieval:</span> {{ !ruleForm.fastRetrieval ? 'No' : 'Yes'}}</div>
+            <div class="list"><span>Create Date:</span> {{ruleForm.createdOn}}</div>
+            <div class="list"><span>Last Update:</span> {{ruleForm.updatedOn}}</div>
           </div>
         </el-card>
         <div slot="footer" class="dialog-footer">
@@ -38,37 +62,58 @@
 </template>
 
 <script>
+import axios from 'axios'
+import moment from "moment"
 export default {
     data() {
         return {
           dialogWidth: document.body.clientWidth<=600?'95%':'50%',
-          dialogIndex: 0,
+          dialogIndex: NaN,
           dialogVisible: false,
           width: document.body.clientWidth>600?'400px':'95%',
-          ruleForm: {
-            name: 'ceshi',
-            price: '1',
-            duration: '1',
-            verified: '2',
-            fastRetirval: '1',
-            frequency: 'Backup Daily',
-            region: 'Global',
-          },
+          ruleForm: {},
+          plan_list: []
         }
     },
     watch: {},
     methods: {
-      planSubmit(index) {
-        console.log(index)
+      planSubmit(index, row) {
+        // console.log(index, row)
         this.dialogIndex = index
         this.dialogVisible = true
+        this.ruleForm = row
       },
       handleClose(done) {
-        this.dialogIndex = 0
+        this.dialogIndex = NaN
         this.dialogVisible = false
+      },
+      getData() {
+          let _this = this
+          let postUrl = _this.data_api + `/minio/backup/retrieve/plan`
+
+          axios.get(postUrl, {headers: {
+                'Authorization':"Bearer "+ _this.$store.getters.accessToken
+          }}).then((response) => {
+              let json = response.data
+              if (json.status == 'success') {
+                _this.plan_list = json.data.volumeBackupJobPlans
+                _this.plan_list.map(item => {
+                    item.createdOn = moment(new Date(parseInt(item.createdOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
+                    item.updatedOn = moment(new Date(parseInt(item.updatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
+                })
+              }else{
+                  _this.$message.error(json.message);
+                  return false
+              }
+
+          }).catch(function (error) {
+              console.log(error);
+          });
       }
     },
-    mounted() {},
+    mounted() {
+      this.getData()
+    },
 };
 </script>
 
@@ -77,12 +122,18 @@ export default {
     display: flex;
     align-items: center;
     left: 3.2rem;
+    background: url('../../../assets/images/page_bg01.png') no-repeat center 13vh;
+    background-size: 400px;
+    @media screen and (max-width:600px){
+      left: 0;
+      background-size: 95%;
+    }
     .formStyle{
       border-radius: 0.06rem;
       overflow: hidden;
       .el-dialog__header{
         padding: 0;
-        line-height: 0.4rem;
+        line-height: 2.2;
         background: #eeeeee;
         text-align: center;
         font-size: 0.18rem;
@@ -115,6 +166,9 @@ export default {
                 margin: 0.05rem 0 0;
                 font-size: 0.14rem;
                 line-height: 2;
+                @media screen and (max-width:600px){
+                  font-size: 14px;
+                }
                 span{
                   display: block;
                   width: 55%;
@@ -139,12 +193,16 @@ export default {
           margin: 0 5%;
           padding: 0 0.2rem;
           font-size: 0.14rem;
+          font-family: 'm-regular';
           line-height: 2.3;
           color: #fff;
           text-align: center;
           border-radius: 0.06rem;
           background: #84d088;
           border: 1px solid #84d088;
+                @media screen and (max-width:600px){
+                  font-size: 16px;
+                }
         }
       }
     }
@@ -208,20 +266,36 @@ export default {
         .title{
           font-size: 0.18rem;
         }
-        .el-button{
-          padding: 0 0.25rem;
+        .button{
+          display: flex;
+          align-items: center;
           font-size: 0.14rem;
-          line-height: 0.25rem;
-          text-align: center;
-          border-radius: 0.04rem;
-          color: #333;
-          background: transparent;
-          border: 1px solid;
-        }
-        .active, .el-button:hover{
-          color: #fff;
-          background: #7ecef4;
-          border: 1px solid;
+          .statusStyle {
+            display: inline-block;
+            border: 1px solid;
+            padding: 0 0.15rem;
+            margin: 0 0.1rem;
+            font-size: inherit;
+            border-radius: 0.05rem;
+            line-height: 1.8;
+            // color: inherit !important;
+          }
+          .el-button{
+            padding: 0 0.25rem;
+            font-size: inherit;
+            font-family: 'm-regular';
+            line-height: 1.8;
+            text-align: center;
+            border-radius: 0.04rem;
+            color: #333;
+            background: transparent;
+            border: 1px solid;    
+          }
+          .active, .el-button:hover{
+            color: #fff;
+            background: #7ecef4;
+            border: 1px solid;
+          }
         }
       }
     }
@@ -234,6 +308,18 @@ export default {
   }
 }
 @media screen and (max-width:600px){
-
+.fs3_back {
+  .fs3_cont{
+    padding: 0.6rem 4%;
+    .box-card /deep/{
+       .el-card__body {
+         .title, .button{
+           font-size: 16px;
+         }
+         
+       }
+    }
+  }
+}
 }
 </style>
