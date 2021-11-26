@@ -114,13 +114,13 @@ func UpdateActiveBackupTasksInDb() error {
 	for i, value := range data.VolumeBackupPlans {
 		for j, values := range value.BackupPlanTasks {
 			if values.Status == StatusBackupTaskRunning {
-				status, err := CheckDealStatus(values.Data[0].DealCid)
+				status, err := CheckDealStatus(values.Data.DealInfo[0].DealCid)
 				if err != nil {
 					logs.GetLogger().Error(err)
 					return err
 				}
 				if status == StatusStorageDealActive {
-					data.VolumeBackupPlans[i].BackupPlanTasks[j].Data[0].DealCid = StatusBackupTaskCompleted
+					data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].DealCid = StatusBackupTaskCompleted
 					timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 					data.VolumeBackupPlans[i].BackupPlanTasks[j].UpdatedOn = timestamp
 					data.InProcessVolumeBackupTasksCounts = data.InProcessVolumeBackupTasksCounts - 1
@@ -187,13 +187,13 @@ func UpdateSentBackupTasksInDb(tasks [][]*libmodel.FileDesc) error {
 	for _, v := range tasks {
 		for j, value := range data.VolumeBackupPlans {
 			for k, values := range value.BackupPlanTasks {
-				if values.Data[0].Uuid == v[0].Uuid {
+				if values.Data.DealInfo[0].Uuid == v[0].Uuid {
 					timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 					data.VolumeBackupPlans[j].BackupPlanTasks[k].Status = StatusBackupTaskRunning
 					data.VolumeBackupPlans[j].BackupPlanTasks[k].UpdatedOn = timestamp
-					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data[0].MinerId = v[0].MinerFid
-					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data[0].DealCid = v[0].DealCid
-					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data[0].Cost = v[0].Cost
+					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data.DealInfo[0].MinerId = v[0].MinerFid
+					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data.DealInfo[0].DealCid = v[0].DealCid
+					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data.DealInfo[0].Cost = v[0].Cost
 					break
 				}
 			}
@@ -279,10 +279,14 @@ type VolumeBackupPlan struct {
 	BackupPlanTasksCounts int                    `json:"backupPlanTasksCounts"`
 }
 
+type BackupPlanTaskInfo struct {
+	DealInfo []subcommand.Deal `json:"dealInfo"`
+	Duration string            `json:"duration"`
+}
 type VolumeBackupPlanTask struct {
-	Data         []subcommand.Deal `json:"data"`
-	CreatedOn    string            `json:"createdOn"`
-	UpdatedOn    string            `json:"updatedOn"`
-	BackupTaskId int               `json:"backupTaskId"`
-	Status       string            `json:"status"`
+	Data         BackupPlanTaskInfo `json:"data"`
+	CreatedOn    string             `json:"createdOn"`
+	UpdatedOn    string             `json:"updatedOn"`
+	BackupTaskId int                `json:"backupTaskId"`
+	Status       string             `json:"status"`
 }

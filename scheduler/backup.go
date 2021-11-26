@@ -322,6 +322,7 @@ func AddBackupVolumeJobs(db *leveldb.DB, plansId []int) ([]VolumeBackupRequest, 
 				BackupTaskId: taskData.VolumeBackupTasksCounts + 1,
 				Status:       StatusBackupTaskCreated,
 			}
+			newVolumeBackupPlanTask.Data.Duration = backupPlan.Duration
 			planIndex := -1
 			for i, v := range taskData.VolumeBackupPlans {
 				if v.BackupPlanId == backupPlan.BackupPlanId {
@@ -358,6 +359,7 @@ func AddBackupVolumeJobs(db *leveldb.DB, plansId []int) ([]VolumeBackupRequest, 
 					BackupTaskId: taskData.VolumeBackupTasksCounts,
 					Status:       StatusBackupTaskCreated,
 				}
+				newVolumeBackupPlanTask.Data.Duration = backupPlan.Duration
 				newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
 				newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
 				newVolumeBackupPlan := VolumeBackupPlan{
@@ -391,6 +393,7 @@ func AddBackupVolumeJobs(db *leveldb.DB, plansId []int) ([]VolumeBackupRequest, 
 				BackupTaskId: 1,
 				Status:       StatusBackupTaskCreated,
 			}
+			newVolumeBackupPlanTask.Data.Duration = backupPlan.Duration
 			newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
 			newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
 			newVolumeBackupPlan := VolumeBackupPlan{
@@ -684,7 +687,7 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupTaskId 
 			for j, values := range v.BackupPlanTasks {
 				if values.BackupTaskId == backupTaskId {
 					taskIndex = j
-					data.VolumeBackupPlans[i].BackupPlanTasks[j].Data = tasks
+					data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo = tasks
 					data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = StatusBackupTaskRunning
 					data.VolumeBackupPlans[i].BackupPlanTasks[j].UpdatedOn = timestamp
 					break

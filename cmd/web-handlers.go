@@ -6382,7 +6382,7 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupTaskId 
 			for j, values := range v.BackupPlanTasks {
 				if values.BackupTaskId == backupTaskId {
 					taskIndex = j
-					data.VolumeBackupPlans[i].BackupPlanTasks[j].Data = tasks
+					data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo = tasks
 					data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = StatusBackupTaskRunning
 					data.VolumeBackupPlans[i].BackupPlanTasks[j].UpdatedOn = timestamp
 					break
@@ -6404,12 +6404,17 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupTaskId 
 	return data.VolumeBackupPlans[planIndex].BackupPlanTasks[taskIndex], err
 }
 
+type BackupPlanTaskInfo struct {
+	DealInfo []subcommand.Deal `json:"dealInfo"`
+	Duration string            `json:"duration"`
+}
+
 type VolumeBackupPlanTask struct {
-	Data         []subcommand.Deal `json:"data"`
-	CreatedOn    string            `json:"createdOn"`
-	UpdatedOn    string            `json:"updatedOn"`
-	BackupTaskId int               `json:"backupTaskId"`
-	Status       string            `json:"status"`
+	Data         BackupPlanTaskInfo `json:"data"`
+	CreatedOn    string             `json:"createdOn"`
+	UpdatedOn    string             `json:"updatedOn"`
+	BackupTaskId int                `json:"backupTaskId"`
+	Status       string             `json:"status"`
 }
 
 type VolumeBackupPlan struct {
@@ -6895,6 +6900,7 @@ func (web *webAPIHandlers) BackupAddJob(w http.ResponseWriter, r *http.Request) 
 			BackupTaskId: data.VolumeBackupTasksCounts + 1,
 			Status:       StatusBackupTaskCreated,
 		}
+		newVolumeBackupPlanTask.Data.Duration = backupPlan.Duration
 		planIndex := -1
 		for i, v := range data.VolumeBackupPlans {
 			if v.BackupPlanId == backupPlan.BackupPlanId {
@@ -6940,6 +6946,7 @@ func (web *webAPIHandlers) BackupAddJob(w http.ResponseWriter, r *http.Request) 
 				BackupTaskId: data.VolumeBackupTasksCounts,
 				Status:       StatusBackupTaskCreated,
 			}
+			newVolumeBackupPlanTask.Data.Duration = backupPlan.Duration
 			newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
 			newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
 			newVolumeBackupPlan := VolumeBackupPlan{
@@ -6982,6 +6989,7 @@ func (web *webAPIHandlers) BackupAddJob(w http.ResponseWriter, r *http.Request) 
 			BackupTaskId: 1,
 			Status:       StatusBackupTaskCreated,
 		}
+		newVolumeBackupPlanTask.Data.Duration = backupPlan.Duration
 		newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
 		newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
 		newVolumeBackupPlan := VolumeBackupPlan{
@@ -7087,9 +7095,9 @@ func (web *webAPIHandlers) RebuildAddJob(w http.ResponseWriter, r *http.Request)
 	newVolumeRebuildTask := VolumeRebuildTask{
 		CreatedOn:    timestamp,
 		UpdatedOn:    timestamp,
-		MinerId:      backupTask.Data[0].MinerId,
-		DealCid:      backupTask.Data[0].DealCid,
-		PayloadCid:   backupTask.Data[0].PayloadCid,
+		MinerId:      backupTask.Data.DealInfo[0].MinerId,
+		DealCid:      backupTask.Data.DealInfo[0].DealCid,
+		PayloadCid:   backupTask.Data.DealInfo[0].PayloadCid,
 		BackupTaskId: backupTask.BackupTaskId,
 		Status:       StatusRebuildTaskCreated,
 	}
