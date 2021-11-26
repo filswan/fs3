@@ -498,7 +498,12 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "data": null,         
+        "data": {
+            "dealInfo": null,
+            "duration": "518400"
+        },
+        "createdOn": "1637894834289770",
+        "updatedOn": "1637894834289770",
         "backupTaskId": 2,
         "status": "Created"
     },
@@ -532,23 +537,28 @@ Response from POSTMAN
                 "backupPlanId": 1,
                 "backupPlanTasks": [
                     {
-                        "data": [
-                            {
-                                "uuid": "56f-63-42-b3-b48",
-                                "source_file_name": "minio-data",
-                                "miner_id": "t00000",
-                                "deal_cid": "bafy",
-                                "payload_cid": "QmU759Bk5ZT",
-                                "file_source_url": "https://ipfs.io/ipfs/QmXo3ZKSnR",
-                                "md5": "",
-                                "start_epoch": 1328131,
-                                "piece_cid": "baga",
-                                "file_size": 2050927,
-                                "cost": ""
-                            }
-                        ],
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "a5-76-4e-a2-037",
+                                    "source_file_name": "minio-data",
+                                    "miner_id": "",
+                                    "deal_cid": "",
+                                    "payload_cid": "QmSB1",
+                                    "file_source_url": "http://ipfs.io/ipfs/QmUZHz",
+                                    "md5": "",
+                                    "start_epoch": 1331258,
+                                    "piece_cid": "baga",
+                                    "file_size": 2050949,
+                                    "cost": ""
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1637887542018422",
+                        "updatedOn": "1637895011203377",
                         "backupTaskId": 1,
-                        "status": "Created"
+                        "status": "Running"
                     }
                 ],
                 "backupPlanTasksCounts": 1
@@ -591,23 +601,28 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "data": [
-            {
-                "uuid": "56-6e-43-b4-b4",
-                "source_file_name": "minio-data",
-                "miner_id": "",
-                "deal_cid": "",
-                "payload_cid": "QmU75",
-                "file_source_url": "https://ipfs.io/ipfs/QmXo3",
-                "md5": "",
-                "start_epoch": 1328131,
-                "piece_cid": "baga",
-                "file_size": 2050927,
-                "cost": ""
-            }
-        ],
-        "backupTaskId": 3,
-        "status": "Created"
+        "data": {
+            "dealInfo": [
+                {
+                    "uuid": "a5-76-4e-a2-03",
+                    "source_file_name": "minio-data",
+                    "miner_id": "",
+                    "deal_cid": "",
+                    "payload_cid": "QmSB1",
+                    "file_source_url": "http://ipfs.io/ipfs/QmUZ",
+                    "md5": "",
+                    "start_epoch": 1331258,
+                    "piece_cid": "baga",
+                    "file_size": 2050949,
+                    "cost": ""
+                }
+            ],
+            "duration": "518400"
+        },
+        "createdOn": "1637887542018422",
+        "updatedOn": "1637895011203377",
+        "backupTaskId": 1,
+        "status": "Running"
     },
     "status": "success",
     "message": "success"
