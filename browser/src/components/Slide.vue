@@ -435,7 +435,7 @@ export default {
     .fes-header{
         display: flex;
         width: calc(100% - 0.6rem);
-        padding: 0.25rem 0.3rem 0.3rem;
+        padding: 0.25rem 0.3rem;
         img{
             width: auto;
             max-width: 100%;
@@ -461,6 +461,9 @@ export default {
                 line-height: 2.5;
                 font-size: 0.18rem;
                 color: #2f85e5;
+                @media screen and (max-width:999px){
+                  font-size: 16px;
+                }
             }
         }
         .el-tree /deep/{
@@ -469,6 +472,7 @@ export default {
             color: #fff;
             .el-tree-node {
                 .el-tree-node__content{
+                    height: auto;
                     background: transparent !important;
                     margin: 0 0 0.08rem;
                     .el-tree-node__expand-icon{
@@ -479,6 +483,9 @@ export default {
                     }
                     .el-tree-node__label{
                         font-size: 0.15rem;
+                        @media screen and (max-width:999px){
+                            font-size: 14px;
+                        }
                     }
                     &:hover{
                         color: #5f9dcc;
@@ -488,6 +495,10 @@ export default {
                     .el-tree-node__content{
                         .el-tree-node__label{
                             font-size: 0.14rem;
+                            line-height: 1.5;
+                            @media screen and (max-width:999px){
+                                font-size: 13px;
+                            }
                         }
                     }
                 }
@@ -514,6 +525,9 @@ export default {
                 text-align: left;
                 font-family: 'm-regular';
                 font-size: 0.14rem;
+                        @media screen and (max-width:999px){
+                            font-size: 13px;
+                        }
             }
             .el-input__prefix{
                 color: #fff;
@@ -537,6 +551,9 @@ export default {
                 word-wrap: break-word;
                 font-size: 0.14rem;
                 cursor: pointer;
+                        @media screen and (max-width:999px){
+                            font-size: 13px;
+                        }
                 div{
                     display: flex;
                     align-items: center;
@@ -545,12 +562,18 @@ export default {
                     font-size: 0.18rem;
                     margin-right: 0.08rem;
                     color: rgba(255, 255, 255, 0.75);
+                        @media screen and (max-width:999px){
+                            font-size: 16px;
+                        }
                 }
                 .caozuo{
                     opacity: 0;
                     float: right;
                     transform: rotate(90deg);
                     font-size: 0.15rem;
+                        @media screen and (max-width:999px){
+                            font-size: 14px;
+                        }
                     color: rgba(255, 255, 255, 0.75);
                     &:hover{
                         color: #fff;
@@ -573,6 +596,9 @@ export default {
                     border-radius: 4px;
                     box-shadow: 0 6px 12px rgba(0,0,0,.18);
                     background-clip: padding-box;
+                        @media screen and (max-width:999px){
+                            font-size: 14px;
+                        }
                     li{
                         display: block;
                         padding: 0.08rem 0.1rem;
@@ -731,6 +757,7 @@ export default {
 .sliMobile{
     transform: translate3d(0,0,0) !important;
     width: 80%;
+    max-width: 400px;
     .fes-header{
         padding: 0;
         height: 65px;

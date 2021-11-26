@@ -38,15 +38,15 @@ export default {
               title: 'Your backup jobs',
               btn: 'All backup jobs details',
               inProcessJobs: 0,
-              completedJobs: 5,
-              failedJobs: 1
+              completedJobs: 0,
+              failedJobs: 0
             },
             {
               title: 'Your rebuild jobs',
               btn: 'All rebuild jobs details',
               inProcessJobs: 0,
-              completedJobs: 5,
-              failedJobs: 1
+              completedJobs: 0,
+              failedJobs: 0
             }
           ]
         }
@@ -56,9 +56,48 @@ export default {
       link(index) {
         let type = index ? 'rebuild_job' : 'backup_job'
         this.$router.push({name: 'my_account_dashboard_detail', params: { type: type}})
+      },
+      getData() {
+          let _this = this
+          axios.get(_this.data_api + `/minio/backup/retrieve/volume`, {headers: {
+                'Authorization':"Bearer "+ _this.$store.getters.accessToken
+          }}).then((response) => {
+              let json = response.data
+              if (json.status == 'success') {
+                _this.card[0].inProcessJobs = json.data.inProcessVolumeBackupTasksCounts
+                _this.card[0].completedJobs = json.data.completedVolumeBackupTasksCounts
+                _this.card[0].failedJobs = json.data.failedVolumeBackupTasksCounts
+              }else{
+                  _this.$message.error(json.message);
+                  return false
+              }
+
+          }).catch(function (error) {
+              console.log(error);
+          });
+
+
+          axios.get(_this.data_api + `/minio/rebuild/retrieve/volume`, {headers: {
+                'Authorization':"Bearer "+ _this.$store.getters.accessToken
+          }}).then((response) => {
+              let json = response.data
+              if (json.status == 'success') {
+                _this.card[1].inProcessJobs = json.data.inProcessVolumeRebuildTasksCounts
+                _this.card[1].completedJobs = json.data.completedVolumeRebuildTasksCounts
+                _this.card[1].failedJobs = json.data.failedVolumeRebuildTasksCounts
+              }else{
+                  _this.$message.error(json.message);
+                  return false
+              }
+
+          }).catch(function (error) {
+              console.log(error);
+          });
       }
     },
-    mounted() {},
+    mounted() {
+      this.getData()
+    },
 };
 </script>
 
@@ -70,19 +109,19 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 39% 0.2rem 9%;
+    padding: 0.3rem 30% 0.05rem 9%;
     background: #7ecef4;
     color: #fff;
     .bg{
       position: absolute;
-      right: 18%;
-      width: 17%;
-      top: 0.5rem;
+      right: 13%;
+      width: 14%;
+      top: 0.3rem;
       z-index: 5;
     }
     .fs3_head_text{
       .titleBg{
-        font-size: 0.76rem;
+        font-size: 0.6rem;
         font-family: 'm-light';
         color: #fff;
         opacity: 0.3;
@@ -107,7 +146,7 @@ export default {
     }
   }
   .fs3_cont{
-    padding: 1.25rem 9% 0.4rem;
+    padding: 0.8rem 9% 0.4rem;
     .el-row /deep/{
       padding: 0 0.17rem;
       .el-col{

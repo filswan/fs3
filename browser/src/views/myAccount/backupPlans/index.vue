@@ -289,19 +289,19 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 39% 0.2rem 9%;
+    padding: 0.3rem 30% 0.05rem 9%;
     background: #7ecef4;
     color: #fff;
     .bg{
       position: absolute;
       right: 18%;
-      width: 17%;
-      top: 0.5rem;
+      width: 13%;
+      top: 0.2rem;
       z-index: 5;
     }
     .fs3_head_text{
       .titleBg{
-        font-size: 0.76rem;
+        font-size: 0.6rem;
         font-family: 'm-light';
         color: #fff;
         opacity: 0.3;

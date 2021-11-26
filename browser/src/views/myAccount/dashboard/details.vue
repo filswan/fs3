@@ -17,37 +17,57 @@
           style="width: 100%">
           <el-table-column prop="backupTaskId" label="Backup ID">
             <template slot-scope="scope">
-              {{ scope.row.backupPlanTasks[0]? scope.row.backupPlanTasks[0].backupTaskId : '' }}
+              {{ scope.row.backupPlanTasks[0].backupTaskId }}
             </template>
           </el-table-column>
-          <el-table-column prop="Date" label="Date">
+          <el-table-column prop="Date" label="Last Updata">
             <template slot-scope="scope">
-              {{ scope.row.backupPlanTasks[0].data? scope.row.backupPlanTasks[0].data[0].date : '' }}
+              {{ scope.row.backupPlanTasks[0].updatedOn }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="Date" label="Date Created">
+            <template slot-scope="scope">
+              {{ scope.row.backupPlanTasks[0].createdOn }}
             </template>
           </el-table-column>
           <el-table-column prop="miner_id" label="W3SSID">
             <template slot-scope="scope">
-              {{ scope.row.backupPlanTasks[0].data? scope.row.backupPlanTasks[0].data[0].miner_id : '' }}
+              {{ scope.row.backupPlanTasks[0].data.dealInfo[0].miner_id }}
             </template>
           </el-table-column>
           <el-table-column prop="cost" label="Price">
             <template slot-scope="scope">
-              {{ scope.row.backupPlanTasks[0].data? scope.row.backupPlanTasks[0].data[0].cost : '' }}
+              {{ scope.row.backupPlanTasks[0].data.dealInfo[0].cost }}
             </template>
           </el-table-column>
           <el-table-column prop="deal_cid" label="Deal CID">
             <template slot-scope="scope">
-              {{ scope.row.backupPlanTasks[0].data? scope.row.backupPlanTasks[0].data[0].deal_cid : '' }}
+                <div class="hot-cold-box">
+                    <el-popover
+                        placement="top" width="160"
+                        trigger="hover"
+                        v-model="scope.row.backupPlanTasks[0].data.dealInfo[0].visible">
+                        <div class="upload_form_right">
+                            <p>{{scope.row.backupPlanTasks[0].data.dealInfo[0].deal_cid}}</p>
+                        </div>
+                        <el-button slot="reference" @click="copyTextToClipboard(scope.row.backupPlanTasks[0].data.dealInfo[0].deal_cid)">
+                            <img src="@/assets/images/copy.png" alt="">
+                            {{scope.row.backupPlanTasks[0].data.dealInfo[0].deal_cid}}
+                        </el-button>
+                    </el-popover>
+                </div>
             </template>
           </el-table-column>
           <el-table-column prop="payload_cid" label="Data CID">
             <template slot-scope="scope">
-              {{ scope.row.backupPlanTasks[0].data? scope.row.backupPlanTasks[0].data[0].payload_cid : '' }}
+              {{ scope.row.backupPlanTasks[0].data.dealInfo[0].payload_cid }}
             </template>
           </el-table-column>
           <el-table-column prop="duration" label="Duration">
             <template slot-scope="scope">
-              {{ scope.row.backupPlanTasks[0].data? scope.row.backupPlanTasks[0].data[0].duration : '' }}
+              {{ scope.row.backupPlanTasks[0].data.duration }} 
+              <br>
+              ({{ scope.row.backupPlanTasks[0].data.duration_time }})
             </template>
           </el-table-column>
           <el-table-column prop="status" label="Status">
@@ -235,6 +255,37 @@ export default {
             _this.getData()
         }
       },
+      copyTextToClipboard(text) {
+          let _this = this
+          let saveLang = localStorage.getItem('lang') == 'cn'?"复制成功":"success";
+          var txtArea = document.createElement("textarea");
+          txtArea.id = 'txt';
+          txtArea.style.position = 'fixed';
+          txtArea.style.top = '0';
+          txtArea.style.left = '0';
+          txtArea.style.opacity = '0';
+          txtArea.value = text;
+          document.body.appendChild(txtArea);
+          txtArea.select();
+
+          try {
+              var successful = document.execCommand('copy');
+              var msg = successful ? 'successful' : 'unsuccessful';
+              console.log('Copying text command was ' + msg);
+              if (successful) {
+                  _this.$message({
+                      message: saveLang,
+                      type: 'success'
+                  });
+                  return true;
+              }
+          } catch (err) {
+              console.log('Oops, unable to copy');
+          } finally {
+              document.body.removeChild(txtArea);
+          }
+          return false;
+      },
       getData(type) {
         let _this = this
         let postUrl = ''
@@ -249,20 +300,21 @@ export default {
               if (json.status == 'success') {
                 _this.tableData = json.data.volumeBackupPlans
                 _this.tableData.map(item => {
-                  if(!item.data) return false
-                  item.data.map(child => {
-                    child.date = 
-                      child.date?
-                          child.date.length<13 ?
-                              moment(new Date(parseInt(child.date * 1000))).format("YYYY-MM-DD HH:mm:ss") :
-                              moment(new Date(parseInt(child.date))).format("YYYY-MM-DD HH:mm:ss")
+                  item.backupPlanTasks.map(child => {
+                    child.data.dealInfo[0].visible = false
+                    child.data.duration_time = 
+                      child.data.duration?
+                          moment(new Date(parseInt((parseInt(child.data.duration)*30 + parseInt(1598306471)) * 1000))).format("YYYY-MM-DD HH:mm:ss")
                           :
                           '-'
-                    child.duration = 
-                      child.duration?
-                          child.duration.length<13 ?
-                              moment(new Date(parseInt(child.duration * 1000))).format("YYYY-MM-DD HH:mm:ss") :
-                              moment(new Date(parseInt(child.duration))).format("YYYY-MM-DD HH:mm:ss")
+                    child.createdOn = 
+                      child.createdOn?
+                          moment(new Date(parseInt(child.createdOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
+                          :
+                          '-'
+                    child.updatedOn = 
+                      child.updatedOn?
+                          moment(new Date(parseInt(child.updatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
                           :
                           '-'
                   })
@@ -419,19 +471,19 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 9% 0.2rem 9%;
+    padding: 0.3rem 9% 0.05rem 9%;
     background: #7ecef4;
     color: #fff;
     .bg{
       position: absolute;
-      right: 18%;
+      right: 15%;
       width: 9%;
-      top: 0.5rem;
+      top: 0.2rem;
       z-index: 5;
     }
     .fs3_head_text{
       .titleBg{
-        font-size: 0.76rem;
+        font-size: 0.6rem;
         font-family: 'm-light';
         color: #fff;
         opacity: 0.3;
@@ -487,6 +539,7 @@ export default {
           text-align: center;
           font-size: 0.14rem;
           color: #333;
+          word-break: break-word;
           .el-button{
             margin: 0 auto 0;
             padding: 0 0.07rem;
@@ -508,6 +561,49 @@ export default {
             border-radius: 0.05rem;
             line-height: 0.28rem;
             // color: inherit !important;
+          }
+          .el-rate__icon{
+              font-size: 0.16rem;
+              margin-right: 0;
+          }
+          .hot-cold-box{
+              .el-button{
+                  width: 100%;
+                  border: 0;
+                  padding: 0;
+                  background-color: transparent;
+                  font-size: 0.1372rem;
+                  word-break: break-word;
+                  color: #000;
+                  text-align: center;
+                  line-height: 0.25rem;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                  white-space: normal;
+                  display: -webkit-box;
+                  -webkit-line-clamp: 2;
+                  -webkit-box-orient: vertical;
+                  span{
+                      line-height: 0.25rem;
+                      overflow: hidden;
+                      text-overflow: ellipsis;
+                      white-space: normal;
+                      display: -webkit-box;
+                      -webkit-line-clamp: 2;
+                      -webkit-box-orient: vertical;
+                  }
+                  img{
+                      display: none;
+                      float: left;
+                      width: 0.17rem;
+                      margin-top: 0.03rem;
+                  }
+              }
+              .el-button:hover{
+                  img{
+                      display: inline-block;
+                  }
+              }
           }
         }
       }

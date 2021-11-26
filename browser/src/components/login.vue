@@ -43,7 +43,7 @@ export default {
             }
         };
         return {
-            login_img: require('@/assets/images/logo.svg'),
+            login_img: require('@/assets/images/logo.png'),
             ruleForm: {
                 Accesskey: '',
                 Secretkey: ''
@@ -193,6 +193,14 @@ export default {
                     &:hover{
                         opacity: 0.8;
                     }
+                    @media screen and (max-width:600px){
+                        font-size: 22px;
+                        width: 40px;
+                        height: 40px;
+                        i{
+                            font-size: 22px;
+                        }
+                    }
                 }
             }
         }
@@ -207,10 +215,18 @@ export default {
             font-size: 0.2rem;
             color: rgba(255, 255, 255, 0.4);
             line-height: 0.8rem;
+            @media screen and (max-width:600px){
+                font-size: 14px;
+            }
         }
         .right{
             img{
-                height: 0.8rem;
+                height: 0.4rem;
+                margin: 0.2rem 0;
+                @media screen and (max-width:600px){
+                    height: 30px;
+                    margin: 15px 0 0;
+                }
             }
         }
     }

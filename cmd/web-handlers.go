@@ -108,6 +108,7 @@ const (
 	LOTUS_JSON_RPC_ID                 = 7878
 	LOTUS_JSON_RPC_VERSION            = "2.0"
 	LOTUS_CLIENT_Retrieve_DEAL        = "Filecoin.ClientRetrieve"
+	LOTUS_CLIENT_IMPORT_CAR           = "Filecoin.ClientImport"
 )
 
 func extractBucketObject(args reflect.Value) (bucketName, objectName string) {
@@ -5989,7 +5990,7 @@ func (web *webAPIHandlers) SendOfflineDealsVolume(w http.ResponseWriter, r *http
 	logs.GetLogger().Info("FS3 volume backup car file generation succeed")
 
 	// lotus import car file
-	_, err = exec.Command("lotus", "client", "import", "--car", volumeCarPath).Output()
+	err = LotusRpcClientImportCar(volumeCarPath)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeOfflineDealsErrorResponse(w, err)
@@ -7259,6 +7260,31 @@ func (web *webAPIHandlers) RetrieveRebuildVolume(w http.ResponseWriter, r *http.
 	}
 	w.Write(dataBytes)
 	return
+}
+
+type ClientImportCar struct {
+	Path  string
+	IsCAR bool
+}
+
+func LotusRpcClientImportCar(carPath string) error {
+	clientImportCar := ClientImportCar{
+		Path:  carPath,
+		IsCAR: true,
+	}
+	var params []interface{}
+	params = append(params, clientImportCar)
+	jsonRpcParams := LotusJsonRpcParams{
+		JsonRpc: LOTUS_JSON_RPC_VERSION,
+		Method:  LOTUS_CLIENT_IMPORT_CAR,
+		Params:  params,
+		Id:      LOTUS_JSON_RPC_ID,
+	}
+	bodyByte, _ := json.Marshal(jsonRpcParams)
+	fmt.Println(string(bodyByte))
+	response := client.HttpGet(config.GetUserConfig().LotusClientApiUrl, config.GetUserConfig().LotusClientAccessToken, jsonRpcParams)
+	fmt.Println(response)
+	return nil
 }
 
 func LotusRpcClientRetrieve(minerId string, payloadCid string, outputPath string) error {

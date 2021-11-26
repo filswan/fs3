@@ -60,19 +60,19 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 39% 0.2rem 9%;
+    padding: 0.3rem 30% 0.1rem 9%;
     background: #7ecef4;
     color: #fff;
     .bg{
       position: absolute;
       right: 13%;
-      width: 17%;
-      top: 0.5rem;
+      width: 15%;
+      top: 0.3rem;
       z-index: 5;
     }
     .fs3_head_text{
       .titleBg{
-        font-size: 0.76rem;
+        font-size: 0.6rem;
         font-family: 'm-light';
         color: #fff;
         opacity: 0.3;
@@ -86,8 +86,8 @@ export default {
         // font-family: 'm-semibold';
       }
       h3{
-        margin: 0.2rem 0 0.05rem;
-        line-height: 1.2;
+        margin: 0.05rem 0 0.05rem;
+        line-height: 1.1;
         font-size: 0.22rem;
       }
       h5{

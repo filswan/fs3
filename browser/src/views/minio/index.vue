@@ -1971,49 +1971,74 @@ export default {
 @media screen and (max-width:999px){
 .landing{
   .fe-header{
-      .form_top {
-         .search {
-           flex-wrap: wrap;
-           height: auto;
-
-           .el-input /deep/ {
-               width: 100%;
-               margin: 0.1rem 0;
-
-               .el-input__inner {
-               width: 100%;
-               font-size: 0.1372rem;
-               }
-           }
-
-           span {
-               margin-left: 0;
-           }
-
-           .search_right {
-
-               .el-select /deep/ {
-               .el-input__inner {
-                   font-size: 0.1372rem;
-               }
-               }
-
-               .el-button /deep/ {
-                padding: 0 0.2rem;
-                font-size: 0.1372rem;
-                font-family: 'm-regular';
-               }
-           }
-         }
+    h2 {
+      span {
+        a{
+          font-size: 16px;
+        }
       }
+      .fe-edit{
+        font-size: 16px;
+        i{
+          font-size: inherit;
+        }
+      }
+    }
+    .feh-used {
+      ul{
+        li{
+          font-size: 13px;
+        }
+      }
+    }
+    .form_top {
+        .search {
+          flex-wrap: wrap;
+          height: auto;
+
+          .el-input /deep/ {
+              width: 100%;
+              margin: 0.1rem 0;
+
+              .el-input__inner {
+              width: calc(100% - 32px);
+              font-size: 0.1372rem;
+              height: 35px;
+              padding: 0 0 0 32px;
+              }
+          }
+
+          span {
+              margin-left: 0;
+          }
+
+          .search_right {
+
+              .el-select /deep/ {
+              .el-input__inner {
+                  font-size: 0.1372rem;
+              }
+              }
+
+              .el-button /deep/ {
+              padding: 0 0.2rem;
+              font-size: 0.1372rem;
+              font-family: 'm-regular';
+              height: auto;
+              line-height: 2.5;
+              }
+          }
+        }
+    }
     .feh-metamask{
         top: 0.21rem;
         right: 45px;
         position: fixed;
     }
     .feh-actions{
-        top: 0.1rem;
+        top: 10px;
         right: 0;
+        height: 45px;
         position: fixed;
         .btn-group>button, >a{
           color: #fff;
@@ -2024,9 +2049,16 @@ export default {
         .mobileIcon{
           display: block !important;
           i{
-            font-size: 0.16rem !important;
+            font-size: 16px !important;
           }
         }
+    }
+  }
+  .table {
+    .el-table /deep/ {
+      th>.cell{
+        font-size: 15px;
+      }
     }
   }
 }

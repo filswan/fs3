@@ -44,7 +44,7 @@
         <el-card class="box-card">
           <div class="statusStyle">
             <div class="list"><span>Add backup Plan ID:</span> {{ruleForm.backupPlanId}}</div>
-            <div class="list"><span>Backup frequency:</span> {{ruleForm.frequency == '1'?'Backup Daily':'Backup Weekly'}}</div>
+            <div class="list"><span>Backup frequency:</span> {{ruleForm.backupInterval == '1'?'Backup Daily':'Backup Weekly'}}</div>
             <!-- <div class="list"><span>Backup region:</span> {{ruleForm.region}}</div> -->
             <div class="list"><span>Price:</span> {{ruleForm.price}} FIL</div>
             <div class="list"><span>Duration:</span> {{ruleForm.duration/24/60/2}} days</div>
@@ -52,10 +52,13 @@
             <div class="list"><span>Fast retrieval:</span> {{ !ruleForm.fastRetrieval ? 'No' : 'Yes'}}</div>
             <div class="list"><span>Create Date:</span> {{ruleForm.createdOn}}</div>
             <div class="list"><span>Last Update:</span> {{ruleForm.updatedOn}}</div>
+            <div class="list"><span>Last Backup Date:</span> {{ruleForm.lastBackupOn}}</div>
           </div>
         </el-card>
         <div slot="footer" class="dialog-footer">
-          <el-button @click="handleClose">OK</el-button>
+          <el-button :type="ruleForm.status&&ruleForm.status.toLowerCase() != 'running'?'info':'success'">STOP</el-button>
+          <el-button :type="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?'info':'success'">START</el-button>
+          <el-button type="success" @click="handleClose">OK</el-button>
         </div>
       </el-dialog>
     </div>
@@ -98,8 +101,9 @@ export default {
               if (json.status == 'success') {
                 _this.plan_list = json.data.volumeBackupJobPlans
                 _this.plan_list.map(item => {
-                    item.createdOn = moment(new Date(parseInt(item.createdOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
-                    item.updatedOn = moment(new Date(parseInt(item.updatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
+                    item.createdOn = item.createdOn?moment(new Date(parseInt(item.createdOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                    item.updatedOn = item.updatedOn?moment(new Date(parseInt(item.updatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                    item.lastBackupOn = item.lastBackupOn?moment(new Date(parseInt(item.lastBackupOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
                 })
               }else{
                   _this.$message.error(json.message);
@@ -198,11 +202,16 @@ export default {
           color: #fff;
           text-align: center;
           border-radius: 0.06rem;
+          @media screen and (max-width:600px){
+            font-size: 16px;
+          }
+        }
+        .el-button--success{
           background: #84d088;
           border: 1px solid #84d088;
-                @media screen and (max-width:600px){
-                  font-size: 16px;
-                }
+          &:hover{
+            background: #8bc68e;
+          }
         }
       }
     }
@@ -214,19 +223,19 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0.5rem 39% 0.2rem 9%;
+    padding: 0.3rem 30% 0.05rem 9%;
     background: #7ecef4;
     color: #fff;
     .bg{
       position: absolute;
-      right: 18%;
+      right: 13%;
       width: 9%;
-      top: 0.5rem;
+      top: 0.3rem;
       z-index: 5;
     }
     .fs3_head_text{
       .titleBg{
-        font-size: 0.76rem;
+        font-size: 0.6rem;
         font-family: 'm-light';
         color: #fff;
         opacity: 0.3;
