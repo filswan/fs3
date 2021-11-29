@@ -7,14 +7,14 @@
   src: url('../font/pingfang.ttf') format('truetype');
   font-weight: normal;
 }
-@font-face {
+/* @font-face {
   font-family: 'm-semibold';
   src: url('../font/pingfang_semibold.ttf') format('truetype');
-}
-@font-face {
+} */
+/* @font-face {
   font-family: 'PTSerifCaption';
   src: url('../font/PTSerifCaption.ttf') format('truetype');
-}
+} */
 
 * {
   margin: 0;

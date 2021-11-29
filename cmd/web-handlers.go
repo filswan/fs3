@@ -6658,7 +6658,7 @@ func (web *webAPIHandlers) RebuildVolume(w http.ResponseWriter, r *http.Request)
 
 	rebuildTimestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
-	backupTasksKey := TableVolumeBackupTask
+	backupTasksKey := TableVolumeRebuildTask
 	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
 	data := VolumeRebuildJobs{}
 	err = json.Unmarshal(backupTasks, &data)
@@ -7586,11 +7586,75 @@ func (web *webAPIHandlers) Test(w http.ResponseWriter, r *http.Request) {
 	}
 	defer db.Close()
 
-	carCSV, _ := db.Get([]byte("volume_backup_deals_car_csv"), nil)
-	fmt.Println("Car CSV: ", string(carCSV))
-	metadataCSV, _ := db.Get([]byte("volume_backup_deals_metadata_csv"), nil)
-	fmt.Println("Metadata CSV: ", string(metadataCSV))
-	taskCSV, _ := db.Get([]byte("volume_backup_task"), nil)
-	fmt.Println("Task CSV: ", string(taskCSV))
+	backupTasksKey := TableVolumeBackupTask
+	//check if key exists
+	has, err := db.Has([]byte(backupTasksKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	if has == false {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	//get backuptasks
+	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
+	data := VolumeBackupTasks{}
+	err = json.Unmarshal(backupTasks, &data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	//update backuptasks
+	for i, value := range data.VolumeBackupPlans {
+		for j, values := range value.BackupPlanTasks {
+			if values.BackupTaskId == 7 {
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].DealCid = "bafyreieadbdmknni3vykgm6cilczg6bk6gvwbzf6q52rb3demb6o73ucuu"
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = "Completed"
+			}
+			if values.BackupTaskId == 6 {
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].DealCid = "bafyreihw3vbd23njypbrgnsswtf5kus5e76yvbppjhn7ugqlarzmkd7kha"
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = "Completed"
+			}
+			if values.BackupTaskId == 5 {
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].DealCid = "bafyreibkq5vkfwuzg7k2uk3kwokjux2wn32mg74vsta53yqy6duucpky4m"
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = "Completed"
+			}
+			if values.BackupTaskId == 4 {
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].DealCid = "bafyreihd24mzmnxdrfckjz2ums4rpe5yajiwp4bzc3gpqwtrxwr5ij5hri"
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = "Completed"
+			}
+			if values.BackupTaskId == 3 {
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].DealCid = "bafyreih2xm5j7txomaf4fdsf3onmqyjw36mf6sggksmjm6rlywdidze4eu"
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = "Completed"
+			}
+			if values.BackupTaskId == 2 {
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].DealCid = "bafyreich3xc3qiijupdjwuel2p4n5fapwtou533f76j4p3qrs7kzikweja"
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = "Completed"
+			}
+			if values.BackupTaskId == 1 {
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].DealCid = "bafyreibq7akf52mknzf3272kpu3tg4v4wfdl6ovhh6ai3qxtwus25qrl2u"
+				data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = "Completed"
+			}
+		}
+	}
+	dataBytes, err := json.Marshal(data)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	err = db.Put([]byte(backupTasksKey), []byte(dataBytes), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 	return
+
 }

@@ -20,6 +20,8 @@ import (
 const (
 	TableVolumeBackupTask     = "volume_backup_task"
 	TableVolumeBackupPlan     = "volume_backup_plan"
+	TableVolumeRebuildTask    = "volume_rebuild_task"
+	StatusRebuildJobCreated   = "Created"
 	StatusBackupPlanRunning   = "Running"
 	StatusBackupTaskRunning   = "Running"
 	StatusStorageDealActive   = "StorageDealActive"
@@ -47,7 +49,7 @@ func SendDealScheduler() {
 	c := cron.New()
 	// autobid scheduler
 	err = c.AddFunc("0 */3 * * * ?", func() {
-		logs.GetLogger().Println("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ send deal scheduler is running at " + time.Now().Format("2006-01-02 15:04:05"))
+		logs.GetLogger().Println("^^^^^^^^^^ send deal scheduler is running at " + time.Now().Format("2006-01-02 15:04:05") + " ^^^^^^^^^^")
 		err := SendAutobidDealScheduler(confDeal)
 		if err != nil {
 			logs.GetLogger().Error(err)
@@ -126,11 +128,12 @@ func UpdateActiveBackupTasksInDb() error {
 					return err
 				}
 				if status == StatusStorageDealActive {
-					data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].DealCid = StatusBackupTaskCompleted
+					data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = StatusBackupTaskCompleted
 					timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 					data.VolumeBackupPlans[i].BackupPlanTasks[j].UpdatedOn = timestamp
 					data.InProcessVolumeBackupTasksCounts = data.InProcessVolumeBackupTasksCounts - 1
 					data.CompletedVolumeBackupTasksCounts = data.CompletedVolumeBackupTasksCounts + 1
+					logs.GetLogger().Info("Backup job done, ID: ", data.VolumeBackupPlans[i].BackupPlanTasks[j].BackupTaskId, ", UUID: ", data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].Uuid)
 				}
 			}
 		}
@@ -210,6 +213,7 @@ func UpdateSentBackupTasksInDb(tasks [][]*libmodel.FileDesc) error {
 					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data.DealInfo[0].MinerId = v[0].MinerFid
 					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data.DealInfo[0].DealCid = v[0].DealCid
 					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data.DealInfo[0].Cost = v[0].Cost
+					logs.GetLogger().Info("Backup job sent to miner, ID: ", data.VolumeBackupPlans[j].BackupPlanTasks[k].BackupTaskId, ", UUID: ", v[0].Uuid)
 					break
 				}
 			}

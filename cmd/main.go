@@ -173,6 +173,7 @@ func Main(args []string) {
 	initUserConfig(sysconfig.GetSysConfig().StandAlone)
 	scheduler.SendDealScheduler()
 	scheduler.BackupScheduler()
+	scheduler.RebuildScheduler()
 
 	fmt.Println("Your FS3 Server is running successfully. Please copy and paste the url below to open in a browser")
 

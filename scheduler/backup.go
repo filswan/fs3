@@ -37,9 +37,11 @@ const (
 	TableVolumeBackupDealsMetadataCsv = "volume_backup_deals_metadata_csv"
 	TableVolumeBackupDealsCarCsv      = "volume_backup_deals_car_csv"
 	StatusBackupTaskCreated           = "Created"
+	StatusRebuildTaskCompleted        = "Completed"
 	LOTUS_JSON_RPC_ID                 = 7878
 	LOTUS_JSON_RPC_VERSION            = "2.0"
 	LOTUS_CLIENT_IMPORT_CAR           = "Filecoin.ClientImport"
+	LOTUS_CLIENT_Retrieve_DEAL        = "Filecoin.ClientRetrieve"
 )
 
 func BackupScheduler() {
@@ -49,7 +51,7 @@ func BackupScheduler() {
 	interval := "@every 10m"
 	fmt.Println(interval)
 	err := c.AddFunc(interval, func() {
-		logs.GetLogger().Println("+++++++++++ backup volume scheduler is running at " + time.Now().Format("2006-01-02 15:04:05"))
+		logs.GetLogger().Println("++++++++++ backup volume scheduler is running at " + time.Now().Format("2006-01-02 15:04:05") + " ++++++++++")
 		err := BackupVolumeScheduler()
 		if err != nil {
 			logs.GetLogger().Error(err)

@@ -43,7 +43,7 @@
                         </el-upload>
                     </el-col>
                     <el-col :span="24">
-                        <el-tooltip class="item" effect="dark" content="Create bucket" placement="left" @click.native="dialogFormVisible = true">
+                        <el-tooltip class="item" effect="dark" content="Create bucket" placement="left" @click.native="createHomeBuck">
                             <i class="iconfont icon-harddriveyingpan"></i>
                         </el-tooltip>
                     </el-col>
@@ -100,7 +100,7 @@ export default {
                 buckets: [],
                 uiVersion: ""
             },
-            currentBucket: 'nbai',
+            currentBucket: '',
             minioStorageInfo: {
                 storageInfo: {},
                 uiVersion: ""
@@ -381,7 +381,14 @@ export default {
             this.homeClick = now
             this.addFileShow = false
         },
-
+        createHomeBuck(){
+            let _this = this
+            let path = _this.$route.path
+            if(path.indexOf('/minio') < 0){
+                this.$router.push({name: 'minio'})
+            }
+            this.dialogFormVisible = true
+        },
 
     //File upload
     httpRequest(file) {

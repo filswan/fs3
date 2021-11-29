@@ -13,34 +13,33 @@
           <el-breadcrumb-item>{{linkTitle}}</el-breadcrumb-item>
         </el-breadcrumb>
         <el-table
-          :data="tableData" stripe empty-text="No data" v-if="$route.params.type == 'backup_job'"
-          style="width: 100%">
-          <el-table-column prop="backupTaskId" label="Backup ID">
+          :data="tableData" stripe empty-text="No data" v-if="$route.params.type == 'backup_job'">
+          <el-table-column prop="backupTaskId" label="Backup ID" width="90">
             <template slot-scope="scope">
               {{ scope.row.backupPlanTasks[0].backupTaskId }}
             </template>
           </el-table-column>
-          <el-table-column prop="Date" label="Last Updata">
+          <el-table-column prop="updatedOn" label="Last Updata" min-width="110">
             <template slot-scope="scope">
               {{ scope.row.backupPlanTasks[0].updatedOn }}
             </template>
           </el-table-column>
-          <el-table-column prop="Date" label="Date Created">
+          <el-table-column prop="createdOn" label="Date Created" min-width="110">
             <template slot-scope="scope">
               {{ scope.row.backupPlanTasks[0].createdOn }}
             </template>
           </el-table-column>
-          <el-table-column prop="miner_id" label="W3SSID">
+          <el-table-column prop="miner_id" label="W3SSID" min-width="110">
             <template slot-scope="scope">
               {{ scope.row.backupPlanTasks[0].data.dealInfo[0].miner_id }}
             </template>
           </el-table-column>
-          <el-table-column prop="cost" label="Price">
+          <el-table-column prop="cost" label="Price" min-width="130">
             <template slot-scope="scope">
-              {{ scope.row.backupPlanTasks[0].data.dealInfo[0].cost }}
+              {{ scope.row.backupPlanTasks[0].data.dealInfo[0].cost | NumFormatPrice}} FIL
             </template>
           </el-table-column>
-          <el-table-column prop="deal_cid" label="Deal CID">
+          <el-table-column prop="deal_cid" label="Deal CID" min-width="180">
             <template slot-scope="scope">
                 <div class="hot-cold-box">
                     <el-popover
@@ -58,19 +57,19 @@
                 </div>
             </template>
           </el-table-column>
-          <el-table-column prop="payload_cid" label="Data CID">
+          <el-table-column prop="payload_cid" label="Data CID" min-width="180">
             <template slot-scope="scope">
               {{ scope.row.backupPlanTasks[0].data.dealInfo[0].payload_cid }}
             </template>
           </el-table-column>
-          <el-table-column prop="duration" label="Duration">
+          <el-table-column prop="duration" label="Duration" min-width="110">
             <template slot-scope="scope">
               {{ scope.row.backupPlanTasks[0].data.duration }} 
               <br>
               ({{ scope.row.backupPlanTasks[0].data.duration_time }})
             </template>
           </el-table-column>
-          <el-table-column prop="status" label="Status">
+          <el-table-column prop="status" label="Status" width="110">
             <template slot-scope="scope">
                 <div class="statusStyle"
                       v-if="scope.row.backupPlanTasks[0].status == 'Created'"
@@ -92,7 +91,7 @@
                 </div>
             </template>
           </el-table-column>
-          <el-table-column prop="" label="">
+          <el-table-column prop="" label="" width="130">
             <template slot-scope="scope">
               <el-button v-if="scope.row.backupPlanTasks[0].status != 'Completed'"
                 type="info"
@@ -105,8 +104,7 @@
         </el-table>
 
         <el-table
-          :data="tableData_2" stripe empty-text="No data" v-else
-          style="width: 100%">
+          :data="tableData_2" stripe empty-text="No data" v-else>
           <el-table-column prop="rebuildTaskID" label="Rebuild Job ID"></el-table-column>
           <el-table-column prop="status" label="Status">
             <template slot-scope="scope">
@@ -131,10 +129,28 @@
             </template>
           </el-table-column>
           <el-table-column prop="miner_id" label="W3SSID"></el-table-column>
-          <el-table-column prop="payload_cid" label="Data CID"></el-table-column>
+          <el-table-column prop="deal_cid" label="Deal CID" min-width="110">
+            <template slot-scope="scope">
+                <div class="hot-cold-box">
+                    <el-popover
+                        placement="top" width="160"
+                        trigger="hover"
+                        v-model="scope.row.visible">
+                        <div class="upload_form_right">
+                            <p>{{scope.row.deal_cid}}</p>
+                        </div>
+                        <el-button slot="reference" @click="copyTextToClipboard(scope.row.deal_cid)">
+                            <img src="@/assets/images/copy.png" alt="">
+                            {{scope.row.deal_cid}}
+                        </el-button>
+                    </el-popover>
+                </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="payload_cid" label="Data CID" min-width="110"></el-table-column>
           <el-table-column prop="backupTaskId" label="Backup ID"></el-table-column>
-          <el-table-column prop="createdOn" label="Date Created"></el-table-column>
-          <el-table-column prop="updatedOn" label="Date Updated"></el-table-column>
+          <el-table-column prop="createdOn" label="Date Created" width="110"></el-table-column>
+          <el-table-column prop="updatedOn" label="Date Updated" width="110"></el-table-column>
         </el-table>
       </div>
 
@@ -143,12 +159,12 @@
         :visible.sync="dialogVisible"
         :width="dialogWidth">
         <img src="@/assets/images/small_bell.png" class="icon" alt="">
-        <span class="span">Are you sure you want to rebuild volume from “<b>{{backupPlan.backupPlanName}}</b> at {{backupPlan.date}} ”?</span>
+        <span class="span">Are you sure you want to rebuild volume from <b>{{backupPlan.backupPlanName}}</b> ?</span>
         <span class="span">This action will overwrite your existing file system,</span>
         <span class="span"><b>Proceed?</b></span>
         <div slot="footer" class="dialog-footer">
           <el-button @click="dialogVisible=false">Cancel</el-button>
-          <el-button @click="goLink">Backup Current System</el-button>
+          <!-- <el-button @click="goLink">Backup Current System</el-button> -->
           <el-button @click="confirm">OK</el-button>
         </div>
       </el-dialog>
@@ -158,14 +174,37 @@
         :visible.sync="dialogConfirm"
         :width="dialogWidth">
         <img src="@/assets/images/check_sign.png" class="icon" alt="">
-        <span class="span">Your rebuild has created successfully</span>
+        <span class="span">Your rebuild image job has created successfully</span>
         <br>
         <el-card class="box-card">
           <div class="statusStyle">
-            <div class="list"><span>Rebuild Job ID: </span> {{backupPlan.backupPlanTasks[0].backupTaskId}}</div>
-            <div class="list"><span>Date Created:</span> {{backupPlan.date}}</div>
-            <div class="list"><span>Backup ID:</span> {{backupPlan.backupPlanId}} </div>
+            <div class="list"><span>Rebuild Job ID: </span> {{backupPlan.rebuildTaskID}}</div>
+            <div class="list"><span>Date Created:</span> {{backupPlan.createdOn}}</div>
+            <div class="list"><span>W3SSID:</span> {{backupPlan.miner_id}}</div>
+            <div class="list"><span>Backup ID:</span> {{backupPlan.backupTaskId}} </div>
             <div class="list"><span>Data CID:</span> {{backupPlan.payload_cid}} </div>
+            <div class="list"><span>Deal CID:</span> {{backupPlan.deal_cid}} </div>
+            <div class="list">
+              <span>Stauts:</span>
+              <small
+                    v-if="backupPlan.status == 'Created'"
+                    style="color: #0a318e">
+                  {{ backupPlan.status }}
+              </small>
+              <small
+                    v-else-if="backupPlan.status == 'Running'"
+                    style="color: #ffb822">
+                  {{ backupPlan.status }}
+              </small>
+              <small
+                    v-else-if="backupPlan.status == 'Completed'"
+                    style="color: #1dc9b7">
+                  {{ backupPlan.status }}
+              </small>
+              <small v-else style="color: rgb(255, 184, 34)">
+                  {{ backupPlan.status }}
+              </small>
+            </div>
           </div>
         </el-card>
         <div slot="footer" class="dialog-footer">
@@ -239,10 +278,30 @@ export default {
         this.dialogConfirm = false
       },
       detailFun(row) {
-        this.dialogVisible = true
-        this.backupPlan = row
-        this.backupPlan.date = row.backupPlanTasks[0].data[0].date
-        this.backupPlan.payload_cid = row.backupPlanTasks[0].data[0].payload_cid
+        let _this=this
+        _this.dialogVisible = true
+
+        let postUrl = _this.data_api + `/minio/rebuild/add/job`
+        let params = {
+          "BackupTaskId": row.backupPlanTasks[0].backupTaskId,
+          "BackupPlanId": row.backupPlanId
+        }
+
+        axios.post(postUrl, params, {headers: {
+              'Authorization':"Bearer "+ _this.$store.getters.accessToken
+        }}).then((response) => {
+            let json = response.data
+            if (json.status == 'success') {
+              _this.backupPlan = json.data
+              if(_this.backupPlan.createdOn) _this.backupPlan.createdOn = moment(new Date(parseInt(_this.backupPlan.createdOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
+            }else{
+                _this.$message.error(json.message);
+                return false
+            }
+
+        }).catch(function (error) {
+            console.log(error);
+        });
       },
       productName() {
         let _this = this
@@ -257,7 +316,7 @@ export default {
       },
       copyTextToClipboard(text) {
           let _this = this
-          let saveLang = localStorage.getItem('lang') == 'cn'?"复制成功":"success";
+          let saveLang = "Success";
           var txtArea = document.createElement("textarea");
           txtArea.id = 'txt';
           txtArea.style.position = 'fixed';
@@ -337,6 +396,7 @@ export default {
               if (json.status == 'success') {
                 _this.tableData_2 = json.data.volumeRebuildTasks
                 _this.tableData_2.map(item => {
+                    item.visible = false
                     item.createdOn = moment(new Date(parseInt(item.createdOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
                     item.updatedOn = moment(new Date(parseInt(item.updatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
                 })
@@ -359,6 +419,31 @@ export default {
     mounted () {
       this.productName()
     },
+    filters: {
+        NumFormatPrice (value) {
+            if(value == 0) return 0;
+            if(!value) return '-';
+            // 18 - need / 1000000000000000000
+            let valueNum = String(value)
+            if(value.length > 18){
+                let v1 = valueNum.substring(0, valueNum.length - 18)
+                let v2 = valueNum.substring(valueNum.length - 18)
+                let v3 = String(v2).replace(/(0+)\b/gi,"")
+                if(v3){
+                    return v1 + '.' + v3
+                }else{
+                    return v1
+                }
+                return parseFloat(v1.replace(/(\d)(?=(?:\d{3})+$)/g, "$1,") + '.' + v2)
+            }else{
+                let v3 = ''
+                for(let i = 0; i < 18 - valueNum.length; i++){
+                    v3 += '0'
+                }
+                return '0.' + String(v3 + valueNum).replace(/(0+)\b/gi,"")
+            }
+        }
+    }
 };
 </script>
 
@@ -418,6 +503,9 @@ export default {
                 span{
                   display: block;
                   width: 55%;
+                }
+                small{
+                  font-size: inherit;
                 }
               }
             }
