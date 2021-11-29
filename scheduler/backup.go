@@ -83,7 +83,9 @@ func BackupVolumeScheduler() error {
 		logs.GetLogger().Error(err)
 		return err
 	}
-
+	if runningBackupPlans == nil {
+		return err
+	}
 	//get executable backup plans Id in this scheduler turn
 	ExecuteBackupPlansId := []int{}
 	for _, v := range runningBackupPlans {
@@ -119,6 +121,9 @@ func BackupVolumeScheduler() error {
 	volumeBackupRequests, err := AddBackupVolumeJobs(db, ExecuteBackupPlansId)
 	if err != nil {
 		logs.GetLogger().Error(err)
+		return err
+	}
+	if volumeBackupRequests == nil {
 		return err
 	}
 
@@ -290,9 +295,19 @@ func AddBackupVolumeJobs(db *leveldb.DB, plansId []int) ([]VolumeBackupRequest, 
 
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
-	backupPlanssKey := TableVolumeBackupPlan
-	backupPlans, err := db.Get([]byte(backupPlanssKey), nil)
-	if err != nil || backupPlans == nil {
+	backupPlansKey := TableVolumeBackupPlan
+
+	//check if key exists
+	has, err := db.Has([]byte(backupPlansKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	if has == false {
+		return nil, err
+	}
+	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
+	if err != nil {
 		logs.GetLogger().Error(err)
 		return nil, err
 	}
@@ -313,8 +328,14 @@ func AddBackupVolumeJobs(db *leveldb.DB, plansId []int) ([]VolumeBackupRequest, 
 		}
 
 		dbVolumeBackupTasks := TableVolumeBackupTask
-		volumeBackupTasks, err := db.Get([]byte(dbVolumeBackupTasks), nil)
-		if err == nil {
+		//check if key exists
+		has, err := db.Has([]byte(dbVolumeBackupTasks), nil)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			return nil, err
+		}
+		if has != false {
+			volumeBackupTasks, err := db.Get([]byte(dbVolumeBackupTasks), nil)
 			taskData := VolumeBackupTasks{}
 			err = json.Unmarshal(volumeBackupTasks, &taskData)
 			if err != nil {
@@ -442,7 +463,20 @@ func AddBackupVolumeJobs(db *leveldb.DB, plansId []int) ([]VolumeBackupRequest, 
 func UpdateLastBackupTime(db *leveldb.DB, plansId []int) error {
 	//get backupplans
 	backupPlansKey := TableVolumeBackupPlan
+	//check if key exists
+	has, err := db.Has([]byte(backupPlansKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	if has == false {
+		return nil
+	}
 	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
 	data := VolumeBackupJobPlans{}
 	err = json.Unmarshal(backupPlans, &data)
 	if err != nil {
@@ -471,7 +505,20 @@ func UpdateLastBackupTime(db *leveldb.DB, plansId []int) error {
 func GetRunningBackupPlans(db *leveldb.DB) ([]VolumeBackupJobPlan, error) {
 	//get backupplans
 	backupPlansKey := TableVolumeBackupPlan
+	//check if key exists
+	has, err := db.Has([]byte(backupPlansKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	if has == false {
+		return nil, err
+	}
 	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
 	data := VolumeBackupJobPlans{}
 	err = json.Unmarshal(backupPlans, &data)
 	if err != nil {
@@ -678,9 +725,23 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupTaskId 
 
 	dbVolumeBackupTasks := TableVolumeBackupTask
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+	//check if key exists
+	has, err := db.Has([]byte(dbVolumeBackupTasks), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return VolumeBackupPlanTask{}, err
+	}
+	if has == false {
+		return VolumeBackupPlanTask{}, err
+	}
 	volumeBackupTasks, _ := db.Get([]byte(dbVolumeBackupTasks), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return VolumeBackupPlanTask{}, err
+	}
+
 	data := VolumeBackupTasks{}
-	err := json.Unmarshal(volumeBackupTasks, &data)
+	err = json.Unmarshal(volumeBackupTasks, &data)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return VolumeBackupPlanTask{}, err
@@ -715,9 +776,18 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupTaskId 
 }
 
 func GetBackupPlanInfo(db *leveldb.DB, backupPlanId int) (VolumeBackupJobPlan, error) {
-	backupPlanssKey := TableVolumeBackupPlan
-	backupPlans, err := db.Get([]byte(backupPlanssKey), nil)
-	if err != nil || backupPlans == nil {
+	backupPlansKey := TableVolumeBackupPlan
+	//check if key exists
+	has, err := db.Has([]byte(backupPlansKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return VolumeBackupJobPlan{}, err
+	}
+	if has == false {
+		return VolumeBackupJobPlan{}, errors.New("Key is not in leveldb")
+	}
+	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
+	if err != nil {
 		logs.GetLogger().Error(err)
 		return VolumeBackupJobPlan{}, err
 	}

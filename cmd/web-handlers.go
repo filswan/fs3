@@ -92,6 +92,7 @@ const (
 	SuccessResponseStatus             = "success"
 	FailResponseStatus                = "fail"
 	NoFileInBucket                    = "No file in the bucket.Please upload files"
+	KeyNotInLevelDb                   = "Key is not in leveldb"
 	Duration                          = 1512000
 	FS3SourceId                       = 3
 	TableVolumeBackupTask             = "volume_backup_task"
@@ -6443,7 +6444,7 @@ type AddVolumeBackupPlanRequest struct {
 
 type UpdateVolumeBackupPlanRequest struct {
 	BackupPlanId int    `json:"backupPlanId"`
-	Status       string `json:"backupInterval"`
+	Status       string `json:"Status"`
 }
 
 type AddVolumeBackupPlanResponse struct {
@@ -6543,8 +6544,31 @@ func (web *webAPIHandlers) RetrieveOfflineDealsVolume(w http.ResponseWriter, r *
 	}
 	defer db.Close()
 	backupTasksKey := TableVolumeBackupTask
+
+	//check if key exists
+	has, err := db.Has([]byte(backupTasksKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	if has == false {
+		retrieveVolumeResponse := RetrieveVolumeResponse{
+			Data:    VolumeBackupTasks{},
+			Status:  SuccessResponseStatus,
+			Message: KeyNotInLevelDb,
+		}
+		dataBytes, err := json.Marshal(retrieveVolumeResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	}
+
 	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
-	if err != nil || backupTasks == nil {
+	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
@@ -6936,8 +6960,20 @@ func (web *webAPIHandlers) BackupAddJob(w http.ResponseWriter, r *http.Request) 
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
 	backupPlanssKey := TableVolumeBackupPlan
+	//check if key exists
+	has, err := db.Has([]byte(backupPlanssKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	if has == false {
+		logs.GetLogger().Error(KeyNotInLevelDb)
+		writeWebErrorResponse(w, errors.New(KeyNotInLevelDb))
+		return
+	}
 	backupPlans, err := db.Get([]byte(backupPlanssKey), nil)
-	if err != nil || backupPlans == nil {
+	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
@@ -6971,8 +7007,15 @@ func (web *webAPIHandlers) BackupAddJob(w http.ResponseWriter, r *http.Request) 
 	}
 
 	dbVolumeBackupTasks := TableVolumeBackupTask
-	volumeBackupTasks, err := db.Get([]byte(dbVolumeBackupTasks), nil)
-	if err == nil {
+
+	//check if key exists
+	has, err = db.Has([]byte(dbVolumeBackupTasks), nil)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		return
+	}
+	if has != false {
+		volumeBackupTasks, err := db.Get([]byte(dbVolumeBackupTasks), nil)
 		data := VolumeBackupTasks{}
 		err = json.Unmarshal(volumeBackupTasks, &data)
 		if err != nil {
@@ -7273,6 +7316,28 @@ func (web *webAPIHandlers) RetrieveBackupPlan(w http.ResponseWriter, r *http.Req
 	}
 	defer db.Close()
 
+	//check if key exists
+	has, err := db.Has([]byte(TableVolumeBackupPlan), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	if has == false {
+		volumeRebuildJobsResponse := VolumeBackupPlansResponse{
+			Data:    VolumeBackupJobPlans{},
+			Status:  SuccessResponseStatus,
+			Message: KeyNotInLevelDb,
+		}
+		dataBytes, err := json.Marshal(volumeRebuildJobsResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	}
+
 	volumeBackupJobPlans, _ := db.Get([]byte(TableVolumeBackupPlan), nil)
 	data := VolumeBackupJobPlans{}
 	err = json.Unmarshal(volumeBackupJobPlans, &data)
@@ -7289,7 +7354,7 @@ func (web *webAPIHandlers) RetrieveBackupPlan(w http.ResponseWriter, r *http.Req
 	dataBytes, err := json.Marshal(volumeRebuildJobsResponse)
 	if err != nil {
 		logs.GetLogger().Error(err)
-		writeOfflineDealsErrorResponse(w, err)
+		writeWebErrorResponse(w, err)
 		return
 	}
 	w.Write(dataBytes)
@@ -7318,6 +7383,28 @@ func (web *webAPIHandlers) RetrieveRebuildVolume(w http.ResponseWriter, r *http.
 		writeWebErrorResponse(w, err)
 	}
 	defer db.Close()
+
+	//check if key exists
+	has, err := db.Has([]byte(TableVolumeRebuildTask), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	if has == false {
+		retrieveVolumeResponse := VolumeRebuildJobsResponse{
+			Data:    VolumeRebuildJobs{},
+			Status:  SuccessResponseStatus,
+			Message: KeyNotInLevelDb,
+		}
+		dataBytes, err := json.Marshal(retrieveVolumeResponse)
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+		w.Write(dataBytes)
+		return
+	}
 
 	volumeRebuildTasks, err := db.Get([]byte(TableVolumeRebuildTask), nil)
 	if err != nil {
@@ -7419,9 +7506,18 @@ func LotusRpcClientRetrieve(minerId string, payloadCid string, outputPath string
 }
 
 func GetBackupPlanInfo(db *leveldb.DB, backupPlanId int) (VolumeBackupJobPlan, error) {
-	backupPlanssKey := TableVolumeBackupPlan
-	backupPlans, err := db.Get([]byte(backupPlanssKey), nil)
-	if err != nil || backupPlans == nil {
+	backupPlansKey := TableVolumeBackupPlan
+	//check if key exists
+	has, err := db.Has([]byte(backupPlansKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return VolumeBackupJobPlan{}, err
+	}
+	if has == false {
+		return VolumeBackupJobPlan{}, errors.New(KeyNotInLevelDb)
+	}
+	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
+	if err != nil {
 		logs.GetLogger().Error(err)
 		return VolumeBackupJobPlan{}, err
 	}

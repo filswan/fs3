@@ -96,8 +96,18 @@ func UpdateActiveBackupTasksInDb() error {
 	}
 	defer db.Close()
 
-	//get backuptasks
 	backupTasksKey := TableVolumeBackupTask
+	//check if key exists
+	has, err := db.Has([]byte(backupTasksKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	if has == false {
+		return nil
+	}
+
+	//get backuptasks
 	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
 	data := VolumeBackupTasks{}
 	err = json.Unmarshal(backupTasks, &data)
@@ -165,8 +175,18 @@ func UpdateSentBackupTasksInDb(tasks [][]*libmodel.FileDesc) error {
 	}
 	defer db.Close()
 
-	//get backuptasks
 	backupTasksKey := TableVolumeBackupTask
+	//check if key exists
+	has, err := db.Has([]byte(backupTasksKey), nil)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	if has == false {
+		return nil
+	}
+
+	//get backuptasks
 	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
 	if err != nil || backupTasks == nil {
 		logs.GetLogger().Error(err)
