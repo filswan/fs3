@@ -197,8 +197,13 @@ func initUserConfig(standAlone bool) {
 	lotusClientApiUrl := os.Getenv("LOTUS_CLIENT_API_URL")
 	lotusClientAccessToken := os.Getenv("LOTUS_CLIENT_ACCESS_TOKEN")
 	volumeBackupAddress := os.Getenv("VOLUME_BACKUP_ADDRESS")
+	psqlHost := os.Getenv("PSQL_HOST")
+	psqlUser := os.Getenv("PSQL_USER")
+	psqlPassword := os.Getenv("PSQL_PASSWORD")
+	psqlDbname := os.Getenv("PSQL_DBNAME")
+	psqlPort := os.Getenv("PSQL_PORT")
 	logs.GetLogger().Println(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken, volumeBackupAddress)
-	config.InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken, volumeBackupAddress)
+	config.InitUserConfig(swanAddress, fs3VolumeAddress, fs3WalletAddress, carFileSize, ipfsApiAddress, ipfsGateway, swanToken, lotusClientApiUrl, lotusClientAccessToken, volumeBackupAddress, psqlHost, psqlUser, psqlPassword, psqlDbname, psqlPort)
 
 }
 

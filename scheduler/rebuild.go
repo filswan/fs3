@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/filswan/go-swan-lib/client"
 	"github.com/minio/minio/internal/config"
@@ -19,7 +20,6 @@ import (
 func RebuildScheduler() {
 	c := cron.New()
 	//backup scheduler
-
 	interval := "@every 1m"
 	fmt.Println(interval)
 	err := c.AddFunc(interval, func() {
@@ -45,7 +45,16 @@ func RebuildVolumeScheduler() error {
 		logs.GetLogger().Error(err)
 		return err
 	}
-	db, err := leveldb.OpenFile(expandedDir, nil)
+	var db *leveldb.DB
+	for true {
+		dB, err := leveldb.OpenFile(expandedDir, nil)
+		if err == errors.New("resource temporarily unavailable") {
+			db = dB
+			continue
+		}
+		time.Sleep(30 * time.Second)
+	}
+
 	if err != nil {
 		logs.GetLogger().Error(err)
 	}
@@ -58,6 +67,10 @@ func RebuildVolumeScheduler() error {
 		return err
 	}
 	if runningRebuildJobs == nil {
+		return err
+	}
+	if len(runningRebuildJobs) == 0 {
+		logs.GetLogger().Info("No running rebuild job")
 		return err
 	}
 

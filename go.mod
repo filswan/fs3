@@ -45,7 +45,7 @@ require (
 	github.com/klauspost/pgzip v1.2.5
 	github.com/klauspost/readahead v1.3.1
 	github.com/klauspost/reedsolomon v1.9.11
-	github.com/lib/pq v1.9.0
+	github.com/lib/pq v1.10.2
 	github.com/miekg/dns v1.1.35
 	github.com/minio/cli v1.22.0
 	github.com/minio/csvparser v1.0.0
@@ -91,11 +91,13 @@ require (
 	go.etcd.io/etcd/api/v3 v3.5.0-beta.4
 	go.etcd.io/etcd/client/v3 v3.5.0-beta.4
 	go.uber.org/zap v1.16.1-0.20210329175301-c23abee72d19
-	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
 	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
 	golang.org/x/tools v0.1.1 // indirect
 	google.golang.org/api v0.31.0
 	gopkg.in/yaml.v2 v2.4.0
+	gorm.io/driver/postgres v1.2.3
+	gorm.io/gorm v1.22.4
 )
 
 replace (

@@ -20,7 +20,8 @@ import (
 	oshomedir "github.com/mitchellh/go-homedir"
 	"github.com/robfig/cron"
 	"github.com/shopspring/decimal"
-	"github.com/syndtr/goleveldb/leveldb"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 	ioioutil "io/ioutil"
 	"net/http"
 	"os"
@@ -67,26 +68,19 @@ func BackupScheduler() {
 }
 
 func BackupVolumeScheduler() error {
-	//open backup db
-	expandedDir, err := LevelDbBackupPath()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	db, err := leveldb.OpenFile(expandedDir, nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-	}
-	defer db.Close()
-
 	//get all the running backup plans from db
-	runningBackupPlans, err := GetRunningBackupPlans(db)
+	runningBackupPlans, err := GetRunningBackupPlans()
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
 	}
 	if runningBackupPlans == nil {
 		return err
+	} else {
+		if len(runningBackupPlans) == 0 {
+			logs.GetLogger().Info("No backup plan running now.")
+			return err
+		}
 	}
 	//get executable backup plans Id in this scheduler turn
 	ExecuteBackupPlansId := []int{}
@@ -102,35 +96,35 @@ func BackupVolumeScheduler() error {
 			logs.GetLogger().Error(err)
 			return err
 		}
-		backupInterval, err := strconv.Atoi(v.BackupInterval)
+		backupInterval, err := strconv.Atoi(v.Interval)
 		if err != nil {
 			logs.GetLogger().Error(err)
 			return err
 		}
 		if timestamp > int64(LastBackupOn)+3*int64(MicroSecondPerMinute)*int64(backupInterval) {
-			ExecuteBackupPlansId = append(ExecuteBackupPlansId, v.BackupPlanId)
+			ExecuteBackupPlansId = append(ExecuteBackupPlansId, v.ID)
 		}
 	}
 
+	if len(ExecuteBackupPlansId) == 0 {
+		logs.GetLogger().Info("No backup plan needs to backup in this turn.")
+		return err
+	}
 	//updata backup plans LastBackupTime
-	err = UpdateLastBackupTime(db, ExecuteBackupPlansId)
+	err = UpdateLastBackupTime(ExecuteBackupPlansId)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
 	}
 
 	// add backup jobs
-	volumeBackupRequests, err := AddBackupVolumeJobs(db, ExecuteBackupPlansId)
+	volumeBackupRequests, err := AddBackupVolumeJobs(ExecuteBackupPlansId)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
 	}
-	if volumeBackupRequests == nil {
-		return err
-	}
-
 	//backup volume
-	err = BackupVolumeJobs(db, volumeBackupRequests)
+	err = BackupVolumeJobs(volumeBackupRequests)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
@@ -138,7 +132,14 @@ func BackupVolumeScheduler() error {
 	return err
 }
 
-func BackupVolumeJobs(db *leveldb.DB, volumeBackupRequests []VolumeBackupRequest) error {
+func BackupVolumeJobs(volumeBackupRequests []VolumeBackupRequest) error {
+	//open backup db
+	db, err := GetPsqlDb()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
 	for _, v := range volumeBackupRequests {
 		backupPlanName, backupPlanId, backupTaskId := v.BackupPlanName, v.BackupPlanId, v.BackupTaskId
 		// get volume path
@@ -201,11 +202,31 @@ func BackupVolumeJobs(db *leveldb.DB, volumeBackupRequests []VolumeBackupRequest
 		}
 		logs.GetLogger().Info("car files created in ", confCar.OutputDir)
 
-		dataBytes, err := json.Marshal(&carCsvStructList)
-		err = db.Put([]byte(TableVolumeBackupDealsCarCsv), []byte(dataBytes), nil)
-		if err != nil {
-			logs.GetLogger().Error(err)
-			return err
+		for _, v := range carCsvStructList {
+			fileDesc := PsqlVolumeBackupCarCsv{
+				Uuid:           v.Uuid,
+				SourceFileName: v.SourceFileName,
+				SourceFilePath: v.SourceFilePath,
+				SourceFileMd5:  v.SourceFileMd5,
+				SourceFileSize: v.SourceFileSize,
+				CarFileName:    v.CarFileName,
+				CarFilePath:    v.CarFilePath,
+				CarFileMd5:     v.CarFileMd5,
+				CarFileUrl:     v.CarFileUrl,
+				CarFileSize:    v.CarFileSize,
+				DealCid:        v.DealCid,
+				DataCid:        v.DataCid,
+				PieceCid:       v.PieceCid,
+				MinerFid:       v.MinerFid,
+				StartEpoch:     *v.StartEpoch,
+				SourceId:       *v.SourceId,
+				Cost:           v.Cost,
+			}
+			result := db.Create(&fileDesc)
+			if result.Error != nil {
+				logs.GetLogger().Error(result.Error)
+				return result.Error
+			}
 		}
 
 		//upload to ipfs
@@ -223,11 +244,29 @@ func BackupVolumeJobs(db *leveldb.DB, volumeBackupRequests []VolumeBackupRequest
 		}
 		logs.GetLogger().Info("car files uploaded")
 
-		dataBytes, err = json.Marshal(&uploadedCarCsvStructList)
-		err = db.Put([]byte(TableVolumeBackupDealsCarCsv), []byte(dataBytes), nil)
-		if err != nil {
-			logs.GetLogger().Error(err)
-			return err
+		var uploadedFileDesc PsqlVolumeBackupCarCsv
+		db.Last(&uploadedFileDesc)
+
+		for _, v := range uploadedCarCsvStructList {
+			uploadedFileDesc.Uuid = v.Uuid
+			uploadedFileDesc.SourceFileName = v.SourceFileName
+			uploadedFileDesc.SourceFilePath = v.SourceFilePath
+			uploadedFileDesc.SourceFileMd5 = v.SourceFileMd5
+			uploadedFileDesc.SourceFileSize = v.SourceFileSize
+			uploadedFileDesc.CarFileName = v.CarFileName
+			uploadedFileDesc.CarFilePath = v.CarFilePath
+			uploadedFileDesc.CarFileMd5 = v.CarFileMd5
+			uploadedFileDesc.CarFileUrl = v.CarFileUrl
+			uploadedFileDesc.CarFileSize = v.CarFileSize
+			uploadedFileDesc.DealCid = v.DealCid
+			uploadedFileDesc.DataCid = v.DataCid
+			uploadedFileDesc.PieceCid = v.PieceCid
+			uploadedFileDesc.MinerFid = v.MinerFid
+			uploadedFileDesc.StartEpoch = *v.StartEpoch
+			uploadedFileDesc.SourceId = *v.SourceId
+			uploadedFileDesc.Cost = v.Cost
+
+			db.Save(&uploadedFileDesc)
 		}
 
 		backupPlanInfo, err := GetBackupPlanInfo(db, backupPlanId)
@@ -275,15 +314,36 @@ func BackupVolumeJobs(db *leveldb.DB, volumeBackupRequests []VolumeBackupRequest
 			logs.GetLogger().Error(err)
 			return err
 		}
-		dataBytes, err = json.Marshal(&metadataCsvStructList)
-		err = db.Put([]byte(TableVolumeBackupDealsMetadataCsv), []byte(dataBytes), nil)
-		if err != nil {
-			logs.GetLogger().Error(err)
-			return err
-		}
 
+		// save metadata
+		for _, v := range metadataCsvStructList {
+			metadata := PsqlVolumeBackupMetadataCsv{
+				Uuid:           v.Uuid,
+				SourceFileName: v.SourceFileName,
+				SourceFilePath: v.SourceFilePath,
+				SourceFileMd5:  v.SourceFileMd5,
+				SourceFileSize: v.SourceFileSize,
+				CarFileName:    v.CarFileName,
+				CarFilePath:    v.CarFilePath,
+				CarFileMd5:     v.CarFileMd5,
+				CarFileUrl:     v.CarFileUrl,
+				CarFileSize:    v.CarFileSize,
+				DealCid:        v.DealCid,
+				DataCid:        v.DataCid,
+				PieceCid:       v.PieceCid,
+				MinerFid:       v.MinerFid,
+				StartEpoch:     *v.StartEpoch,
+				SourceId:       *v.SourceId,
+				Cost:           v.Cost,
+			}
+			result := db.Create(&metadata)
+			if result.Error != nil {
+				logs.GetLogger().Error(result.Error)
+				return result.Error
+			}
+		}
 		//save backup task to db
-		_, err = SaveBackupTaskToDb(taskCsvStructList, backupPlanId, backupTaskId, db)
+		err = SaveBackupTaskToDb(taskCsvStructList, backupPlanId, backupTaskId, db)
 		if err != nil {
 			logs.GetLogger().Error(err)
 			return err
@@ -293,247 +353,71 @@ func BackupVolumeJobs(db *leveldb.DB, volumeBackupRequests []VolumeBackupRequest
 	return nil
 }
 
-func AddBackupVolumeJobs(db *leveldb.DB, plansId []int) ([]VolumeBackupRequest, error) {
-
+func AddBackupVolumeJobs(plansId []int) ([]VolumeBackupRequest, error) {
+	//open backup db
+	db, err := GetPsqlDb()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
-	backupPlansKey := TableVolumeBackupPlan
-
-	//check if key exists
-	has, err := db.Has([]byte(backupPlansKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
-	if has == false {
-		return nil, err
-	}
-	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
-	data := VolumeBackupJobPlans{}
-	err = json.Unmarshal(backupPlans, &data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
-	volumeBackupRequests := []VolumeBackupRequest{}
+	var volumeBackupRequests []VolumeBackupRequest
 	for _, v := range plansId {
-		backupPlan := VolumeBackupJobPlan{}
-		for j, value := range data.VolumeBackupJobPlans {
-			if value.BackupPlanId == v {
-				backupPlan = data.VolumeBackupJobPlans[j]
-				break
-			}
-		}
+		var backupPlan PsqlVolumeBackupPlan
+		db.First(&backupPlan, v)
 
-		dbVolumeBackupTasks := TableVolumeBackupTask
-		//check if key exists
-		has, err := db.Has([]byte(dbVolumeBackupTasks), nil)
-		if err != nil {
-			logs.GetLogger().Error(err)
-			return nil, err
+		backupJob := PsqlVolumeBackupJob{
+			Name:               backupPlan.Name,
+			VolumeBackupPlanID: backupPlan.ID,
+			Duration:           backupPlan.Duration,
+			CreatedOn:          timestamp,
+			UpdatedOn:          timestamp,
+			Status:             StatusBackupTaskCreated,
 		}
-		if has != false {
-			volumeBackupTasks, err := db.Get([]byte(dbVolumeBackupTasks), nil)
-			taskData := VolumeBackupTasks{}
-			err = json.Unmarshal(volumeBackupTasks, &taskData)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return nil, err
-			}
-			newVolumeBackupPlanTask := VolumeBackupPlanTask{
-				CreatedOn:    timestamp,
-				UpdatedOn:    timestamp,
-				BackupTaskId: taskData.VolumeBackupTasksCounts + 1,
-				Status:       StatusBackupTaskCreated,
-			}
-			newVolumeBackupPlanTask.Data.Duration = backupPlan.Duration
-			planIndex := -1
-			for i, v := range taskData.VolumeBackupPlans {
-				if v.BackupPlanId == backupPlan.BackupPlanId {
-					planIndex = i
-					taskData.InProcessVolumeBackupTasksCounts = taskData.InProcessVolumeBackupTasksCounts + 1
-					taskData.VolumeBackupTasksCounts = taskData.VolumeBackupTasksCounts + 1
-					taskData.VolumeBackupPlans[planIndex].BackupPlanTasksCounts = taskData.VolumeBackupPlans[planIndex].BackupPlanTasksCounts + 1
-					taskData.VolumeBackupPlans[planIndex].BackupPlanTasks = append(taskData.VolumeBackupPlans[planIndex].BackupPlanTasks, newVolumeBackupPlanTask)
-					dataByte, err := json.Marshal(taskData)
-					if err != nil {
-						logs.GetLogger().Error(err)
-						return nil, err
-					}
-					err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataByte), nil)
-					if err != nil {
-						logs.GetLogger().Error(err)
-						return nil, err
-					}
-					volumeBackupRequest := VolumeBackupRequest{
-						BackupTaskId:   newVolumeBackupPlanTask.BackupTaskId,
-						BackupPlanId:   backupPlan.BackupPlanId,
-						BackupPlanName: backupPlan.BackupPlanName,
-					}
-					volumeBackupRequests = append(volumeBackupRequests, volumeBackupRequest)
-				}
-			}
-			if planIndex == -1 {
-				taskData.VolumeBackupPlansCounts = taskData.VolumeBackupPlansCounts + 1
-				taskData.VolumeBackupTasksCounts = taskData.VolumeBackupTasksCounts + 1
-				taskData.InProcessVolumeBackupTasksCounts = taskData.InProcessVolumeBackupTasksCounts + 1
-				newVolumeBackupPlanTask := VolumeBackupPlanTask{
-					CreatedOn:    timestamp,
-					UpdatedOn:    timestamp,
-					BackupTaskId: taskData.VolumeBackupTasksCounts,
-					Status:       StatusBackupTaskCreated,
-				}
-				newVolumeBackupPlanTask.Data.Duration = backupPlan.Duration
-				newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
-				newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
-				newVolumeBackupPlan := VolumeBackupPlan{
-					BackupPlanName:        backupPlan.BackupPlanName,
-					BackupPlanId:          backupPlan.BackupPlanId,
-					BackupPlanTasks:       newVolumeBackupPlanTasks,
-					BackupPlanTasksCounts: 1,
-				}
-				taskData.VolumeBackupPlans = append(taskData.VolumeBackupPlans, newVolumeBackupPlan)
-				dataByte, err := json.Marshal(taskData)
-				if err != nil {
-					logs.GetLogger().Error(err)
-					return nil, err
-				}
-				err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataByte), nil)
-				if err != nil {
-					logs.GetLogger().Error(err)
-					return nil, err
-				}
-				volumeBackupRequest := VolumeBackupRequest{
-					BackupTaskId:   newVolumeBackupPlanTask.BackupTaskId,
-					BackupPlanId:   backupPlan.BackupPlanId,
-					BackupPlanName: backupPlan.BackupPlanName,
-				}
-				volumeBackupRequests = append(volumeBackupRequests, volumeBackupRequest)
-			}
-		} else {
-			newVolumeBackupPlanTask := VolumeBackupPlanTask{
-				CreatedOn:    timestamp,
-				UpdatedOn:    timestamp,
-				BackupTaskId: 1,
-				Status:       StatusBackupTaskCreated,
-			}
-			newVolumeBackupPlanTask.Data.Duration = backupPlan.Duration
-			newVolumeBackupPlanTasks := []VolumeBackupPlanTask{}
-			newVolumeBackupPlanTasks = append(newVolumeBackupPlanTasks, newVolumeBackupPlanTask)
-			newVolumeBackupPlan := VolumeBackupPlan{
-				BackupPlanName:        backupPlan.BackupPlanName,
-				BackupPlanId:          backupPlan.BackupPlanId,
-				BackupPlanTasks:       newVolumeBackupPlanTasks,
-				BackupPlanTasksCounts: 1,
-			}
-			newVolumeBackupPlans := []VolumeBackupPlan{}
-			newVolumeBackupPlans = append(newVolumeBackupPlans, newVolumeBackupPlan)
-			newVolumeBackupTasks := VolumeBackupTasks{
-				VolumeBackupPlans:                newVolumeBackupPlans,
-				VolumeBackupTasksCounts:          1,
-				VolumeBackupPlansCounts:          1,
-				CompletedVolumeBackupTasksCounts: 0,
-				InProcessVolumeBackupTasksCounts: 1,
-				FailedVolumeBackupTasksCounts:    0,
-			}
+		db.Create(&backupJob)
 
-			dataByte, err := json.Marshal(newVolumeBackupTasks)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return nil, err
-			}
-			err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataByte), nil)
-			if err != nil {
-				logs.GetLogger().Error(err)
-				return nil, err
-			}
-			volumeBackupRequest := VolumeBackupRequest{
-				BackupTaskId:   newVolumeBackupPlanTask.BackupTaskId,
-				BackupPlanId:   backupPlan.BackupPlanId,
-				BackupPlanName: backupPlan.BackupPlanName,
-			}
-			volumeBackupRequests = append(volumeBackupRequests, volumeBackupRequest)
+		var job PsqlVolumeBackupJob
+		db.Last(&job)
+		volumeBackupRequest := VolumeBackupRequest{
+			BackupTaskId:   job.ID,
+			BackupPlanId:   backupPlan.ID,
+			BackupPlanName: backupPlan.Name,
 		}
+		volumeBackupRequests = append(volumeBackupRequests, volumeBackupRequest)
 	}
 	return volumeBackupRequests, err
 }
 
-func UpdateLastBackupTime(db *leveldb.DB, plansId []int) error {
-	//get backupplans
-	backupPlansKey := TableVolumeBackupPlan
-	//check if key exists
-	has, err := db.Has([]byte(backupPlansKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	if has == false {
-		return nil
-	}
-	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	data := VolumeBackupJobPlans{}
-	err = json.Unmarshal(backupPlans, &data)
+func UpdateLastBackupTime(plansId []int) error {
+	//open backup db
+	db, err := GetPsqlDb()
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
 	}
 
 	for _, v := range plansId {
-		for j, value := range data.VolumeBackupJobPlans {
-			if value.BackupPlanId == v {
-				timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
-				data.VolumeBackupJobPlans[j].LastBackupOn = timestamp
-				break
-			}
-		}
-	}
-	dataBytes, err := json.Marshal(data)
-	err = db.Put([]byte(backupPlansKey), []byte(dataBytes), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
+		var plan PsqlVolumeBackupPlan
+		db.Where("ID = ?", v).First(&plan)
+		timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+		plan.LastBackupOn = timestamp
 	}
 	return err
 }
 
-func GetRunningBackupPlans(db *leveldb.DB) ([]VolumeBackupJobPlan, error) {
+func GetRunningBackupPlans() ([]PsqlVolumeBackupPlan, error) {
 	//get backupplans
-	backupPlansKey := TableVolumeBackupPlan
-	//check if key exists
-	has, err := db.Has([]byte(backupPlansKey), nil)
+	//open backup db
+	db, err := GetPsqlDb()
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return nil, err
 	}
-	if has == false {
-		return nil, err
-	}
-	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
-	data := VolumeBackupJobPlans{}
-	err = json.Unmarshal(backupPlans, &data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
-	runningBackupPlans := []VolumeBackupJobPlan{}
-	for _, v := range data.VolumeBackupJobPlans {
-		if v.Status == StatusBackupPlanRunning {
-			runningBackupPlans = append(runningBackupPlans, v)
-		}
-	}
-	return runningBackupPlans, err
+
+	var plans []PsqlVolumeBackupPlan
+	result := db.Where("status = ?", "Running").Find(&plans)
+	return plans, result.Error
 }
 
 type VolumeBackupJobPlans struct {
@@ -719,92 +603,57 @@ func DirSize(path string) (int64, error) {
 	return size, err
 }
 
-func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupTaskId int, db *leveldb.DB) (VolumeBackupPlanTask, error) {
+func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupTaskId int, db *gorm.DB) error {
 	tasks := []subcommand.Deal{}
 	for _, v := range task {
 		tasks = append(tasks, *v)
 	}
-
-	dbVolumeBackupTasks := TableVolumeBackupTask
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
-	//check if key exists
-	has, err := db.Has([]byte(dbVolumeBackupTasks), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return VolumeBackupPlanTask{}, err
-	}
-	if has == false {
-		return VolumeBackupPlanTask{}, err
-	}
-	volumeBackupTasks, _ := db.Get([]byte(dbVolumeBackupTasks), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return VolumeBackupPlanTask{}, err
-	}
 
-	data := VolumeBackupTasks{}
-	err = json.Unmarshal(volumeBackupTasks, &data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return VolumeBackupPlanTask{}, err
-	}
-	planIndex, taskIndex := -1, -1
-	for i, v := range data.VolumeBackupPlans {
-		if v.BackupPlanId == backupPlanId {
-			planIndex = i
-			for j, values := range v.BackupPlanTasks {
-				if values.BackupTaskId == backupTaskId {
-					taskIndex = j
-					data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo = tasks
-					data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = StatusBackupTaskRunning
-					data.VolumeBackupPlans[i].BackupPlanTasks[j].UpdatedOn = timestamp
-					break
-				}
-			}
-			break
+	for _, v := range tasks {
+		task := PsqlVolumeBackupTaskcsv{
+			Uuid:           v.Uuid,
+			SourceFileName: v.SourceFileName,
+			MinerId:        v.MinerId,
+			DealCid:        v.DealCid,
+			PayloadCid:     v.PayloadCid,
+			FileSourceUrl:  v.FileSourceUrl,
+			Md5:            v.Md5,
+			StartEpoch:     *v.StartEpoch,
+			PieceCid:       v.PieceCid,
+			FileSize:       v.FileSize,
+			Cost:           v.Cost,
 		}
+		result := db.Create(&task)
+		if result.Error != nil {
+			logs.GetLogger().Error(result.Error)
+			return result.Error
+		}
+
+		var job PsqlVolumeBackupJob
+		db.Where("id=?", backupTaskId).First(&job)
+		job.Status = StatusBackupTaskRunning
+		job.UpdatedOn = timestamp
+		job.Uuid = task.Uuid
+		job.SourceFileName = task.SourceFileName
+		job.MinerId = task.MinerId
+		job.DealCid = task.DealCid
+		job.PayloadCid = task.PayloadCid
+		job.FileSourceUrl = task.FileSourceUrl
+		job.Md5 = task.Md5
+		job.StartEpoch = task.StartEpoch
+		job.PieceCid = task.PieceCid
+		job.FileSize = task.FileSize
+		job.Cost = task.Cost
+		db.Save(&job)
 	}
-	dataBytes, err := json.Marshal(data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return VolumeBackupPlanTask{}, err
-	}
-	err = db.Put([]byte(dbVolumeBackupTasks), []byte(dataBytes), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return VolumeBackupPlanTask{}, err
-	}
-	return data.VolumeBackupPlans[planIndex].BackupPlanTasks[taskIndex], err
+	return nil
 }
 
-func GetBackupPlanInfo(db *leveldb.DB, backupPlanId int) (VolumeBackupJobPlan, error) {
-	backupPlansKey := TableVolumeBackupPlan
-	//check if key exists
-	has, err := db.Has([]byte(backupPlansKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return VolumeBackupJobPlan{}, err
-	}
-	if has == false {
-		return VolumeBackupJobPlan{}, errors.New("Key is not in leveldb")
-	}
-	backupPlans, err := db.Get([]byte(backupPlansKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return VolumeBackupJobPlan{}, err
-	}
-	data := VolumeBackupJobPlans{}
-	err = json.Unmarshal(backupPlans, &data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return VolumeBackupJobPlan{}, err
-	}
-	for i, v := range data.VolumeBackupJobPlans {
-		if v.BackupPlanId == backupPlanId {
-			return data.VolumeBackupJobPlans[i], err
-		}
-	}
-	return VolumeBackupJobPlan{}, err
+func GetBackupPlanInfo(db *gorm.DB, backupPlanId int) (PsqlVolumeBackupPlan, error) {
+	var plan PsqlVolumeBackupPlan
+	db.Where("id = ?", backupPlanId).First(&plan)
+	return plan, nil
 }
 
 func LotusRpcClientImportCar(carPath string) error {
@@ -830,4 +679,128 @@ func LotusRpcClientImportCar(carPath string) error {
 type ClientImportCar struct {
 	Path  string
 	IsCAR bool
+}
+
+func GetPsqlDb() (*gorm.DB, error) {
+	host := config.GetUserConfig().PsqlHost
+	user := config.GetUserConfig().PsqlUser
+	password := config.GetUserConfig().PsqlPassword
+	dbname := config.GetUserConfig().PsqlDbname
+	port := config.GetUserConfig().PsqlPort
+	dsn := "host=" + host + " user=" + user + " password=" + password + " dbname=" + dbname + " port=" + port + " sslmode=disable"
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	return db, err
+}
+
+type PsqlVolumeBackupPlan struct {
+	ID            int `gorm:"primary_key"`
+	Name          string
+	Interval      string
+	MinerRegion   string
+	Price         string
+	Duration      string
+	VerifiedDeal  bool
+	FastRetrieval bool
+	Status        string
+	LastBackupOn  string
+	CreatedOn     string
+	UpdatedOn     string
+}
+
+type PsqlVolumeBackupJob struct {
+	ID                 int `gorm:"primary_key"`
+	Name               string
+	Uuid               string
+	SourceFileName     string
+	MinerId            string
+	DealCid            string
+	PayloadCid         string
+	FileSourceUrl      string
+	Md5                string
+	StartEpoch         int
+	PieceCid           string
+	FileSize           int64
+	Cost               string
+	Duration           string
+	Status             string
+	CreatedOn          string
+	UpdatedOn          string
+	VolumeBackupPlanID int
+	VolumeBackupPlan   PsqlVolumeBackupPlan `gorm:"foreignKey:VolumeBackupPlanID"`
+}
+
+type PsqlVolumeBackupCarCsv struct {
+	gorm.Model
+	Uuid           string
+	SourceFileName string
+	SourceFilePath string
+	SourceFileMd5  string
+	SourceFileSize int64
+	CarFileName    string
+	CarFilePath    string
+	CarFileMd5     string
+	CarFileUrl     string
+	CarFileSize    int64
+	DealCid        string
+	DataCid        string
+	PieceCid       string
+	MinerFid       string
+	StartEpoch     int
+	SourceId       int
+	Cost           string
+}
+
+type PsqlDeal struct {
+	gorm.Model
+	Uuid           string
+	SourceFileName string
+	MinerId        string
+	DealCid        string
+	PayloadCid     string
+	FileSourceUrl  string
+	Md5            string
+	StartEpoch     int
+	PieceCid       string
+	FileSize       int64
+	Cost           string
+}
+
+type PsqlVolumeBackupMetadataCsv struct {
+	gorm.Model
+	Uuid           string
+	SourceFileName string
+	SourceFilePath string
+	SourceFileMd5  string
+	SourceFileSize int64
+	CarFileName    string
+	CarFilePath    string
+	CarFileMd5     string
+	CarFileUrl     string
+	CarFileSize    int64
+	DealCid        string
+	DataCid        string
+	PieceCid       string
+	MinerFid       string
+	StartEpoch     int
+	SourceId       int
+	Cost           string
+}
+
+type PsqlVolumeBackupTaskcsv struct {
+	gorm.Model
+	Uuid           string
+	SourceFileName string
+	MinerId        string
+	DealCid        string
+	PayloadCid     string
+	FileSourceUrl  string
+	Md5            string
+	StartEpoch     int
+	PieceCid       string
+	FileSize       int64
+	Cost           string
 }
