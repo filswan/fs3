@@ -691,8 +691,7 @@ Bearer Token = MY_FS3_TOKEN
 
 # Body
 { 
-    "BackupTaskId": 1,
-    "BackupPlanId": 1
+    "BackupTaskId": 1
 }
 ```
 Response from POSTMAN

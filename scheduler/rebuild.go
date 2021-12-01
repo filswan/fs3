@@ -2,13 +2,12 @@ package scheduler
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"github.com/filswan/go-swan-lib/client"
 	"github.com/minio/minio/internal/config"
 	"github.com/minio/minio/logs"
 	"github.com/robfig/cron"
-	"github.com/syndtr/goleveldb/leveldb"
+	"gorm.io/gorm"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -40,27 +39,13 @@ func RebuildScheduler() {
 
 func RebuildVolumeScheduler() error {
 	//open backup db
-	expandedDir, err := LevelDbBackupPath()
+	db, err := GetPsqlDb()
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
 	}
-	var db *leveldb.DB
-	for true {
-		dB, err := leveldb.OpenFile(expandedDir, nil)
-		if err == errors.New("resource temporarily unavailable") {
-			db = dB
-			continue
-		}
-		time.Sleep(30 * time.Second)
-	}
 
-	if err != nil {
-		logs.GetLogger().Error(err)
-	}
-	defer db.Close()
-
-	//get all the running rebuild jobs from db
+	//get one running rebuild jobs from db
 	runningRebuildJobs, err := GetOneRunningRebuildJob(db)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -75,42 +60,17 @@ func RebuildVolumeScheduler() error {
 	}
 
 	//retrieve
-	err = RebuildVolumeAndUpdateDb(runningRebuildJobs[0])
+	err = RebuildVolumeAndUpdateDb(runningRebuildJobs[0], db)
 	return err
 }
 
-func GetOneRunningRebuildJob(db *leveldb.DB) ([]VolumeRebuildTask, error) {
+func GetOneRunningRebuildJob(db *gorm.DB) ([]PsqlVolumeRebuildJob, error) {
 	//get backupplans
-	rebuildJobsKey := TableVolumeRebuildTask
-	//check if key exists
-	has, err := db.Has([]byte(rebuildJobsKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
-	if has == false {
-		return nil, err
-	}
-	backupPlans, err := db.Get([]byte(rebuildJobsKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
-	data := VolumeRebuildJobs{}
-	err = json.Unmarshal(backupPlans, &data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
-	//get only one rebuild job with the smallest create time
-	runningRebuildJobs := []VolumeRebuildTask{}
-	for _, v := range data.VolumeRebuildTasks {
-		if v.Status == StatusRebuildJobCreated {
-			runningRebuildJobs = append(runningRebuildJobs, v)
-			break
-		}
-	}
-	return runningRebuildJobs, err
+	var runningRebuildJob PsqlVolumeRebuildJob
+	db.Where("status=?", StatusRebuildTaskCreated).Or("status=?", StatusRebuildTaskRunning).First(&runningRebuildJob)
+	var runningRebuildJobs []PsqlVolumeRebuildJob
+	runningRebuildJobs = append(runningRebuildJobs, runningRebuildJob)
+	return runningRebuildJobs, nil
 }
 
 type VolumeRebuildTask struct {
@@ -132,7 +92,7 @@ type VolumeRebuildJobs struct {
 	FailedVolumeRebuildTasksCounts    int                 `json:"failedVolumeRebuildTasksCounts"`
 }
 
-func RebuildVolumeAndUpdateDb(rebuildJob VolumeRebuildTask) error {
+func RebuildVolumeAndUpdateDb(rebuildJob PsqlVolumeRebuildJob, db *gorm.DB) error {
 	// get volume path
 	volumePath, err := VolumePath()
 	if err != nil {
@@ -159,50 +119,13 @@ func RebuildVolumeAndUpdateDb(rebuildJob VolumeRebuildTask) error {
 		logs.GetLogger().Error(err)
 		return err
 	}
-	logs.GetLogger().Info("Rebuild job done, ID: ", rebuildJob.RebuildTaskID)
+	logs.GetLogger().Info("Rebuild job done, ID: ", rebuildJob.ID)
 
 	//update db
-	//open backup db
-	expandedDir, err := LevelDbBackupPath()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	db, err := leveldb.OpenFile(expandedDir, nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	defer db.Close()
-
 	rebuildTimestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
-
-	backupTasksKey := TableVolumeRebuildTask
-	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
-	data := VolumeRebuildJobs{}
-	err = json.Unmarshal(backupTasks, &data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	for i, v := range data.VolumeRebuildTasks {
-		if v.RebuildTaskID == rebuildJob.RebuildTaskID {
-			data.VolumeRebuildTasks[i].UpdatedOn = rebuildTimestamp
-			data.VolumeRebuildTasks[i].Status = StatusRebuildTaskCompleted
-			data.InProcessVolumeRebuildTasksCounts = data.InProcessVolumeRebuildTasksCounts - 1
-			data.CompletedVolumeRebuildTasksCounts = data.CompletedVolumeRebuildTasksCounts + 1
-		}
-	}
-	dataBytes, err := json.Marshal(data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	err = db.Put([]byte(TableVolumeRebuildTask), []byte(dataBytes), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
+	rebuildJob.UpdatedOn = rebuildTimestamp
+	rebuildJob.Status = StatusRebuildTaskCompleted
+	db.Save(&rebuildJob)
 	return err
 }
 
@@ -264,4 +187,16 @@ type ClientRetrieveDealParamDataPartOne struct {
 type ClientRetrieveDealParamDataPartTwo struct {
 	Path  string
 	IsCAR bool
+}
+
+type PsqlVolumeRebuildJob struct {
+	ID          int `gorm:"primary_key"`
+	MinerId     string
+	DealCid     string
+	PayloadCid  string
+	Status      string
+	CreatedOn   string
+	UpdatedOn   string
+	BackupJobId int
+	BackupJob   PsqlVolumeBackupJob
 }

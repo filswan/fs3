@@ -218,8 +218,6 @@ func BackupVolumeJobs(volumeBackupRequests []VolumeBackupRequest) error {
 				DataCid:        v.DataCid,
 				PieceCid:       v.PieceCid,
 				MinerFid:       v.MinerFid,
-				StartEpoch:     *v.StartEpoch,
-				SourceId:       *v.SourceId,
 				Cost:           v.Cost,
 			}
 			result := db.Create(&fileDesc)
@@ -262,8 +260,6 @@ func BackupVolumeJobs(volumeBackupRequests []VolumeBackupRequest) error {
 			uploadedFileDesc.DataCid = v.DataCid
 			uploadedFileDesc.PieceCid = v.PieceCid
 			uploadedFileDesc.MinerFid = v.MinerFid
-			uploadedFileDesc.StartEpoch = *v.StartEpoch
-			uploadedFileDesc.SourceId = *v.SourceId
 			uploadedFileDesc.Cost = v.Cost
 
 			db.Save(&uploadedFileDesc)
@@ -611,7 +607,7 @@ func SaveBackupTaskToDb(task []*subcommand.Deal, backupPlanId int, backupTaskId 
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
 	for _, v := range tasks {
-		task := PsqlVolumeBackupTaskcsv{
+		task := PsqlVolumeBackupTaskCsv{
 			Uuid:           v.Uuid,
 			SourceFileName: v.SourceFileName,
 			MinerId:        v.MinerId,
@@ -754,21 +750,6 @@ type PsqlVolumeBackupCarCsv struct {
 	Cost           string
 }
 
-type PsqlDeal struct {
-	gorm.Model
-	Uuid           string
-	SourceFileName string
-	MinerId        string
-	DealCid        string
-	PayloadCid     string
-	FileSourceUrl  string
-	Md5            string
-	StartEpoch     int
-	PieceCid       string
-	FileSize       int64
-	Cost           string
-}
-
 type PsqlVolumeBackupMetadataCsv struct {
 	gorm.Model
 	Uuid           string
@@ -790,7 +771,7 @@ type PsqlVolumeBackupMetadataCsv struct {
 	Cost           string
 }
 
-type PsqlVolumeBackupTaskcsv struct {
+type PsqlVolumeBackupTaskCsv struct {
 	gorm.Model
 	Uuid           string
 	SourceFileName string

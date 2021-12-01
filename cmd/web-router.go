@@ -111,9 +111,12 @@ func registerWebRouter(router *mux.Router) error {
 	webBrowserRouter.Methods(http.MethodPost).Path("/backup/volume").HandlerFunc(httpTraceHdrs(web.SendOfflineDealsVolume))
 	//webBrowserRouter.Methods(http.MethodGet).Path("/backup/retrieve/volume").HandlerFunc(httpTraceHdrs(web.RetrieveOfflineDealsVolume))
 	webBrowserRouter.Methods(http.MethodGet).Path("/backup/retrieve/volume").HandlerFunc(httpTraceHdrs(web.PsqlRetrieveOfflineDealsVolume))
-	webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/add/job").HandlerFunc(httpTraceHdrs(web.RebuildAddJob))
-	webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/volume").HandlerFunc(httpTraceHdrs(web.RebuildVolume))
-	webBrowserRouter.Methods(http.MethodGet).Path("/rebuild/retrieve/volume").HandlerFunc(httpTraceHdrs(web.RetrieveRebuildVolume))
+	//webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/add/job").HandlerFunc(httpTraceHdrs(web.RebuildAddJob))
+	webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/add/job").HandlerFunc(httpTraceHdrs(web.PsqlRebuildAddJob))
+	//webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/volume").HandlerFunc(httpTraceHdrs(web.RebuildVolume))
+	webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/volume").HandlerFunc(httpTraceHdrs(web.PsqlRebuildVolume))
+	//webBrowserRouter.Methods(http.MethodGet).Path("/rebuild/retrieve/volume").HandlerFunc(httpTraceHdrs(web.RetrieveRebuildVolume))
+	webBrowserRouter.Methods(http.MethodGet).Path("/rebuild/retrieve/volume").HandlerFunc(httpTraceHdrs(web.PsqlRetrieveRebuildVolume))
 	webBrowserRouter.Methods(http.MethodPost).Path("/test").HandlerFunc(httpTraceHdrs(web.Test))
 
 	// These methods use short-expiry tokens in the URLs. These tokens may unintentionally

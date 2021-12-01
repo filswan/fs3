@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	"encoding/json"
 	clientmodel "github.com/filswan/go-swan-client/model"
 	"github.com/filswan/go-swan-client/subcommand"
 	"github.com/filswan/go-swan-lib/client/lotus"
@@ -11,7 +10,6 @@ import (
 	"github.com/minio/minio/logs"
 	oshomedir "github.com/mitchellh/go-homedir"
 	"github.com/robfig/cron"
-	"github.com/syndtr/goleveldb/leveldb"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -21,11 +19,12 @@ const (
 	TableVolumeBackupTask     = "volume_backup_task"
 	TableVolumeBackupPlan     = "volume_backup_plan"
 	TableVolumeRebuildTask    = "volume_rebuild_task"
-	StatusRebuildJobCreated   = "Created"
 	StatusBackupPlanRunning   = "Running"
 	StatusBackupTaskRunning   = "Running"
 	StatusStorageDealActive   = "StorageDealActive"
 	StatusBackupTaskCompleted = "Completed"
+	StatusRebuildTaskCreated  = "Created"
+	StatusRebuildTaskRunning  = "Running"
 )
 
 func SendDealScheduler() {
@@ -87,66 +86,29 @@ func SendAutobidDealScheduler(confDeal *clientmodel.ConfDeal) error {
 
 func UpdateActiveBackupTasksInDb() error {
 	//open backup db
-	expandedDir, err := LevelDbBackupPath()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	db, err := leveldb.OpenFile(expandedDir, nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-	}
-	defer db.Close()
-
-	backupTasksKey := TableVolumeBackupTask
-	//check if key exists
-	has, err := db.Has([]byte(backupTasksKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	if has == false {
-		return nil
-	}
-
-	//get backuptasks
-	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
-	data := VolumeBackupTasks{}
-	err = json.Unmarshal(backupTasks, &data)
+	db, err := GetPsqlDb()
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
 	}
 
-	//update backuptasks
-	for i, value := range data.VolumeBackupPlans {
-		for j, values := range value.BackupPlanTasks {
-			if values.Status == StatusBackupTaskRunning {
-				status, err := CheckDealStatus(values.Data.DealInfo[0].DealCid)
-				if err != nil {
-					logs.GetLogger().Error(err)
-					return err
-				}
-				if status == StatusStorageDealActive {
-					data.VolumeBackupPlans[i].BackupPlanTasks[j].Status = StatusBackupTaskCompleted
-					timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
-					data.VolumeBackupPlans[i].BackupPlanTasks[j].UpdatedOn = timestamp
-					data.InProcessVolumeBackupTasksCounts = data.InProcessVolumeBackupTasksCounts - 1
-					data.CompletedVolumeBackupTasksCounts = data.CompletedVolumeBackupTasksCounts + 1
-					logs.GetLogger().Info("Backup job done, ID: ", data.VolumeBackupPlans[i].BackupPlanTasks[j].BackupTaskId, ", UUID: ", data.VolumeBackupPlans[i].BackupPlanTasks[j].Data.DealInfo[0].Uuid)
-				}
+	var backupJobs []PsqlVolumeBackupJob
+	db.Find(&backupJobs)
+	for _, values := range backupJobs {
+		if values.Status == StatusBackupTaskRunning {
+			status, err := CheckDealStatus(values.DealCid)
+			if err != nil {
+				logs.GetLogger().Error(err)
+				return err
+			}
+			if status == StatusStorageDealActive {
+				values.Status = StatusBackupTaskCompleted
+				timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+				values.UpdatedOn = timestamp
+				logs.GetLogger().Info("Backup job done, ID: ", values.ID, ", UUID: ", values.Uuid)
+				db.Save(&values)
 			}
 		}
-	}
-	dataBytes, err := json.Marshal(data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	err = db.Put([]byte(backupTasksKey), []byte(dataBytes), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
 	}
 	return err
 }
@@ -167,36 +129,7 @@ func CheckDealStatus(dealCid string) (string, error) {
 
 func UpdateSentBackupTasksInDb(tasks [][]*libmodel.FileDesc) error {
 	//open backup db
-	expandedDir, err := LevelDbBackupPath()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	db, err := leveldb.OpenFile(expandedDir, nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-	}
-	defer db.Close()
-
-	backupTasksKey := TableVolumeBackupTask
-	//check if key exists
-	has, err := db.Has([]byte(backupTasksKey), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	if has == false {
-		return nil
-	}
-
-	//get backuptasks
-	backupTasks, err := db.Get([]byte(backupTasksKey), nil)
-	if err != nil || backupTasks == nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	data := VolumeBackupTasks{}
-	err = json.Unmarshal(backupTasks, &data)
+	db, err := GetPsqlDb()
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return err
@@ -204,30 +137,16 @@ func UpdateSentBackupTasksInDb(tasks [][]*libmodel.FileDesc) error {
 
 	//update backuptasks
 	for _, v := range tasks {
-		for j, value := range data.VolumeBackupPlans {
-			for k, values := range value.BackupPlanTasks {
-				if values.Data.DealInfo[0].Uuid == v[0].Uuid {
-					timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
-					data.VolumeBackupPlans[j].BackupPlanTasks[k].Status = StatusBackupTaskRunning
-					data.VolumeBackupPlans[j].BackupPlanTasks[k].UpdatedOn = timestamp
-					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data.DealInfo[0].MinerId = v[0].MinerFid
-					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data.DealInfo[0].DealCid = v[0].DealCid
-					data.VolumeBackupPlans[j].BackupPlanTasks[k].Data.DealInfo[0].Cost = v[0].Cost
-					logs.GetLogger().Info("Backup job sent to miner, ID: ", data.VolumeBackupPlans[j].BackupPlanTasks[k].BackupTaskId, ", UUID: ", v[0].Uuid)
-					break
-				}
-			}
-		}
-	}
-	dataBytes, err := json.Marshal(data)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	err = db.Put([]byte(backupTasksKey), []byte(dataBytes), nil)
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
+		var backupJob PsqlVolumeBackupJob
+		db.Where("uuid=?", v[0].Uuid).First(&backupJob)
+		timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+		backupJob.Status = StatusBackupTaskRunning
+		backupJob.UpdatedOn = timestamp
+		backupJob.MinerId = v[0].MinerFid
+		backupJob.DealCid = v[0].DealCid
+		backupJob.Cost = v[0].Cost
+		db.Save(backupJob)
+		logs.GetLogger().Info("Backup job sent to miner, ID: ", backupJob.ID, ", UUID: ", v[0].Uuid)
 	}
 	return err
 }

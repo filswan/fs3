@@ -105,8 +105,11 @@ const (
 	StatusRebuildTaskCreated          = "Created"
 	StatusRebuildTaskRunning          = "Running"
 	StatusRebuildTaskCompleted        = "Completed"
+	StatusRebuildTaskFailed           = "Failed"
 	StatusBackupTaskCreated           = "Created"
 	StatusBackupTaskRunning           = "Running"
+	StatusBackupTaskCompleted         = "Completed"
+	StatusBackupTaskFailed            = "Failed"
 	StatusBackupPlanRunning           = "Running"
 	LOTUS_JSON_RPC_ID                 = 7878
 	LOTUS_JSON_RPC_VERSION            = "2.0"
@@ -4037,9 +4040,17 @@ type RetrieveVolumeResponse struct {
 }
 
 type PsqlRetrieveVolumeResponse struct {
-	Data    []PsqlVolumeBackupJob `json:"data"`
-	Status  string                `json:"status"`
-	Message string                `json:"message"`
+	Data    PsqlRetrieveVolume `json:"data"`
+	Status  string             `json:"status"`
+	Message string             `json:"message"`
+}
+
+type PsqlRetrieveVolume struct {
+	VolumeBackupJobs                 []PsqlVolumeBackupJob `json:"VolumeBackupJobs "`
+	TotalVolumeBackupTasksCounts     int                   `json:"totalVolumeBackupTasksCounts"`
+	CompletedVolumeBackupTasksCounts int                   `json:"completedVolumeBackupTasksCounts"`
+	InProcessVolumeBackupTasksCounts int                   `json:"inProcessVolumeBackupTasksCounts"`
+	FailedVolumeBackupTasksCounts    int                   `json:"failedVolumeBackupTasksCounts"`
 }
 
 type RetrieveResponse struct {
@@ -6503,10 +6514,28 @@ type AddVolumeRebuildRequest struct {
 	BackupPlanId int `json:"backupPlanId"`
 }
 
+type PsqlAddVolumeRebuildRequest struct {
+	BackupTaskId int `json:"backupTaskId"`
+}
+
 type AddVolumeRebuildResponse struct {
 	Data    VolumeRebuildTask `json:"data"`
 	Status  string            `json:"status"`
 	Message string            `json:"message"`
+}
+
+type PsqlAddVolumeRebuildResponse struct {
+	Data    PsqlVolumeRebuildJob `json:"data"`
+	Status  string               `json:"status"`
+	Message string               `json:"message"`
+}
+
+type PsqlVolumeRebuildJobs struct {
+	VolumeRebuildTasks                []VolumeRebuildTask `json:"volumeRebuildTasks"`
+	VolumeRebuildTasksCounts          int                 `json:"volumeRebuildTasksCounts"`
+	CompletedVolumeRebuildTasksCounts int                 `json:"completedVolumeRebuildTasksCounts"`
+	InProcessVolumeRebuildTasksCounts int                 `json:"inProcessVolumeRebuildTasksCounts"`
+	FailedVolumeRebuildTasksCounts    int                 `json:"failedVolumeRebuildTasksCounts"`
 }
 
 type VolumeRebuildJobs struct {
@@ -6515,6 +6544,20 @@ type VolumeRebuildJobs struct {
 	CompletedVolumeRebuildTasksCounts int                 `json:"completedVolumeRebuildTasksCounts"`
 	InProcessVolumeRebuildTasksCounts int                 `json:"inProcessVolumeRebuildTasksCounts"`
 	FailedVolumeRebuildTasksCounts    int                 `json:"failedVolumeRebuildTasksCounts"`
+}
+
+type PsqlVolumeRebuildJobsResponse struct {
+	Data    PsqlVolumeRebuildJobResp `json:"data"`
+	Status  string                   `json:"status"`
+	Message string                   `json:"message"`
+}
+
+type PsqlVolumeRebuildJobResp struct {
+	VolumeRebuildJobs                 []PsqlVolumeRebuildJob `json:"volumeRebuildJobs"`
+	TotalVolumeRebuildTasksCounts     int                    `json:"totalVolumeRebuildTasksCounts"`
+	CompletedVolumeRebuildTasksCounts int                    `json:"completedVolumeRebuildTasksCounts"`
+	InProcessVolumeRebuildTasksCounts int                    `json:"inProcessVolumeRebuildTasksCounts"`
+	FailedVolumeRebuildTasksCounts    int                    `json:"failedVolumeRebuildTasksCounts"`
 }
 
 type VolumeRebuildJobsResponse struct {
@@ -6530,9 +6573,14 @@ type VolumeBackupPlansResponse struct {
 }
 
 type PsqlVolumeBackupPlansResponse struct {
-	Data    []PsqlVolumeBackupPlan `json:"data"`
-	Status  string                 `json:"status"`
-	Message string                 `json:"message"`
+	Data    PsqlVolumeBackupPlanResponse `json:"data"`
+	Status  string                       `json:"status"`
+	Message string                       `json:"message"`
+}
+
+type PsqlVolumeBackupPlanResponse struct {
+	BackupPlans                  []PsqlVolumeBackupPlan `json:"backupPlans"`
+	TotalVolumeBackupPlansCounts int                    `json:"TotalVolumeBackupPlan"`
 }
 
 type VolumeRebuildTask struct {
@@ -6559,7 +6607,23 @@ type VolumeRebuildResponse struct {
 	Message string                   `json:"message"`
 }
 
+type PsqlVolumeRebuildResponse struct {
+	Data    PsqlVolumeRebuildJobResponse `json:"data"`
+	Status  string                       `json:"status"`
+	Message string                       `json:"message"`
+}
+
 type VolumeRebuildJobResponse struct {
+	VolumeRebuildAddress string `json:"volume_rebuild_address"`
+	VolumeRebuildName    string `json:"volume_rebuild_name"`
+	MinerId              string `json:"miner_id"`
+	DealCid              string `json:"deal_cid"`
+	PayloadCid           string `json:"payload_cid"`
+	TimeStamp            string `json:"timeStamp"`
+}
+
+type PsqlVolumeRebuildJobResponse struct {
+	RebuildJobId         int    `json:"rebuildJobId"`
 	VolumeRebuildAddress string `json:"volume_rebuild_address"`
 	VolumeRebuildName    string `json:"volume_rebuild_name"`
 	MinerId              string `json:"miner_id"`
@@ -6586,9 +6650,25 @@ func (web *webAPIHandlers) PsqlRetrieveOfflineDealsVolume(w http.ResponseWriter,
 
 	var resp []PsqlVolumeBackupJob
 	db.Find(&resp)
-	fmt.Println(resp)
 
-	retrieveVolumeResponse := PsqlRetrieveVolumeResponse{Data: resp, Status: SuccessResponseStatus, Message: SuccessResponseStatus}
+	var count []PsqlVolumeBackupJob
+	var inProcessVolumeBackupTasksCounts, completedVolumeBackupTasksCounts, failedVolumeBackupTasksCounts, totalVolumeBackupTasksCounts int64
+	db.Where("status=?", StatusBackupTaskCreated).Or("status=?", StatusBackupTaskRunning).Find(&count).Count(&inProcessVolumeBackupTasksCounts)
+	db.Where("status=?", StatusBackupTaskCompleted).Find(&count).Count(&completedVolumeBackupTasksCounts)
+	db.Where("status=?", StatusBackupTaskFailed).Find(&count).Count(&failedVolumeBackupTasksCounts)
+	db.Find(&count).Count(&totalVolumeBackupTasksCounts)
+
+	psqlRetrieveVolume := PsqlRetrieveVolume{
+		VolumeBackupJobs:                 resp,
+		CompletedVolumeBackupTasksCounts: int(completedVolumeBackupTasksCounts),
+		InProcessVolumeBackupTasksCounts: int(inProcessVolumeBackupTasksCounts),
+		FailedVolumeBackupTasksCounts:    int(failedVolumeBackupTasksCounts),
+		TotalVolumeBackupTasksCounts:     int(totalVolumeBackupTasksCounts),
+	}
+	retrieveVolumeResponse := PsqlRetrieveVolumeResponse{
+		Data:    psqlRetrieveVolume,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus}
 	dataBytes, err := json.Marshal(retrieveVolumeResponse)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -6662,8 +6742,98 @@ func (web *webAPIHandlers) RetrieveOfflineDealsVolume(w http.ResponseWriter, r *
 	return
 }
 
+func (web *webAPIHandlers) PsqlRebuildVolume(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebPsqlRebuildVolume")
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var volumeRebuildRequest VolumeRebuildRequest
+	err := decoder.Decode(&volumeRebuildRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	bodyBytes, _ := json.Marshal(volumeRebuildRequest)
+	fmt.Println(string(bodyBytes))
+
+	// get volume path
+	volumePath, err := VolumePath()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+
+	//rename previous version volume
+	if _, err := os.Stat(volumePath); !os.IsNotExist(err) {
+		dir, file := filepath.Split(volumePath)
+		fileBase, fileExt := strings.TrimSuffix(filepath.Base(file), filepath.Ext(file)), filepath.Ext(file)
+		_, err = exec.Command("mv", volumePath, dir+fileBase+"_"+timestamp+fileExt).Output()
+		if err != nil {
+			logs.GetLogger().Error(err)
+			writeOfflineDealsErrorResponse(w, err)
+			return
+		}
+	}
+
+	//retrieve deal
+	err = LotusRpcClientRetrieve(volumeRebuildRequest.MinerId, volumeRebuildRequest.PayloadCid, volumePath)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+
+	//update db
+	rebuildTimestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+	//open backup db
+	db, err := GetPsqlDb()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+	var rebuildJob PsqlVolumeRebuildJob
+	db.First(&rebuildJob, volumeRebuildRequest.VolumeRebuildTaskId)
+	rebuildJob.UpdatedOn = rebuildTimestamp
+	rebuildJob.Status = StatusRebuildTaskCompleted
+	db.Save(&rebuildJob)
+
+	//send response
+	volumeRebuildJobResponse := PsqlVolumeRebuildJobResponse{
+		RebuildJobId:         volumeRebuildRequest.VolumeRebuildTaskId,
+		VolumeRebuildAddress: volumePath,
+		VolumeRebuildName:    filepath.Base(volumePath),
+		MinerId:              volumeRebuildRequest.MinerId,
+		DealCid:              volumeRebuildRequest.DealCid,
+		PayloadCid:           volumeRebuildRequest.PayloadCid,
+		TimeStamp:            rebuildTimestamp,
+	}
+	volumeRebuildResponse := PsqlVolumeRebuildResponse{
+		Data:    volumeRebuildJobResponse,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
+	}
+	bodyByte, err := json.Marshal(volumeRebuildResponse)
+	if err != nil {
+		writeWebErrorResponse(w, err)
+		logs.GetLogger().Error(err)
+		return
+	}
+	w.Write(bodyByte)
+	return
+}
+
 func (web *webAPIHandlers) RebuildVolume(w http.ResponseWriter, r *http.Request) {
-	ctx := newContext(r, w, "WebRetrieveOfflineDealsVolume")
+	ctx := newContext(r, w, "WebRebuildVolume")
 	// check authorization
 	auth := authorization(w, r, ctx, "", "")
 	if auth != "" {
@@ -7415,6 +7585,63 @@ func (web *webAPIHandlers) BackupAddJob(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
+func (web *webAPIHandlers) PsqlRebuildAddJob(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebPsqlRebuildAddJob")
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var addVolumeRebuildRequest PsqlAddVolumeRebuildRequest
+	err := decoder.Decode(&addVolumeRebuildRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	//open backup db
+	db, err := GetPsqlDb()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
+
+	var backupJob PsqlVolumeBackupJob
+	db.First(&backupJob, addVolumeRebuildRequest.BackupTaskId)
+	rebuildJob := PsqlVolumeRebuildJob{
+		MinerId:     backupJob.MinerId,
+		DealCid:     backupJob.DealCid,
+		PayloadCid:  backupJob.PayloadCid,
+		Status:      StatusRebuildTaskCreated,
+		CreatedOn:   timestamp,
+		UpdatedOn:   timestamp,
+		BackupJobId: backupJob.ID,
+	}
+	db.Create(&rebuildJob)
+
+	addVolumeRebuildResponse := PsqlAddVolumeRebuildResponse{
+		Data:    rebuildJob,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
+	}
+	dataBytes, err := json.Marshal(addVolumeRebuildResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	w.Write(dataBytes)
+	return
+
+}
+
 func (web *webAPIHandlers) RebuildAddJob(w http.ResponseWriter, r *http.Request) {
 	ctx := newContext(r, w, "WebRebuildAddJob")
 	// check authorization
@@ -7562,8 +7789,16 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 	var plans []PsqlVolumeBackupPlan
 	db.Find(&plans)
 
+	var count []PsqlVolumeBackupPlan
+	var totalVolumeBackupPlansCounts int64
+	db.Find(&count).Count(&totalVolumeBackupPlansCounts)
+
+	plan := PsqlVolumeBackupPlanResponse{
+		BackupPlans:                  plans,
+		TotalVolumeBackupPlansCounts: int(totalVolumeBackupPlansCounts),
+	}
 	volumeRebuildJobsResponse := PsqlVolumeBackupPlansResponse{
-		Data:    plans,
+		Data:    plan,
 		Status:  SuccessResponseStatus,
 		Message: SuccessResponseStatus,
 	}
@@ -7646,8 +7881,56 @@ func (web *webAPIHandlers) RetrieveBackupPlan(w http.ResponseWriter, r *http.Req
 
 }
 
+func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *http.Request) {
+	ctx := newContext(r, w, "WebPsqlRetrieveRebuildVolume")
+	// check authorization
+	auth := authorization(w, r, ctx, "", "")
+	if auth != "" {
+		return
+	}
+
+	//open backup db
+	db, err := GetPsqlDb()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	var rebuildJobs []PsqlVolumeRebuildJob
+	db.Find(&rebuildJobs)
+
+	var count []PsqlVolumeRebuildJob
+	var inProcessVolumeRebuildTasksCounts, completedVolumeRebuildTasksCounts, failedVolumeRebuildTasksCounts, totalVolumeRebuildTasksCounts int64
+	db.Where("status=?", StatusRebuildTaskCreated).Or("status=?", StatusRebuildTaskRunning).Find(&count).Count(&inProcessVolumeRebuildTasksCounts)
+	db.Where("status=?", StatusRebuildTaskCompleted).Find(&count).Count(&completedVolumeRebuildTasksCounts)
+	db.Where("status=?", StatusRebuildTaskFailed).Find(&count).Count(&failedVolumeRebuildTasksCounts)
+	db.Find(&count).Count(&totalVolumeRebuildTasksCounts)
+
+	psqlVolumeRebuildJobsResp := PsqlVolumeRebuildJobResp{
+		VolumeRebuildJobs:                 rebuildJobs,
+		TotalVolumeRebuildTasksCounts:     int(totalVolumeRebuildTasksCounts),
+		InProcessVolumeRebuildTasksCounts: int(inProcessVolumeRebuildTasksCounts),
+		CompletedVolumeRebuildTasksCounts: int(completedVolumeRebuildTasksCounts),
+		FailedVolumeRebuildTasksCounts:    int(failedVolumeRebuildTasksCounts),
+	}
+	volumeRebuildJobsResponse := PsqlVolumeRebuildJobsResponse{
+		Data:    psqlVolumeRebuildJobsResp,
+		Status:  SuccessResponseStatus,
+		Message: SuccessResponseStatus,
+	}
+	dataBytes, err := json.Marshal(volumeRebuildJobsResponse)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeOfflineDealsErrorResponse(w, err)
+		return
+	}
+	w.Write(dataBytes)
+	return
+}
+
 func (web *webAPIHandlers) RetrieveRebuildVolume(w http.ResponseWriter, r *http.Request) {
-	ctx := newContext(r, w, "WebRebuildAddJob")
+	ctx := newContext(r, w, "WebRetrieveRebuildVolume")
 	// check authorization
 	auth := authorization(w, r, ctx, "", "")
 	if auth != "" {
@@ -7904,7 +8187,7 @@ type PsqlVolumeRebuildJob struct {
 	BackupJob   PsqlVolumeBackupJob
 }
 
-type PsqlVolumeBackupFileDesc struct {
+type PsqlVolumeBackupCarCsv struct {
 	gorm.Model
 	Uuid           string
 	SourceFileName string
@@ -7920,8 +8203,44 @@ type PsqlVolumeBackupFileDesc struct {
 	DataCid        string
 	PieceCid       string
 	MinerFid       string
-	StartEpoch     *int
-	SourceId       *int
+	StartEpoch     int
+	SourceId       int
+	Cost           string
+}
+
+type PsqlVolumeBackupMetadataCsv struct {
+	gorm.Model
+	Uuid           string
+	SourceFileName string
+	SourceFilePath string
+	SourceFileMd5  string
+	SourceFileSize int64
+	CarFileName    string
+	CarFilePath    string
+	CarFileMd5     string
+	CarFileUrl     string
+	CarFileSize    int64
+	DealCid        string
+	DataCid        string
+	PieceCid       string
+	MinerFid       string
+	StartEpoch     int
+	SourceId       int
+	Cost           string
+}
+
+type PsqlVolumeBackupTaskCsv struct {
+	gorm.Model
+	Uuid           string
+	SourceFileName string
+	MinerId        string
+	DealCid        string
+	PayloadCid     string
+	FileSourceUrl  string
+	Md5            string
+	StartEpoch     int
+	PieceCid       string
+	FileSize       int64
 	Cost           string
 }
 
@@ -7938,11 +8257,15 @@ func (web *webAPIHandlers) Test(w http.ResponseWriter, r *http.Request) {
 	db.Migrator().DropTable(&PsqlVolumeBackupPlan{})
 	db.Migrator().DropTable(&PsqlVolumeBackupJob{})
 	db.Migrator().DropTable(&PsqlVolumeRebuildJob{})
-	db.Migrator().DropTable(&PsqlVolumeBackupFileDesc{})
+	db.Migrator().DropTable(&PsqlVolumeBackupCarCsv{})
+	db.Migrator().DropTable(&PsqlVolumeBackupMetadataCsv{})
+	db.Migrator().DropTable(&PsqlVolumeBackupTaskCsv{})
 	db.AutoMigrate(&PsqlVolumeBackupPlan{})
 	db.AutoMigrate(&PsqlVolumeBackupJob{})
 	db.AutoMigrate(&PsqlVolumeRebuildJob{})
-	db.AutoMigrate(&PsqlVolumeBackupFileDesc{})
+	db.AutoMigrate(&PsqlVolumeBackupCarCsv{})
+	db.AutoMigrate(&PsqlVolumeBackupMetadataCsv{})
+	db.AutoMigrate(&PsqlVolumeBackupTaskCsv{})
 	return
 
 }
