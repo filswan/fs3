@@ -1,0 +1,641 @@
+{
+    "data": {
+        "volumeBackupPlans": [
+            {
+                "backupPlanName": "daily",
+                "backupPlanId": 1,
+                "backupPlanTasks": [
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "71059841-d08a-499c-b880-b445c6691136",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreibq7akf52mknzf3272kpu3tg4v4wfdl6ovhh6ai3qxtwus25qrl2u",
+                                    "payload_cid": "Qmc7LzSGUmuZupVy6TFbTap19irUZnDcS3P2f6BHS1f4oT",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/Qmf9uswridikkeCEVt7CpKmu1TdFrf4vdjGc4Ri3uVrsdL",
+                                    "md5": "",
+                                    "start_epoch": 1339911,
+                                    "piece_cid": "baga6ea4seaqjojgd5gpc6v5k4qglvt5jh7n4yvqf44j76zvg3kqabetpxeukqhq",
+                                    "file_size": 2050941,
+                                    "cost": "510916730598"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1637959125030080",
+                        "updatedOn": "1638154803004718",
+                        "backupTaskId": 1,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "423044bd-788e-4c22-8ca7-95fd1fe367ba",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreich3xc3qiijupdjwuel2p4n5fapwtou533f76j4p3qrs7kzikweja",
+                                    "payload_cid": "QmPjbQEk96gXxNKbyDR7cXGR8eTB4wSu7Y9UTsut4DauYJ",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmT7x9LBNLWcs4KLLvPkg9gTS2b3ZxJbwN8uWWjNh6Lfix",
+                                    "md5": "",
+                                    "start_epoch": 1333430,
+                                    "piece_cid": "baga6ea4seaqppsgckwf4w3wpkqj2nc2ikctpkpyg63my4znhtw6frgidbthmuiy",
+                                    "file_size": 2050941,
+                                    "cost": "508808333240"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1637960187022101",
+                        "updatedOn": "1638153182371723",
+                        "backupTaskId": 2,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "7eac3e2c-c27c-4c2e-8f93-93f0b87d0a27",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreihd24mzmnxdrfckjz2ums4rpe5yajiwp4bzc3gpqwtrxwr5ij5hri",
+                                    "payload_cid": "QmaoHJkG3N6Zpo44p9orCRCEh6b1BEHFs9szSCRkGHh44o",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmXfGDCftQsPFLfYENqm3guaWrHzDNB3Y4Vbx7NK2nzZAJ",
+                                    "md5": "",
+                                    "start_epoch": 1333446,
+                                    "piece_cid": "baga6ea4seaqbise57nj6ri66nzjzvgxpag2hcoddysuquhg433q4y5kktwxmyci",
+                                    "file_size": 2050941,
+                                    "cost": "508792708248"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1637960662023687",
+                        "updatedOn": "1638153182373251",
+                        "backupTaskId": 4,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "14d6c75e-a96e-4e03-963d-84f6371a528b",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreihw3vbd23njypbrgnsswtf5kus5e76yvbppjhn7ugqlarzmkd7kha",
+                                    "payload_cid": "QmSAtQNhA6ZbBPKiQ6Nudx3qdTiQuxSoRZvwoFxcGs12zw",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmVfXg87JKNAvYs7wMPRHR9FxN35cHzav92RFHxbtrzNnC",
+                                    "md5": "",
+                                    "start_epoch": 1333450,
+                                    "piece_cid": "baga6ea4seaqa3do5ktajivtnrdcsmdabvdvzhkwi6lqm4btfrn3w5yv2ed2cidq",
+                                    "file_size": 2050941,
+                                    "cost": "508788802000"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1637960782022810",
+                        "updatedOn": "1638153182374937",
+                        "backupTaskId": 6,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "74b251be-9bfb-4766-bbb6-fb633d7556cd",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreicdy2embkzwvtm7lnn2hy7ktc2ji4p42dfksrwcuszjkx22tfhw3u",
+                                    "payload_cid": "QmejmRxzkGyJxJiirMrjwXigpVGN7b1nkr8NkG1vhpMHBp",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmV5c9rYxfw8D3V44uPtACTGdyeWHumru4xWLZP32rci9S",
+                                    "md5": "",
+                                    "start_epoch": 1333475,
+                                    "piece_cid": "baga6ea4seaqazf5c2bklp7jvqnp5ty6nqqa66wt3mxmdgxrdxhkrjspgha4v4di",
+                                    "file_size": 2050940,
+                                    "cost": "508764387950"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1637961533021401",
+                        "updatedOn": "1638180720099212",
+                        "backupTaskId": 8,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "5f4eb65f-4053-41f2-92ca-c92877353e2b",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreihaf4gxydhxzth5xx2qnuktxxixjp25ygslbzfrl5nnmaizyox6c4",
+                                    "payload_cid": "QmTGgJuN8be5mJqTRGTtVXTk3VKqo6zBdVjcATNA9y2TpE",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmbK3yxGYZtn5aTCYBLDrMdtdGQALQyi5tvKiE88AqEKSp",
+                                    "md5": "",
+                                    "start_epoch": 1339856,
+                                    "piece_cid": "baga6ea4seaqj3kvrajbuhhq6edsnwepyszcknial2kgsv4tvpkat6bsm4psxojq",
+                                    "file_size": 2050940,
+                                    "cost": "510970441508"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1638152952022035",
+                        "updatedOn": "1638180720100941",
+                        "backupTaskId": 9,
+                        "status": "Completed"
+                    }
+                ],
+                "backupPlanTasksCounts": 6
+            },
+            {
+                "backupPlanName": "Weekly",
+                "backupPlanId": 2,
+                "backupPlanTasks": [
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "daeb4050-ee1f-4051-8937-51457502b7cd",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreih2xm5j7txomaf4fdsf3onmqyjw36mf6sggksmjm6rlywdidze4eu",
+                                    "payload_cid": "QmPjbQEk96gXxNKbyDR7cXGR8eTB4wSu7Y9UTsut4DauYJ",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmT7x9LBNLWcs4KLLvPkg9gTS2b3ZxJbwN8uWWjNh6Lfix",
+                                    "md5": "",
+                                    "start_epoch": 1333430,
+                                    "piece_cid": "baga6ea4seaqppsgckwf4w3wpkqj2nc2ikctpkpyg63my4znhtw6frgidbthmuiy",
+                                    "file_size": 2050941,
+                                    "cost": "511620831800"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1637960187022101",
+                        "updatedOn": "1638153182387507",
+                        "backupTaskId": 3,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "f625fba7-c816-4065-b735-21883099a77c",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreibkq5vkfwuzg7k2uk3kwokjux2wn32mg74vsta53yqy6duucpky4m",
+                                    "payload_cid": "QmaoHJkG3N6Zpo44p9orCRCEh6b1BEHFs9szSCRkGHh44o",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmXfGDCftQsPFLfYENqm3guaWrHzDNB3Y4Vbx7NK2nzZAJ",
+                                    "md5": "",
+                                    "start_epoch": 1333446,
+                                    "piece_cid": "baga6ea4seaqbise57nj6ri66nzjzvgxpag2hcoddysuquhg433q4y5kktwxmyci",
+                                    "file_size": 2050941,
+                                    "cost": "511605206808"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1637960662023687",
+                        "updatedOn": "1638153182389002",
+                        "backupTaskId": 5,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "045066c7-4ceb-43cc-b7be-052f066640f6",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreieadbdmknni3vykgm6cilczg6bk6gvwbzf6q52rb3demb6o73ucuu",
+                                    "payload_cid": "QmYEJQSVmG7GdSouK8LLtSmVJRXzqh15a4rwb6CJaAhWGr",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmbsRkrRH1zsdDLj33v4kDGZ6FZvRKPnEE7eHuhQAa46zR",
+                                    "md5": "",
+                                    "start_epoch": 1333467,
+                                    "piece_cid": "baga6ea4seaqghujsz4a4utbp27v722u3yib2skog3cdn2vsbn3llwo7n27fsigy",
+                                    "file_size": 2050940,
+                                    "cost": "511584699006"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1637961283016684",
+                        "updatedOn": "1638153182390712",
+                        "backupTaskId": 7,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "c83e0700-ce89-4a4c-b93a-74f1e2f7d4c4",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreibrwizsnqv3vr5ryoxt4cw3xoedkikmdo36xrqsf6yh4e2xh5ikia",
+                                    "payload_cid": "QmUdXQQbL4H5fZ42VkMocNar7uBRgdSFA4LmDKFnkJdK2E",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmayUJtcmZBsuwUFpptUPJiLwUfz7Szd1aYezJqS87Sptm",
+                                    "md5": "",
+                                    "start_epoch": 1339856,
+                                    "piece_cid": "baga6ea4seaqbeww7hzm5nteeipcoim3tlrxe2g7dvvhyhfb753nyns3ln3exaby",
+                                    "file_size": 2050942,
+                                    "cost": "513782940068"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638152952022035",
+                        "updatedOn": "1638180720102355",
+                        "backupTaskId": 10,
+                        "status": "Completed"
+                    }
+                ],
+                "backupPlanTasksCounts": 4
+            },
+            {
+                "backupPlanName": "daily2",
+                "backupPlanId": 3,
+                "backupPlanTasks": [
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "4e885428-bebe-4eff-a64f-3af20eba8c2f",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreihawax7zhwaynfzqsqvhwlxs7v4hzocf5kqv5ojcjusoc3tsqduga",
+                                    "payload_cid": "QmTZytp9b3g2hcppkrgtmcByr2Q9SXbP1ZnWhJryLG9Mnj",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmYaRCg1pZidr91GuA2B5cNJGMxZ9UnL7VnAgSCSrNeXVC",
+                                    "md5": "",
+                                    "start_epoch": 1339872,
+                                    "piece_cid": "baga6ea4seaqmxwe34fvbctw7ug7ycb2xcpjigs3or4hiatuxfs3x3km4kc6scha",
+                                    "file_size": 2050941,
+                                    "cost": "513767315076"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638153432023687",
+                        "updatedOn": "1638180720103887",
+                        "backupTaskId": 11,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "0bd94868-8842-4a79-ac7b-562b5ae1b272",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreibe4nozydqawb7vndogt2xdxeeas7i4huifls3hdjhfz5x7hrmcb4",
+                                    "payload_cid": "QmbC2Q8XmNFL4UxXe4Mbzc25DegVeo7aG69yMDseZdjdZa",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmdgnBRk65saizE8yt8HyAUTPW5z4bGFqookka6josEVq3",
+                                    "md5": "",
+                                    "start_epoch": 1339874,
+                                    "piece_cid": "baga6ea4seaqpw55lcbcvcyvh7fjnnbvmvlfdbbph6imiqj4fyblk2ndrd3owmdi",
+                                    "file_size": 2050940,
+                                    "cost": "513765361952"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638153492022952",
+                        "updatedOn": "1638180720105655",
+                        "backupTaskId": 12,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "1f0e7a1d-8386-42f2-80e6-7242338a95a8",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreiboqb4fas3xrobonshvop3rqqgo4vf4ilkqdf77ymlv3icr3xipne",
+                                    "payload_cid": "QmeXoxDJzkT9DAEGQga62j5PWMbiC8PukupK7PixeQCKgr",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmcCBaYzT1PNH4w3UKknYpPCfbxEXxBpRpxKDQsdWf2Je2",
+                                    "md5": "",
+                                    "start_epoch": 1339878,
+                                    "piece_cid": "baga6ea4seaqbw7t2pndg5uzxsb6mbdmmkypti3elj6i42oflql7l5dmq76qrkpi",
+                                    "file_size": 2050942,
+                                    "cost": "513761455704"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638153612021233",
+                        "updatedOn": "1638180720107361",
+                        "backupTaskId": 13,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "824109f8-a6b2-4907-a727-a439ecbf28d7",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreifzjiofwsjwo6foqyufgbhwd2icbydqpkrsj6gzs2qpim7mehrfge",
+                                    "payload_cid": "QmRV8bV4PqsPxJubSyQPajMYFHgf89a6YuVD63t9fyJ87a",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmdEaFNm4mcosRK9FmqELQhXfFvsxPrnVBVH2LJmjbsuso",
+                                    "md5": "",
+                                    "start_epoch": 1339880,
+                                    "piece_cid": "baga6ea4seaql6siav73v2jvon42wf6yoggnyk2eg3o6rpawiter5kt5y4ol5oea",
+                                    "file_size": 2050942,
+                                    "cost": "513759502580"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638153672022322",
+                        "updatedOn": "1638180720108941",
+                        "backupTaskId": 14,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "6357f6d5-8833-41e9-9bda-20ba4de72a1e",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreigyb2f256sedkgbmtka46ferjkdc3g3wsjio6tpos43mndgd3cjhu",
+                                    "payload_cid": "QmXe43YuEf2gWn4p4A6hm3u4FBxCZrDF7pxE5cKwpY7HFs",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmXRqgC3H37tEP5re7HQhRmrfnY6vZzesTL8NXJgsdhfky",
+                                    "md5": "",
+                                    "start_epoch": 1339884,
+                                    "piece_cid": "baga6ea4seaqd72bfsimnbdj7wh43ofcby5kukzazhplsjdaag2bklbwcgtwx2ji",
+                                    "file_size": 2050941,
+                                    "cost": "513755596332"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638153792012971",
+                        "updatedOn": "1638180720110951",
+                        "backupTaskId": 15,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "d7d97897-0e75-497b-be49-52a9b0f52d5e",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreigoiwaj242qv5tnhshklq7sztu7bzc2wkxyhss7u4k2pgszr4e5hi",
+                                    "payload_cid": "QmZqFMJ5hPFDJoyKkVe5TvR9hnEnahEu9q28s7TWs8kBqG",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmecMmkQuqqChauaAt97H8SgKzjvV4AW4D5a3WiPVUxYAP",
+                                    "md5": "",
+                                    "start_epoch": 1339886,
+                                    "piece_cid": "baga6ea4seaqpcw75q2h7erysegbynb3b2osbglbrhhqcrsju27cratpkm6n3gfa",
+                                    "file_size": 2050941,
+                                    "cost": "513753643208"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638153852018571",
+                        "updatedOn": "1638180720112514",
+                        "backupTaskId": 17,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "0580d980-019f-465f-90fd-2e6eb577fd42",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreif55wekoy657ubyiq5i5iyrsgt35oqwtvpoik736yjcwenoq42ivi",
+                                    "payload_cid": "QmanttWwtT9nHKnBZ8QcqLkcH8VkSxAeh9YXV9LtsQt2TX",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmSjzWSBSsnNeoWA9DPxyyyfw4bHWtvY1eQPfSexPhTsUc",
+                                    "md5": "",
+                                    "start_epoch": 1339890,
+                                    "piece_cid": "baga6ea4seaqlpz6ecgspbdce7zn6pb2phbj54bo7kxebrwbyqpsy4wbozfatuba",
+                                    "file_size": 2050943,
+                                    "cost": "513749736960"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638153972014914",
+                        "updatedOn": "1638180720114076",
+                        "backupTaskId": 18,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "87fa515c-1e64-46a9-92d1-d37bae2c1295",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreiguhwncegw6k32ot2oprtunomlydbw5z2oblkyfvc2oevhuyucpi4",
+                                    "payload_cid": "QmWnFNb4aN97heiDi37PBrJi4NuGpCyecy4pTuHxmUCMbN",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmUBToc86d9pmfKZZvqREXv91s1XmXisx4U3wWG45sjhVT",
+                                    "md5": "",
+                                    "start_epoch": 1339892,
+                                    "piece_cid": "baga6ea4seaqc4gh3bgfn4xviqiv6u6eokyxqaese7km6ojeigqfbu5zhrepoqoi",
+                                    "file_size": 2050943,
+                                    "cost": "513747783836"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638154032023575",
+                        "updatedOn": "1638180720115628",
+                        "backupTaskId": 19,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "f6205441-2ee8-4cbe-9842-5cab820554f9",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreigz2yeq4iesh3ymdfouh63xno3xaczrcih6vcptticgn266mihvg4",
+                                    "payload_cid": "QmQQtQUUVvcKaQRn4ADRKVmY8fcsCTuUniRBtAxgXmkb9T",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmSDmZKvrwJ87yMJrh7T2eeNDud58aygq6SL94QAZeb1jJ",
+                                    "md5": "",
+                                    "start_epoch": 1339896,
+                                    "piece_cid": "baga6ea4seaqb5gnz5t2lkvylb7hmxqtmwecdmpkst4afx4xhigegs3mdoim4yny",
+                                    "file_size": 2050938,
+                                    "cost": "513743877588"
+                                }
+                            ],
+                            "duration": "521280"
+                        },
+                        "createdOn": "1638154152023502",
+                        "updatedOn": "1638180720117156",
+                        "backupTaskId": 20,
+                        "status": "Completed"
+                    }
+                ],
+                "backupPlanTasksCounts": 9
+            },
+            {
+                "backupPlanName": "weekly2",
+                "backupPlanId": 4,
+                "backupPlanTasks": [
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "bcb3237e-32d1-4028-93f3-62d8ec733076",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreihzaiovjoqhzcxx6ypi26og23gx4f7htpphydv6kk46obfhd5osla",
+                                    "payload_cid": "QmRgm5mrzRFa67vAYUBpKMxNX4jC4qszQuWkwGFsvN6Uz9",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmaDfMz1HEaYG7hSKs8Gt6LynEdNfjxRWUfFR7fFWXM3fE",
+                                    "md5": "",
+                                    "start_epoch": 1339884,
+                                    "piece_cid": "baga6ea4seaqespdtncsxzosa3qvuqxrcwhthxckdx2doehom52zqjyu67kajafa",
+                                    "file_size": 2050941,
+                                    "cost": "510943097772"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1638153792012971",
+                        "updatedOn": "1638180720118776",
+                        "backupTaskId": 16,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "34f98c00-1dd5-4a9f-aea9-0a9a90577ef0",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreihozpwfphg5e56xfkbd5pleuouwf7lez7murpg4eq5fgxxbqhyuem",
+                                    "payload_cid": "QmeuQd5AocRAbfarcqzdrBnWPV5KS9KF7z9K3y4MWVxM78",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmVYutxstBeWBYDzrat56tHrtD7rBVMMRFstBuibJGTLki",
+                                    "md5": "",
+                                    "start_epoch": 1339900,
+                                    "piece_cid": "baga6ea4seaqowlfnwb3xvodwa4mjmem3hhdejfa3lry3da4flcogb2ccot4eyga",
+                                    "file_size": 2050941,
+                                    "cost": "510927472780"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1638154272013411",
+                        "updatedOn": "1638180720120290",
+                        "backupTaskId": 21,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "8927b4eb-ae41-4d4a-babc-5c0fbfb29e59",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreighw3h37cq2kq7aybb3q63fytwmte3now44jfwt3uhh3fht7ik6ae",
+                                    "payload_cid": "QmRnndxEfkB8LXTSKaLjmetEwH6vpPU3ENgcc1Pyr5Lsoz",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/Qme9iJW2FvntqBQZmohbkFbp2wQZ4mAuEX7jJBZEg9cboA",
+                                    "md5": "",
+                                    "start_epoch": 1339914,
+                                    "piece_cid": "baga6ea4seaqctxi5bjzsyobjcej6vlxxsmhjbnpn5vn4orcuyoju4arkmzrbeny",
+                                    "file_size": 2050942,
+                                    "cost": "510913800912"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1638154710020967",
+                        "updatedOn": "1638180720121852",
+                        "backupTaskId": 22,
+                        "status": "Completed"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "ab73dc99-7c48-4562-8755-6a7557770e61",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreiakg73iubaelkb6lj5fj6mk3adfla3jipwxdxlbrurnpkjn773ubu",
+                                    "payload_cid": "QmUS7qneK4NNzCS2oZaaFnCQxs2dmJUAkidF5fDSsv9dVd",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmZ8eCycbzVy2CUSmUAavcpgLfU9srmV32p9dD8Auo6HTx",
+                                    "md5": "",
+                                    "start_epoch": 1339942,
+                                    "piece_cid": "baga6ea4seaqbasitazqho72liw4wnbivfr5lfh7yrov4qofaastrsdiwhybzuda",
+                                    "file_size": 2048663,
+                                    "cost": "510886457176"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1638155555017107",
+                        "updatedOn": "1638155701186898",
+                        "backupTaskId": 23,
+                        "status": "Running"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "210d5612-d857-4cfe-b4ac-cdb057cbe20e",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreiekcyn4frlmbz5ge4cptzdepein7frqhbajpiyl6reywmv33hh7ta",
+                                    "payload_cid": "QmXG1Xrh22zPiuqCZFfH1oSzgBXCqMMERsiA9wAgEUok8V",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/QmemMe7jKcaRYAabp6Bowje6nufJfyC4MjZhoWZpZQL1Mt",
+                                    "md5": "",
+                                    "start_epoch": 1339967,
+                                    "piece_cid": "baga6ea4seaqjzqx7r2orblqkfnghp2pwzrkmv27rg6ywqji7ju5a3buflhbs4oi",
+                                    "file_size": 2048663,
+                                    "cost": "510862043126"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1638156305026782",
+                        "updatedOn": "1638157321211141",
+                        "backupTaskId": 24,
+                        "status": "Running"
+                    },
+                    {
+                        "data": {
+                            "dealInfo": [
+                                {
+                                    "uuid": "5a365b6c-5a8e-4eed-aa43-9e25756a82d9",
+                                    "source_file_name": "gh4-minio-data",
+                                    "miner_id": "t024557",
+                                    "deal_cid": "bafyreihtht65rxt6pjsw37ccwbus3wdzyvqr3n5wc5aopbp6azz6lvff6u",
+                                    "payload_cid": "QmX2444SrBGGkLS4U9Sxd9YK1jG2iTqJoPix6WPoJ5oTWB",
+                                    "file_source_url": "http://192.168.88.41:5050/ipfs/Qmc6ca3LrNyioiEFARPyoeQjZ1vHb4TaF3oJe9XPZZk571",
+                                    "md5": "",
+                                    "start_epoch": 1339999,
+                                    "piece_cid": "baga6ea4seaqc7lgijkyzqjb26njgwg6wsyapqeaehl2v7ibmqljs6ko2dwuo2mq",
+                                    "file_size": 2048663,
+                                    "cost": "510830793142"
+                                }
+                            ],
+                            "duration": "518400"
+                        },
+                        "createdOn": "1638157270013946",
+                        "updatedOn": "1638161461214342",
+                        "backupTaskId": 25,
+                        "status": "Running"
+                    }
+                ],
+                "backupPlanTasksCounts": 6
+            }
+        ],
+        "backupTasksCounts": 25,
+        "backupPlansCounts": 4,
+        "completedVolumeBackupTasksCounts": 22,
+        "inProcessVolumeBackupTasksCounts": 3,
+        "failedVolumeBackupTasksCounts": 0
+    },
+    "status": "success",
+    "message": "success"
+}

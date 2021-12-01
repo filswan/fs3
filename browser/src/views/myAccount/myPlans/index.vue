@@ -27,6 +27,11 @@
                   style="color: #1dc9b7">
                 {{ item.status }}
             </div>
+            <div class="statusStyle"
+                  v-else-if="item.status == 'Stopped'"
+                  style="color: #f56c6c">
+                {{ item.status }}
+            </div>
             <div class="statusStyle" v-else style="color: rgb(255, 184, 34)">
                 {{ item.status }}
             </div>
@@ -56,8 +61,16 @@
           </div>
         </el-card>
         <div slot="footer" class="dialog-footer">
-          <el-button :type="ruleForm.status&&ruleForm.status.toLowerCase() != 'running'?'info':'success'">STOP</el-button>
-          <el-button :type="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?'info':'success'">START</el-button>
+          <el-button 
+            :type="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?'danger':'info'"
+            :disabled="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?false:true"
+            @click="planStatus(ruleForm)"
+          >STOP</el-button>
+          <el-button 
+            :type="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?'info':'success'"
+            :disabled="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?true:false"
+            @click="planStatus(ruleForm)"
+          >START</el-button>
           <el-button type="success" @click="handleClose">OK</el-button>
         </div>
       </el-dialog>
@@ -89,6 +102,33 @@ export default {
       handleClose(done) {
         this.dialogIndex = NaN
         this.dialogVisible = false
+      },
+      planStatus(row){
+          let _this = this
+          let params = {
+            "BackupPlanId": row.backupPlanId,
+            "Status": row.status
+          }
+
+          axios.post(`${_this.data_api}/minio/backup/update/plan`, params, {headers: {
+                'Authorization':"Bearer "+ _this.$store.getters.accessToken
+          }}).then((response) => {
+              let json = response.data
+              if (json.status == 'success') {
+                _this.ruleForm = json.data
+                _this.ruleForm.createdOn = _this.ruleForm.createdOn?moment(new Date(parseInt(_this.ruleForm.createdOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                _this.ruleForm.updatedOn = _this.ruleForm.updatedOn?moment(new Date(parseInt(_this.ruleForm.updatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                _this.ruleForm.lastBackupOn = _this.ruleForm.lastBackupOn?moment(new Date(parseInt(_this.ruleForm.lastBackupOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                _this.getData()
+              }else{
+                  _this.$message.error(json.message);
+                  return false
+              }
+
+          }).catch(function (error) {
+              console.log(error);
+          });
+
       },
       getData() {
           let _this = this
@@ -212,6 +252,9 @@ export default {
           &:hover{
             background: #8bc68e;
           }
+        }
+        .el-button--info{
+          opacity: 0.5;
         }
       }
     }
