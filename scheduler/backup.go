@@ -774,7 +774,7 @@ type PsqlVolumeBackupCarCsv struct {
 	PieceCid       string
 	MinerFid       string
 	StartEpoch     int
-	SourceId       int
+	SourceId       int `gorm:"SMALLINT"`
 	Cost           string
 }
 
@@ -795,7 +795,7 @@ type PsqlVolumeBackupMetadataCsv struct {
 	PieceCid       string
 	MinerFid       string
 	StartEpoch     int
-	SourceId       int
+	SourceId       int `gorm:"SMALLINT"`
 	Cost           string
 }
 

@@ -4046,7 +4046,7 @@ type PsqlRetrieveVolumeResponse struct {
 }
 
 type PsqlRetrieveVolume struct {
-	VolumeBackupJobs                 []PsqlVolumeBackupJob `json:"VolumeBackupJobs "`
+	VolumeBackupJobs                 []PsqlVolumeBackupJob `json:"VolumeBackupJobs"`
 	TotalVolumeBackupTasksCounts     int                   `json:"totalVolumeBackupTasksCounts"`
 	CompletedVolumeBackupTasksCounts int                   `json:"completedVolumeBackupTasksCounts"`
 	InProcessVolumeBackupTasksCounts int                   `json:"inProcessVolumeBackupTasksCounts"`
@@ -8276,7 +8276,7 @@ type PsqlVolumeBackupCarCsv struct {
 	PieceCid       string
 	MinerFid       string
 	StartEpoch     int
-	SourceId       int
+	SourceId       int `gorm:"SMALLINT"`
 	Cost           string
 }
 
@@ -8297,7 +8297,7 @@ type PsqlVolumeBackupMetadataCsv struct {
 	PieceCid       string
 	MinerFid       string
 	StartEpoch     int
-	SourceId       int
+	SourceId       int `gorm:"SMALLINT"`
 	Cost           string
 }
 

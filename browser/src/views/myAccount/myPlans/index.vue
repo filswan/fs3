@@ -107,7 +107,7 @@ export default {
           let _this = this
           let params = {
             "BackupPlanId": row.ID,
-            "Status": row.Status
+            "Status": row.Status == 'Running'?'Stopped':'Running'
           }
 
           axios.post(`${_this.data_api}/minio/backup/update/plan`, params, {headers: {
@@ -144,6 +144,7 @@ export default {
                     item.CreatedOn = item.CreatedOn?moment(new Date(parseInt(item.CreatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
                     item.UpdatedOn = item.UpdatedOn?moment(new Date(parseInt(item.UpdatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
                     item.LastBackupOn = item.LastBackupOn?moment(new Date(parseInt(item.LastBackupOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                    _this.plan_list.sort(function(a, b){return a.ID - b.ID})
                 })
               }else{
                   _this.$message.error(json.message);
