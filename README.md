@@ -9,15 +9,16 @@
 ### Prerequisite
 - Golang 1.15+.
 - Node Js 14.0+.
-- Postgresql
+- Postgresql 14.1+
 
 ## Functions
-* Generate Car files from your source files with or without Lotus.
-* Generate metadata e.g. Car file URI, start epoch, etc. and save them to a metadata JSON file.
-* Propose deals based on the metadata JSON file.
-* Generate a final JSON file containing deal CIDs and storage provider id for storage provider to import deals.
-* Create tasks and offline deals on Swan Platform.
-* Send deals automatically to auto-bid storage providers.
+* Upload files to FS3 as a local container for storage service.
+* Backup single file or one bucket as a whole to FIL using online deals.
+* Backup the whole volume with customized schedulers(daily/weekly) using offline deals. 
+* Send volume backup task to assigned stroage provider automatically using Autobid module.
+* Rebuild the volume content with retrieved previous backup volume content specified by users.
+* Save all the deal information into PostgreSQL databse.
+* List all the deals history and status.
 
 # Install from Source
 ## Checkout source code

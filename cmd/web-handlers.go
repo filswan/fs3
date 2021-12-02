@@ -6640,6 +6640,22 @@ func (web *webAPIHandlers) PsqlRetrieveOfflineDealsVolume(w http.ResponseWriter,
 		return
 	}
 
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var volumeBackupRequest PsqlVolumeBackupRequest
+	err := decoder.Decode(&volumeBackupRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	offset := volumeBackupRequest.Offset
+	limit := volumeBackupRequest.Limit
+	if limit == 0 {
+		limit = 10
+	}
+
 	//open backup db
 	db, err := GetPsqlDb()
 	if err != nil {
@@ -6649,7 +6665,7 @@ func (web *webAPIHandlers) PsqlRetrieveOfflineDealsVolume(w http.ResponseWriter,
 	}
 
 	var resp []PsqlVolumeBackupJob
-	db.Find(&resp)
+	db.Limit(limit).Offset(offset).Find(&resp)
 
 	var count []PsqlVolumeBackupJob
 	var inProcessVolumeBackupTasksCounts, completedVolumeBackupTasksCounts, failedVolumeBackupTasksCounts, totalVolumeBackupTasksCounts int64
@@ -7832,6 +7848,22 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 		return
 	}
 
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var volumeRebuildRequest PsqlVolumeRebuildRequest
+	err := decoder.Decode(&volumeRebuildRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	offset := volumeRebuildRequest.Offset
+	limit := volumeRebuildRequest.Limit
+	if limit == 0 {
+		limit = 10
+	}
+
 	//open backup db
 	db, err := GetPsqlDb()
 	if err != nil {
@@ -7841,7 +7873,7 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 	}
 
 	var plans []PsqlVolumeBackupPlan
-	db.Find(&plans)
+	db.Limit(limit).Offset(offset).Find(&plans)
 
 	var count []PsqlVolumeBackupPlan
 	var totalVolumeBackupPlansCounts int64
@@ -7952,6 +7984,22 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 		return
 	}
 
+	//get request body
+	decoder := json.NewDecoder(r.Body)
+	var volumeRebuildRequest PsqlVolumeRebuildRequest
+	err := decoder.Decode(&volumeRebuildRequest)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
+
+	offset := volumeRebuildRequest.Offset
+	limit := volumeRebuildRequest.Limit
+	if limit == 0 {
+		limit = 10
+	}
+
 	//open backup db
 	db, err := GetPsqlDb()
 	if err != nil {
@@ -7961,7 +8009,7 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 	}
 
 	var rebuildJobs []PsqlVolumeRebuildJob
-	db.Find(&rebuildJobs)
+	db.Limit(limit).Offset(offset).Find(&rebuildJobs)
 
 	var count []PsqlVolumeRebuildJob
 	var inProcessVolumeRebuildTasksCounts, completedVolumeRebuildTasksCounts, failedVolumeRebuildTasksCounts, totalVolumeRebuildTasksCounts int64
@@ -8340,4 +8388,14 @@ func (web *webAPIHandlers) Test(w http.ResponseWriter, r *http.Request) {
 	db.AutoMigrate(&PsqlVolumeBackupTaskCsv{})
 	return
 
+}
+
+type PsqlVolumeBackupRequest struct {
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
+}
+
+type PsqlVolumeRebuildRequest struct {
+	Offset int `json:"offset"`
+	Limit  int `json:"limit"`
 }
