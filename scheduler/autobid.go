@@ -110,6 +110,13 @@ func UpdateActiveBackupTasksInDb() error {
 			}
 		}
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sqlDB.Close()
 	return err
 }
 
@@ -148,6 +155,13 @@ func UpdateSentBackupTasksInDb(tasks [][]*libmodel.FileDesc) error {
 		db.Save(backupJob)
 		logs.GetLogger().Info("Backup job sent to miner, ID: ", backupJob.ID, ", UUID: ", v[0].Uuid)
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sqlDB.Close()
 	return err
 }
 

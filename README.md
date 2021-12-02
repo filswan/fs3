@@ -402,18 +402,18 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "backupPlanId": 2,
-        "backupPlanName": "daily",
-        "backupInterval": "1",
-        "minerRegion": "",
-        "price": "0.0005",
-        "duration": "518400",
-        "verifiedDeal": false,
-        "fastRetrieval": true,
-        "status": "Running",
-        "lastBackupOn":""
-        "createdOn": "1637790990711492",
-        "updatedOn": "1637790990711492"
+        "ID": 1,
+        "Name": "daily",
+        "Interval": "1",
+        "MinerRegion": "",
+        "Price": "0.0005",
+        "Duration": "518400",
+        "VerifiedDeal": false,
+        "FastRetrieval": true,
+        "Status": "Running",
+        "LastBackupOn": "",
+        "CreatedOn": "1638396058992883",
+        "UpdatedOn": "1638396058992883"
     },
     "status": "success",
     "message": "success"
@@ -445,18 +445,18 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "backupPlanId": 2,
-        "backupPlanName": "daily",
-        "backupInterval": "1",
-        "minerRegion": "",
-        "price": "0.0005",
-        "duration": "518400",
-        "verifiedDeal": false,
-        "fastRetrieval": true,
-        "status": "Stopped",
-        "lastBackupOn":""
-        "createdOn": "1637790990711492",
-        "updatedOn": "1637790990711492"
+        "ID": 2,
+        "Name": "weekly",
+        "Interval": "1",
+        "MinerRegion": "",
+        "Price": "0.0005",
+        "Duration": "518400",
+        "VerifiedDeal": false,
+        "FastRetrieval": true,
+        "Status": "Stopped",
+        "LastBackupOn": "",
+        "CreatedOn": "1638396058992883",
+        "UpdatedOn": "1638396058992883"
     },
     "status": "success",
     "message": "success"
@@ -482,75 +482,23 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "volumeBackupJobPlans": [
+        "backupPlans": [
             {
-                "backupPlanId": 1,
-                "backupPlanName": "monthly",
-                "backupInterval": "1",
-                "minerRegion": "",
-                "price": "0.0005",
-                "duration": "518400",
-                "verifiedDeal": false,
-                "fastRetrieval": true,
-                "status": "Running",
-                "lastBackupOn":""
-                "createdOn": "1637790861901038",
-                "updatedOn": "1637790861901038"
-            },
-            {
-                "backupPlanId": 2,
-                "backupPlanName": "daily",
-                "backupInterval": "1",
-                "minerRegion": "",
-                "price": "0.0005",
-                "duration": "518400",
-                "verifiedDeal": false,
-                "fastRetrieval": true,
-                "status": "Running",
-                "lastBackupOn":"1637790990711494"
-                "createdOn": "1637790990711492",
-                "updatedOn": "1637790990711492"
+                "ID": 1,
+                "Name": "daily",
+                "Interval": "1",
+                "MinerRegion": "",
+                "Price": "0.0005",
+                "Duration": "518400",
+                "VerifiedDeal": false,
+                "FastRetrieval": true,
+                "Status": "Running",
+                "LastBackupOn": "1638397353014173",
+                "CreatedOn": "1638396058992883",
+                "UpdatedOn": "1638396058992883"
             }
         ],
-        "backupPlansCounts": 2
-    },
-    "status": "success",
-    "message": "success"
-}
-```
-
-### Add Volume Backup Job
-POST `/minio/backup/add/job`
-
-#### Example:
-
-Send request using POSTMAN
-
-``` bash
-# Headers
-## Use a new User-Agent instead of the default User-Agent in Postman
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
-
-#Authorization
-Bearer Token = MY_FS3_TOKEN
-
-# Body
-{
-   "BackupPlanId":1
-}
-```
-Response from POSTMAN
-```bash
-{
-    "data": {
-        "data": {
-            "dealInfo": null,
-            "duration": "518400"
-        },
-        "createdOn": "1637894834289770",
-        "updatedOn": "1637894834289770",
-        "backupTaskId": 2,
-        "status": "Created"
+        "TotalVolumeBackupPlan": 1
     },
     "status": "success",
     "message": "success"
@@ -576,98 +524,46 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "volumeBackupPlans": [
+        "VolumeBackupJobs ": [
             {
-                "backupPlanName": "monthly",
-                "backupPlanId": 1,
-                "backupPlanTasks": [
-                    {
-                        "data": {
-                            "dealInfo": [
-                                {
-                                    "uuid": "a5-76-4e-a2-037",
-                                    "source_file_name": "minio-data",
-                                    "miner_id": "",
-                                    "deal_cid": "",
-                                    "payload_cid": "QmSB1",
-                                    "file_source_url": "http://ipfs.io/ipfs/QmUZHz",
-                                    "md5": "",
-                                    "start_epoch": 1331258,
-                                    "piece_cid": "baga",
-                                    "file_size": 2050949,
-                                    "cost": ""
-                                }
-                            ],
-                            "duration": "518400"
-                        },
-                        "createdOn": "1637887542018422",
-                        "updatedOn": "1637895011203377",
-                        "backupTaskId": 1,
-                        "status": "Running"
-                    }
-                ],
-                "backupPlanTasksCounts": 1
-            }
+                "ID": 1,
+                "Name": "daily",
+                "Uuid": "90-da-45-a0-14",
+                "SourceFileName": "minio-data",
+                "MinerId": "t000000",
+                "DealCid": "bafy",
+                "PayloadCid": "QmXv",
+                "FileSourceUrl": "https://ipfs.io/ipfs/QmXh",
+                "Md5": "",
+                "StartEpoch": 1347978,
+                "PieceCid": "baga",
+                "FileSize": 849400,
+                "Cost": "254331901032",
+                "Duration": "518400",
+                "Status": "Running",
+                "CreatedOn": "1638396635020859",
+                "UpdatedOn": "1638396721214519",
+                "VolumeBackupPlanID": 1,
+                "VolumeBackupPlan": {
+                    "ID": 0,
+                    "Name": "",
+                    "Interval": "",
+                    "MinerRegion": "",
+                    "Price": "",
+                    "Duration": "",
+                    "VerifiedDeal": false,
+                    "FastRetrieval": false,
+                    "Status": "",
+                    "LastBackupOn": "",
+                    "CreatedOn": "",
+                    "UpdatedOn": ""
+                }
+            },
         ],
-        "backupTasksCounts": 1,
-        "backupPlansCounts": 1,
+        "totalVolumeBackupTasksCounts": 1,
         "completedVolumeBackupTasksCounts": 0,
         "inProcessVolumeBackupTasksCounts": 1,
         "failedVolumeBackupTasksCounts": 0
-    },
-    "status": "success",
-    "message": "success"
-}
-```
-
-### Backup Volume
-POST `/minio/backup/volume`
-
-#### Example:
-
-Send request using POSTMAN
-
-``` bash
-# Headers
-## Use a new User-Agent instead of the default User-Agent in Postman
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
-
-#Authorization
-Bearer Token = MY_FS3_TOKEN
-
-# Body
-{
-   "BackupTaskId": 1,
-   "BackupPlanId": 1,
-   "BackupPlanName":"test"
-}
-```
-Response from POSTMAN
-```bash
-{
-    "data": {
-        "data": {
-            "dealInfo": [
-                {
-                    "uuid": "a5-76-4e-a2-03",
-                    "source_file_name": "minio-data",
-                    "miner_id": "",
-                    "deal_cid": "",
-                    "payload_cid": "QmSB1",
-                    "file_source_url": "http://ipfs.io/ipfs/QmUZ",
-                    "md5": "",
-                    "start_epoch": 1331258,
-                    "piece_cid": "baga",
-                    "file_size": 2050949,
-                    "cost": ""
-                }
-            ],
-            "duration": "518400"
-        },
-        "createdOn": "1637887542018422",
-        "updatedOn": "1637895011203377",
-        "backupTaskId": 1,
-        "status": "Running"
     },
     "status": "success",
     "message": "success"
@@ -698,14 +594,48 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "rebuildTaskID": 4,
-        "createdOn": "1637801932084525",
-        "updatedOn": "1637801932084525",
-        "miner_id": "t0000",
-        "deal_cid": "bafy",
-        "payload_cid": "Qmag",
-        "backupTaskId": 1,
-        "status": "Created"
+        "ID": 1,
+        "MinerId": "t000000",
+        "DealCid": "bafy",
+        "PayloadCid": "QmXv",
+        "Status": "Created",
+        "CreatedOn": "1638398434961766",
+        "UpdatedOn": "1638398434961766",
+        "BackupJobId": 1,
+        "BackupJob": {
+            "ID": 0,
+            "Name": "",
+            "Uuid": "",
+            "SourceFileName": "",
+            "MinerId": "",
+            "DealCid": "",
+            "PayloadCid": "",
+            "FileSourceUrl": "",
+            "Md5": "",
+            "StartEpoch": 0,
+            "PieceCid": "",
+            "FileSize": 0,
+            "Cost": "",
+            "Duration": "",
+            "Status": "",
+            "CreatedOn": "",
+            "UpdatedOn": "",
+            "VolumeBackupPlanID": 0,
+            "VolumeBackupPlan": {
+                "ID": 0,
+                "Name": "",
+                "Interval": "",
+                "MinerRegion": "",
+                "Price": "",
+                "Duration": "",
+                "VerifiedDeal": false,
+                "FastRetrieval": false,
+                "Status": "",
+                "LastBackupOn": "",
+                "CreatedOn": "",
+                "UpdatedOn": ""
+            }
+        }
     },
     "status": "success",
     "message": "success"
@@ -731,61 +661,56 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "volumeRebuildTasks": [
+        "volumeRebuildJobs": [
             {
-                "rebuildTaskID": 1,
-                "createdOn": "1637801932084525",
-                "updatedOn": "1637801932084525",
-                "miner_id": "t00000",
-                "deal_cid": "bafy",
-                "payload_cid": "Qmag",
-                "backupTaskId": 1,
-                "status": "Created"
+                "ID": 1,
+                "MinerId": "t000000",
+                "DealCid": "bafy",
+                "PayloadCid": "QmXv",
+                "Status": "Created",
+                "CreatedOn": "1638398434961766",
+                "UpdatedOn": "1638398434961766",
+                "BackupJobId": 1,
+                "BackupJob": {
+                    "ID": 0,
+                    "Name": "",
+                    "Uuid": "",
+                    "SourceFileName": "",
+                    "MinerId": "",
+                    "DealCid": "",
+                    "PayloadCid": "",
+                    "FileSourceUrl": "",
+                    "Md5": "",
+                    "StartEpoch": 0,
+                    "PieceCid": "",
+                    "FileSize": 0,
+                    "Cost": "",
+                    "Duration": "",
+                    "Status": "",
+                    "CreatedOn": "",
+                    "UpdatedOn": "",
+                    "VolumeBackupPlanID": 0,
+                    "VolumeBackupPlan": {
+                        "ID": 0,
+                        "Name": "",
+                        "Interval": "",
+                        "MinerRegion": "",
+                        "Price": "",
+                        "Duration": "",
+                        "VerifiedDeal": false,
+                        "FastRetrieval": false,
+                        "Status": "",
+                        "LastBackupOn": "",
+                        "CreatedOn": "",
+                        "UpdatedOn": ""
+                    }
+                }
             }
         ],
-        "volumeRebuildTasksCounts": 1,
+        "totalVolumeRebuildTasksCounts": 1,
         "completedVolumeRebuildTasksCounts": 0,
         "inProcessVolumeRebuildTasksCounts": 1,
         "failedVolumeRebuildTasksCounts": 0
-    },
-    "status": "success",
-    "message": "success"
-}
-```
-
-### Rebuild Volume
-POST `/minio/rebuild/volume`
-
-#### Example:
-
-Send request using POSTMAN
-
-``` bash
-# Headers
-## Use a new User-Agent instead of the default User-Agent in Postman
-User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36
-
-#Authorization
-Bearer Token = MY_FS3_TOKEN
-
-# Body
-{ 
-    "VolumeRebuildTaskId":1,
-    "MinerId": "t00000",
-    "PayloadCid": "QmXb",
-    "DealCid": "bafyr"
-}
-```
-Response from POSTMAN
-```bash
-{
-    "data": {
-        "volume_rebuild_address": "/home/test/minio-data",
-        "volume_rebuild_name": "minio-data",
-        "miner_id": "t00000",
-        "deal_cid": "bafy",
-        "payload_cid": "QmXb",
-        "timeStamp": "1637802544000230"
     },
     "status": "success",
     "message": "success"

@@ -20,7 +20,6 @@ func RebuildScheduler() {
 	c := cron.New()
 	//backup scheduler
 	interval := "@every 1m"
-	fmt.Println(interval)
 	err := c.AddFunc(interval, func() {
 		logs.GetLogger().Println("---------- rebuild volume scheduler is running at " + time.Now().Format("2006-01-02 15:04:05") + " ----------")
 		err := RebuildVolumeScheduler()
@@ -54,13 +53,25 @@ func RebuildVolumeScheduler() error {
 	if runningRebuildJobs == nil {
 		return err
 	}
-	if len(runningRebuildJobs) == 0 {
+	if runningRebuildJobs[0].ID == 0 {
 		logs.GetLogger().Info("No running rebuild job")
 		return err
 	}
 
 	//retrieve
 	err = RebuildVolumeAndUpdateDb(runningRebuildJobs[0], db)
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sqlDB.Close()
 	return err
 }
 

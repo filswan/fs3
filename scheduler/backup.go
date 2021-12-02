@@ -50,7 +50,6 @@ func BackupScheduler() {
 	//backup scheduler
 
 	interval := "@every 10m"
-	fmt.Println(interval)
 	err := c.AddFunc(interval, func() {
 		logs.GetLogger().Println("++++++++++ backup volume scheduler is running at " + time.Now().Format("2006-01-02 15:04:05") + " ++++++++++")
 		err := BackupVolumeScheduler()
@@ -101,6 +100,7 @@ func BackupVolumeScheduler() error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+		//if timestamp > int64(LastBackupOn)+int64(MicroSecondPerDay)*int64(backupInterval) {
 		if timestamp > int64(LastBackupOn)+3*int64(MicroSecondPerMinute)*int64(backupInterval) {
 			ExecuteBackupPlansId = append(ExecuteBackupPlansId, v.ID)
 		}
@@ -346,6 +346,13 @@ func BackupVolumeJobs(volumeBackupRequests []VolumeBackupRequest) error {
 		}
 		logs.GetLogger().Info("task created")
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sqlDB.Close()
 	return nil
 }
 
@@ -382,6 +389,13 @@ func AddBackupVolumeJobs(plansId []int) ([]VolumeBackupRequest, error) {
 		}
 		volumeBackupRequests = append(volumeBackupRequests, volumeBackupRequest)
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	sqlDB.Close()
 	return volumeBackupRequests, err
 }
 
@@ -398,7 +412,15 @@ func UpdateLastBackupTime(plansId []int) error {
 		db.Where("ID = ?", v).First(&plan)
 		timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 		plan.LastBackupOn = timestamp
+		db.Save(plan)
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	sqlDB.Close()
 	return err
 }
 
@@ -413,6 +435,13 @@ func GetRunningBackupPlans() ([]PsqlVolumeBackupPlan, error) {
 
 	var plans []PsqlVolumeBackupPlan
 	result := db.Where("status = ?", "Running").Find(&plans)
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	sqlDB.Close()
 	return plans, result.Error
 }
 

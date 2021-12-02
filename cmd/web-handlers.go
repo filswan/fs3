@@ -6675,6 +6675,15 @@ func (web *webAPIHandlers) PsqlRetrieveOfflineDealsVolume(w http.ResponseWriter,
 		writeWebErrorResponse(w, err)
 	}
 	w.Write(dataBytes)
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	sqlDB.Close()
+
 	return
 }
 
@@ -6829,6 +6838,15 @@ func (web *webAPIHandlers) PsqlRebuildVolume(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.Write(bodyByte)
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	sqlDB.Close()
+
 	return
 }
 
@@ -7149,6 +7167,15 @@ func (web *webAPIHandlers) PsqlBackupVolumeAddPlan(w http.ResponseWriter, r *htt
 		return
 	}
 	w.Write(dataBytes)
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	sqlDB.Close()
+
 	return
 }
 
@@ -7278,6 +7305,15 @@ func (web *webAPIHandlers) PsqlBackupVolumeUpdatePlan(w http.ResponseWriter, r *
 		return
 	}
 	w.Write(dataBytes)
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	sqlDB.Close()
+
 	return
 }
 
@@ -7341,6 +7377,15 @@ func (web *webAPIHandlers) PsqlBackupAddJob(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	w.Write(dataBytes)
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	sqlDB.Close()
+
 	return
 }
 
@@ -7638,6 +7683,15 @@ func (web *webAPIHandlers) PsqlRebuildAddJob(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.Write(dataBytes)
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	sqlDB.Close()
+
 	return
 
 }
@@ -7809,6 +7863,15 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 		return
 	}
 	w.Write(dataBytes)
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	sqlDB.Close()
+
 	return
 
 }
@@ -7926,6 +7989,15 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 		return
 	}
 	w.Write(dataBytes)
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	sqlDB.Close()
+
 	return
 }
 
