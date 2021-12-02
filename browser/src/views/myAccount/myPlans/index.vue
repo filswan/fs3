@@ -10,30 +10,30 @@
       </div>
       <div class="fs3_cont">
         <el-card class="box-card" v-for="(item, index) in plan_list" :key="index">
-          <div class="title">{{ item.backupPlanName }}</div>
+          <div class="title">{{ item.Name }}</div>
           <div class="button">
             <div class="statusStyle"
-                  v-if="item.status == 'Created'"
+                  v-if="item.Status == 'Created'"
                   style="color: #0a318e">
-                {{ item.status }}
+                {{ item.Status }}
             </div>
             <div class="statusStyle"
-                  v-else-if="item.status == 'Running'"
+                  v-else-if="item.Status == 'Running'"
                   style="color: #ffb822">
-                {{ item.status }}
+                {{ item.Status }}
             </div>
             <div class="statusStyle"
-                  v-else-if="item.status == 'Completed'"
+                  v-else-if="item.Status == 'Completed'"
                   style="color: #1dc9b7">
-                {{ item.status }}
+                {{ item.Status }}
             </div>
             <div class="statusStyle"
-                  v-else-if="item.status == 'Stopped'"
+                  v-else-if="item.Status == 'Stopped'"
                   style="color: #f56c6c">
-                {{ item.status }}
+                {{ item.Status }}
             </div>
             <div class="statusStyle" v-else style="color: rgb(255, 184, 34)">
-                {{ item.status }}
+                {{ item.Status }}
             </div>
             <el-button @click="planSubmit(index, item)" :class="{'active': dialogIndex == index}">View details</el-button>
           </div>
@@ -42,33 +42,33 @@
       </div>
 
       <el-dialog
-        :title="ruleForm.backupPlanName" custom-class="formStyle"
+        :title="ruleForm.Name" custom-class="formStyle"
         :visible.sync="dialogVisible"
         :width="dialogWidth"
         :before-close="handleClose">
         <el-card class="box-card">
           <div class="statusStyle">
-            <div class="list"><span>Add backup Plan ID:</span> {{ruleForm.backupPlanId}}</div>
-            <div class="list"><span>Backup frequency:</span> {{ruleForm.backupInterval == '1'?'Backup Daily':'Backup Weekly'}}</div>
+            <div class="list"><span>Add backup Plan ID:</span> {{ruleForm.ID}}</div>
+            <div class="list"><span>Backup frequency:</span> {{ruleForm.Interval == '1'?'Backup Daily':'Backup Weekly'}}</div>
             <!-- <div class="list"><span>Backup region:</span> {{ruleForm.region}}</div> -->
-            <div class="list"><span>Price:</span> {{ruleForm.price}} FIL</div>
-            <div class="list"><span>Duration:</span> {{ruleForm.duration/24/60/2}} days</div>
-            <div class="list"><span>Verified deal:</span> {{ !ruleForm.verifiedDeal ? 'No' : 'Yes'}}</div>
-            <div class="list"><span>Fast retrieval:</span> {{ !ruleForm.fastRetrieval ? 'No' : 'Yes'}}</div>
-            <div class="list"><span>Create Date:</span> {{ruleForm.createdOn}}</div>
-            <div class="list"><span>Last Update:</span> {{ruleForm.updatedOn}}</div>
-            <div class="list"><span>Last Backup Date:</span> {{ruleForm.lastBackupOn}}</div>
+            <div class="list"><span>Price:</span> {{ruleForm.Price}} FIL</div>
+            <div class="list"><span>Duration:</span> {{ruleForm.Duration/24/60/2}} days</div>
+            <div class="list"><span>Verified deal:</span> {{ !ruleForm.VerifiedDeal ? 'No' : 'Yes'}}</div>
+            <div class="list"><span>Fast retrieval:</span> {{ !ruleForm.FastRetrieval ? 'No' : 'Yes'}}</div>
+            <div class="list"><span>Create Date:</span> {{ruleForm.CreatedOn}}</div>
+            <div class="list"><span>Last Update:</span> {{ruleForm.UpdatedOn}}</div>
+            <div class="list"><span>Last Backup Date:</span> {{ruleForm.LastBackupOn}}</div>
           </div>
         </el-card>
         <div slot="footer" class="dialog-footer">
           <el-button 
-            :type="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?'danger':'info'"
-            :disabled="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?false:true"
+            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'running'?'danger':'info'"
+            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'running'?false:true"
             @click="planStatus(ruleForm)"
           >STOP</el-button>
           <el-button 
-            :type="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?'info':'success'"
-            :disabled="ruleForm.status&&ruleForm.status.toLowerCase() == 'running'?true:false"
+            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'running'?'info':'success'"
+            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'running'?true:false"
             @click="planStatus(ruleForm)"
           >START</el-button>
           <el-button type="success" @click="handleClose">OK</el-button>
@@ -106,8 +106,8 @@ export default {
       planStatus(row){
           let _this = this
           let params = {
-            "BackupPlanId": row.backupPlanId,
-            "Status": row.status
+            "BackupPlanId": row.ID,
+            "Status": row.Status
           }
 
           axios.post(`${_this.data_api}/minio/backup/update/plan`, params, {headers: {
@@ -116,9 +116,9 @@ export default {
               let json = response.data
               if (json.status == 'success') {
                 _this.ruleForm = json.data
-                _this.ruleForm.createdOn = _this.ruleForm.createdOn?moment(new Date(parseInt(_this.ruleForm.createdOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
-                _this.ruleForm.updatedOn = _this.ruleForm.updatedOn?moment(new Date(parseInt(_this.ruleForm.updatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
-                _this.ruleForm.lastBackupOn = _this.ruleForm.lastBackupOn?moment(new Date(parseInt(_this.ruleForm.lastBackupOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                _this.ruleForm.CreatedOn = _this.ruleForm.CreatedOn?moment(new Date(parseInt(_this.ruleForm.CreatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                _this.ruleForm.UpdatedOn = _this.ruleForm.UpdatedOn?moment(new Date(parseInt(_this.ruleForm.UpdatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                _this.ruleForm.LastBackupOn = _this.ruleForm.LastBackupOn?moment(new Date(parseInt(_this.ruleForm.LastBackupOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
                 _this.getData()
               }else{
                   _this.$message.error(json.message);
@@ -139,11 +139,11 @@ export default {
           }}).then((response) => {
               let json = response.data
               if (json.status == 'success') {
-                _this.plan_list = json.data.volumeBackupJobPlans
+                _this.plan_list = json.data.backupPlans
                 _this.plan_list.map(item => {
-                    item.createdOn = item.createdOn?moment(new Date(parseInt(item.createdOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
-                    item.updatedOn = item.updatedOn?moment(new Date(parseInt(item.updatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
-                    item.lastBackupOn = item.lastBackupOn?moment(new Date(parseInt(item.lastBackupOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                    item.CreatedOn = item.CreatedOn?moment(new Date(parseInt(item.CreatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                    item.UpdatedOn = item.UpdatedOn?moment(new Date(parseInt(item.UpdatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
+                    item.LastBackupOn = item.LastBackupOn?moment(new Date(parseInt(item.LastBackupOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
                 })
               }else{
                   _this.$message.error(json.message);

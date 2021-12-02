@@ -49,7 +49,7 @@ func BackupScheduler() {
 	c := cron.New()
 	//backup scheduler
 
-	interval := "@every 10m"
+	interval := "@every 2m"
 	err := c.AddFunc(interval, func() {
 		logs.GetLogger().Println("++++++++++ backup volume scheduler is running at " + time.Now().Format("2006-01-02 15:04:05") + " ++++++++++")
 		err := BackupVolumeScheduler()
@@ -100,8 +100,7 @@ func BackupVolumeScheduler() error {
 			logs.GetLogger().Error(err)
 			return err
 		}
-		//if timestamp > int64(LastBackupOn)+int64(MicroSecondPerDay)*int64(backupInterval) {
-		if timestamp > int64(LastBackupOn)+3*int64(MicroSecondPerMinute)*int64(backupInterval) {
+		if timestamp >= int64(LastBackupOn)+int64(MicroSecondPerDay)*int64(backupInterval) {
 			ExecuteBackupPlansId = append(ExecuteBackupPlansId, v.ID)
 		}
 	}

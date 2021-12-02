@@ -15,9 +15,9 @@
                 <span>{{item.title}}</span>
               </div>
               <div class="statusStyle">
-                <div class="list">In process jobs: {{item.inProcessJobs}}</div>
-                <div class="list">Completed jobs: {{item.completedJobs}}</div>
-                <div class="list">Failed jobs: {{item.failedJobs}}</div>
+                <div class="list"><span class="el-icon-loading"></span> In process jobs: {{item.inProcessJobs}}</div>
+                <div class="list"><span class="el-icon-success"></span> Completed jobs: {{item.completedJobs}}</div>
+                <div class="list"><span class="el-icon-error"></span> Failed jobs: {{item.failedJobs}}</div>
               </div>
               <el-button @click="link(index)">{{item.btn}}</el-button>
             </el-card>
@@ -172,29 +172,44 @@ export default {
             .statusStyle{
               padding: 0.1rem 0 0.7rem;
               .list{
+                display: flex;
+                align-items: center;
                 position: relative;
-                padding: 0 0 0 26%;
+                // padding: 0 0 0 26%;
                 margin: 0.3rem 0 0;
                 font-size: 0.14rem;
                 line-height: 0.25rem;
-                &::before{
-                  position: absolute;
-                  content: '';
-                  left: 0.17rem;
-                  top: 0.06rem;
-                  width: 0.13rem;
-                  height: 0.13rem;
-                  border-radius: 100%;
-                  background: #f8b551;
+                @media screen and (max-width: 441px) {
+                    font-size: 14px;
+                    line-height: 1.5;
                 }
+                span{
+                  margin: 0 10% 0 0;
+                  font-size: 0.22rem;
+                  color: #f8b551;
+                  @media screen and (max-width: 441px) {
+                      margin: 0 4% 0 0;
+                      font-size: 17px;
+                  }
+                }
+                // &::before{
+                //   position: absolute;
+                //   content: '';
+                //   left: 0.17rem;
+                //   top: 0.06rem;
+                //   width: 0.13rem;
+                //   height: 0.13rem;
+                //   border-radius: 100%;
+                //   background: #f8b551;
+                // }
                 &:nth-child(2){
-                  &::before{
-                    background: #89c997;
+                  span{
+                    color: #89c997;
                   }
                 }
                 &:nth-child(3){
-                  &::before{
-                    background: #ff0000;
+                  span{
+                    color: #ff0000;
                   }
                 }
               }

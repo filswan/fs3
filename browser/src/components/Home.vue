@@ -386,6 +386,7 @@ export default {
             let path = _this.$route.path
             if(path.indexOf('/minio') < 0){
                 this.$router.push({name: 'minio'})
+                this.allDealShow = true
             }
             this.dialogFormVisible = true
         },

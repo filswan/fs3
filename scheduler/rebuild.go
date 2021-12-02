@@ -19,7 +19,7 @@ import (
 func RebuildScheduler() {
 	c := cron.New()
 	//backup scheduler
-	interval := "@every 1m"
+	interval := "@every 10m"
 	err := c.AddFunc(interval, func() {
 		logs.GetLogger().Println("---------- rebuild volume scheduler is running at " + time.Now().Format("2006-01-02 15:04:05") + " ----------")
 		err := RebuildVolumeScheduler()
