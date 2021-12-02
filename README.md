@@ -478,7 +478,7 @@ Response from POSTMAN
 ```
 
 ### Retrieve Volume Backup Plans
-GET `/minio/backup/retrieve/plan`
+POST `/minio/backup/retrieve/plan`
 
 #### Example:
 
@@ -491,6 +491,12 @@ User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (
 
 #Authorization
 Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+   "Offset":0,   //default as 0 
+   "Limit":10"   //default as 10
+}
 ```
 Response from POSTMAN
 ```bash
@@ -520,7 +526,7 @@ Response from POSTMAN
 ```
 
 ### Retrieve Volume Backup Jobs
-GET `/minio/backup/retrieve/volume`
+POST `/minio/backup/retrieve/volume`
 
 #### Example:
 
@@ -533,6 +539,12 @@ User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (
 
 #Authorization
 Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+   "Offset":0,   //default as 0 
+   "Limit":10"   //default as 10
+}
 ```
 Response from POSTMAN
 ```bash
@@ -657,7 +669,7 @@ Response from POSTMAN
 ```
 
 ### Retrieve Volume Rebuild Jobs
-GET `minio/rebuild/retrieve/volume`
+POST `minio/rebuild/retrieve/volume`
 
 #### Example:
 
@@ -670,6 +682,12 @@ User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_6) AppleWebKit/537.36 (
 
 #Authorization
 Bearer Token = MY_FS3_TOKEN
+
+# Body
+{
+   "Offset":0,   //default as 0 
+   "Limit":10"   //default as 10
+}
 ```
 Response from POSTMAN
 ```bash
