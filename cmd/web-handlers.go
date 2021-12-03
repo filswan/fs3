@@ -6653,6 +6653,7 @@ func (web *webAPIHandlers) PsqlRetrieveOfflineDealsVolume(w http.ResponseWriter,
 	if limit == 0 {
 		limit = 10
 	}
+	offset = offset * limit
 
 	//open backup db
 	db, err := GetPsqlDb()
@@ -7849,6 +7850,7 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 	if limit == 0 {
 		limit = 10
 	}
+	offset = offset * limit
 
 	//open backup db
 	db, err := GetPsqlDb()
@@ -7985,6 +7987,7 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 	if limit == 0 {
 		limit = 10
 	}
+	offset = offset * limit
 
 	//open backup db
 	db, err := GetPsqlDb()
