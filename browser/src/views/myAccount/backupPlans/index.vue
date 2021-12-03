@@ -8,7 +8,7 @@
         <img src="@/assets/images/page_bg.png" class="bg" alt="">
       </div>
       <div class="fs3_cont">
-        <el-form :model="ruleForm" :rules="rules" ref="ruleForm" class="demo-ruleForm">
+        <el-form :model="ruleForm" :rules="rules" ref="ruleForm" class="demo-ruleForm" v-loading="loading">
           <el-form-item label="Backup plan name:" prop="name">
             <el-input v-model="ruleForm.name"></el-input>
           </el-form-item>
@@ -86,8 +86,21 @@
 
 <script>
 import axios from 'axios'
+let that
 export default {
     data() {
+        var validateDuration = (rule, value, callback) => {
+            if (!value) {
+                return callback(new Error('Please enter the duration'));
+            }
+            setTimeout(() => {
+                if (value < 180) {
+                    callback(new Error('The duration must be equal to or greater than 180 days.'));
+                } else {
+                    callback();
+                }
+            }, 100);
+        };
         return {
           width: document.body.clientWidth>600?'400px':'95%',
           dialogWidth: document.body.clientWidth<=600?'95%':'50%',
@@ -139,9 +152,10 @@ export default {
                 { required: true, message: 'Please enter Price', trigger: 'blur' }
               ],
               duration: [
-                { required: true, message: 'Please enter Duration', trigger: 'blur' }
+                  { validator: validateDuration, trigger: 'blur'}
               ],
           },
+          loading: false
         }
     },
     watch: {},
@@ -154,7 +168,7 @@ export default {
         let _this = this
         _this.$refs[formName].validate((valid) => {
           if (valid) {
-
+            _this.loading = true
             let minioDeal = {
               "BackupPlanName": _this.ruleForm.name,
               "BackupInterval": _this.ruleForm.frequency,      //unit in day
@@ -169,6 +183,7 @@ export default {
             axios.post(postUrl, minioDeal, {headers: {
                   'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
+                _this.loading = false
                 let json = response.data
                 if (json.status == 'success') {
                   _this.dialogVisible = true
@@ -178,6 +193,7 @@ export default {
                 }
 
             }).catch(function (error) {
+                _this.loading = false
                 console.log(error);
             });
 
@@ -188,7 +204,9 @@ export default {
         });
       },
     },
-    mounted() {},
+    mounted() {
+      that = this
+    },
 };
 </script>
 
@@ -333,6 +351,7 @@ export default {
       background: #eeeeee;
       .el-form-item{
         display: flex;
+        justify-content: center;
         margin-bottom: 0.25rem;
         .el-form-item__label{
           display: block;

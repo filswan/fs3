@@ -19,11 +19,6 @@
               {{ scope.row.ID }}
             </template>
           </el-table-column>
-          <el-table-column prop="UpdatedOn" label="Last Updata" width="120">
-            <template slot-scope="scope">
-              {{ scope.row.UpdatedOn }}
-            </template>
-          </el-table-column>
           <el-table-column prop="CreatedOn" label="Date Created" width="120">
             <template slot-scope="scope">
               {{ scope.row.CreatedOn }}
@@ -75,11 +70,19 @@
                 </div>
             </template>
           </el-table-column>
-          <el-table-column prop="Duration" label="Duration" width="130">
+          <el-table-column prop="Duration" label="Duration (Due date)" width="130">
             <template slot-scope="scope">
-              {{ scope.row.Duration }} 
+              <!-- {{ scope.row.Duration }} 
+              <br>
+              ({{ scope.row.duration_time }}) -->
+              {{scope.row.Duration/24/60/2}} days
               <br>
               ({{ scope.row.duration_time }})
+            </template>
+          </el-table-column>
+          <el-table-column prop="UpdatedOn" label="Last Updated" width="120">
+            <template slot-scope="scope">
+              {{ scope.row.UpdatedOn }}
             </template>
           </el-table-column>
           <el-table-column prop="Status" label="Status" width="140">
@@ -165,6 +168,44 @@
           <el-table-column prop="CreatedOn" label="Date Created" width="120"></el-table-column>
           <el-table-column prop="UpdatedOn" label="Date Updated" width="120"></el-table-column>
         </el-table>
+      </div>
+
+      <div class="form_pagination" v-if="$route.params.type == 'backup_job'">
+        <div class="pagination">
+          <el-pagination
+            hide-on-single-page
+            :total="parma.total"
+            :page-size="parma.limit"
+            :current-page="parma.offset"
+            :pager-count="bodyWidth ? 5 : 7"
+            background
+            :layout="
+              bodyWidth
+                ? 'prev, pager, next'
+                : 'total, prev, pager, next, jumper'
+            "
+            @current-change="backupChange"
+          />
+        </div>
+      </div>
+
+      <div class="form_pagination" v-else>
+        <div class="pagination">
+          <el-pagination
+            hide-on-single-page
+            :total="parmaRebuild.total"
+            :page-size="parmaRebuild.limit"
+            :current-page="parmaRebuild.offset"
+            :pager-count="bodyWidth ? 5 : 7"
+            background
+            :layout="
+              bodyWidth
+                ? 'prev, pager, next'
+                : 'total, prev, pager, next, jumper'
+            "
+            @current-change="rebuildChange"
+          />
+        </div>
       </div>
 
       <el-dialog
@@ -258,7 +299,7 @@ export default {
             frequency: 'Backup Daily',
             region: 'Global',
           },
-          linkTitle: 'All Backup Job Detalls',
+          linkTitle: 'All Backup Job Details',
           tableData: [],
           tableData_1: [],
           tableData_2: [],
@@ -271,7 +312,18 @@ export default {
                 }
             ],
           },
-          loading: false
+          loading: false,
+          parma: {
+            limit: 10,
+            offset: 1,
+            total: 0,
+          },
+          parmaRebuild: {
+            limit: 10,
+            offset: 1,
+            total: 0,
+          },
+          bodyWidth: document.documentElement.clientWidth < 1024 ? true : false,
         }
     },
     watch: {},
@@ -322,10 +374,10 @@ export default {
         let _this = this
         let paramsType = _this.$route.params.type
         if(paramsType == 'backup_job') {
-            _this.linkTitle = 'All Backup Job Detalls'
+            _this.linkTitle = 'All Backup Job Details'
             _this.getData(1)
         }else {
-            _this.linkTitle = 'All Rebuild Job Detalls'
+            _this.linkTitle = 'All Rebuild Job Details'
             _this.getData()
         }
       },
@@ -360,6 +412,17 @@ export default {
           }
           return false;
       },
+      sort(data){
+        return data.sort(function(a, b){return a.ID - b.ID})
+      },
+      backupChange(val) {
+        this.parma.offset = val;
+        this.getData(1);
+      },
+      rebuildChange(val) {
+        this.parmaRebuild.offset = val;
+        this.getData();
+      },
       getData(type) {
         let _this = this
         _this.loading = true
@@ -367,14 +430,19 @@ export default {
 
         if(type){
           postUrl = _this.data_api + `/minio/backup/retrieve/volume`
+          let offset = _this.parma.offset > 0 ? _this.parma.offset - 1 : _this.parma.offset;
+          let params = {
+            "Offset": offset,   //default as 0 
+            "Limit": _this.parma.limit   //default as 10
+          }
 
-          axios.get(postUrl, {headers: {
+          axios.post(postUrl, params, {headers: {
           // axios.get(`./static/data.json`, {headers: {
                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
           }}).then((response) => {
-              _this.loading = false
               let json = response.data
               if (json.status == 'success') {
+                _this.parma.total = json.data.totalVolumeBackupTasksCounts
                 _this.tableData = json.data.VolumeBackupJobs
                 _this.tableData.map(item => {
                     item.visible = false
@@ -394,11 +462,14 @@ export default {
                           moment(new Date(parseInt(item.UpdatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
                           :
                           '-'
-                    // _this.tableData_1.push(child)
-                    // _this.tableData_1.sort(function(a, b){return a.backupTaskId - b.backupTaskId})
-                    _this.tableData.sort(function(a, b){return a.ID - b.ID})
                 })
+
+                setTimeout(function(){
+                  _this.sort(_this.tableData)
+                  _this.loading = false
+                }, 500)
               }else{
+                  _this.loading = false
                   _this.$message.error(json.message);
                   return false
               }
@@ -409,21 +480,31 @@ export default {
           });
         }else{
           postUrl = _this.data_api + `/minio/rebuild/retrieve/volume`
+          let offsetRebuild = _this.parmaRebuild.offset > 0 ? _this.parmaRebuild.offset - 1 : _this.parmaRebuild.offset;
+          let paramsRebuild = {
+            "Offset": offsetRebuild,   //default as 0 
+            "Limit": _this.parmaRebuild.limit   //default as 10
+          }
 
-          axios.get(postUrl, {headers: {
+          axios.post(postUrl, paramsRebuild, {headers: {
                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
           }}).then((response) => {
-              _this.loading = false
               let json = response.data
               if (json.status == 'success') {
+                _this.parmaRebuild.total = json.data.totalVolumeRebuildTasksCounts
                 _this.tableData_2 = json.data.volumeRebuildJobs
                 _this.tableData_2.map(item => {
                     item.visible = false
                     item.CreatedOn = moment(new Date(parseInt(item.CreatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
                     item.UpdatedOn = moment(new Date(parseInt(item.UpdatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
-                    _this.tableData_2.sort(function(a, b){return a.ID - b.ID})
                 })
+                
+                setTimeout(function(){
+                  _this.sort(_this.tableData_2)
+                  _this.loading = false
+                }, 500)
               }else{
+                  _this.loading = false
                   _this.$message.error(json.message);
                   return false
               }
@@ -720,15 +801,45 @@ export default {
         }
       }
       th{
-          padding: 0.2rem 0;
+        padding: 0.15rem 0;
         font-size: 0.18rem;
         font-weight: bold;
-        background: #e0eef4
+        background: #e0eef4;
+        .cell{
+            line-height: 1.2;
+        }
       }
       .el-table__row--striped{
         td{
           background: #eee;
         }
+      }
+    }
+  }
+  .form_pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 0.35rem;
+    text-align: center;
+    margin: 0.05rem 0;
+    .pagination {
+      display: flex;
+      align-items: center;
+      font-size: 0.1372rem;
+      color: #000;
+
+      .pagination_left {
+        width: 0.24rem;
+        height: 0.24rem;
+        margin: 0 0.2rem;
+        border: 1px solid #f8f8f8;
+        border-radius: 0.04rem;
+        text-align: center;
+        line-height: 0.24rem;
+        font-size: 0.16rem;
+        color: #959494;
+        cursor: pointer;
       }
     }
   }

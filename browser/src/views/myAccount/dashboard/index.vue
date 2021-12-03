@@ -59,7 +59,12 @@ export default {
       },
       getData() {
           let _this = this
-          axios.get(_this.data_api + `/minio/backup/retrieve/volume`, {headers: {
+          let params = {
+            "Offset":0,   //default as 0 
+            "Limit":10   //default as 10
+          }
+
+          axios.post(_this.data_api + `/minio/backup/retrieve/volume`, params, {headers: {
                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
           }}).then((response) => {
               let json = response.data
@@ -76,8 +81,7 @@ export default {
               console.log(error);
           });
 
-
-          axios.get(_this.data_api + `/minio/rebuild/retrieve/volume`, {headers: {
+          axios.post(_this.data_api + `/minio/rebuild/retrieve/volume`, params, {headers: {
                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
           }}).then((response) => {
               let json = response.data

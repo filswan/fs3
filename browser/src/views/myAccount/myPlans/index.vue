@@ -9,7 +9,7 @@
         <img src="@/assets/images/page_bg.png" class="bg" alt="">
       </div>
       <div class="fs3_cont">
-        <el-card class="box-card" v-for="(item, index) in plan_list" :key="index">
+        <el-card class="box-card" v-for="(item, index) in plan_list" v-loading="loading" :key="index">
           <div class="title">{{ item.Name }}</div>
           <div class="button">
             <div class="statusStyle"
@@ -41,6 +41,24 @@
         <div v-if="plan_list.length<=0" style="text-align: center;">No Data</div>
       </div>
 
+      <div class="form_pagination">
+        <div class="pagination">
+          <el-pagination hide-on-single-page
+            :total="parma.total"
+            :page-size="parma.limit"
+            :current-page="parma.offset"
+            :pager-count="bodyWidth ? 5 : 7"
+            background
+            :layout="
+              bodyWidth
+                ? 'prev, pager, next'
+                : 'total, prev, pager, next, jumper'
+            "
+            @current-change="handleCurrentChange"
+          />
+        </div>
+      </div>
+
       <el-dialog
         :title="ruleForm.Name" custom-class="formStyle"
         :visible.sync="dialogVisible"
@@ -48,7 +66,7 @@
         :before-close="handleClose">
         <el-card class="box-card">
           <div class="statusStyle">
-            <div class="list"><span>Add backup Plan ID:</span> {{ruleForm.ID}}</div>
+            <div class="list"><span>backup Plan ID:</span> {{ruleForm.ID}}</div>
             <div class="list"><span>Backup frequency:</span> {{ruleForm.Interval == '1'?'Backup Daily':'Backup Weekly'}}</div>
             <!-- <div class="list"><span>Backup region:</span> {{ruleForm.region}}</div> -->
             <div class="list"><span>Price:</span> {{ruleForm.Price}} FIL</div>
@@ -88,7 +106,14 @@ export default {
           dialogVisible: false,
           width: document.body.clientWidth>600?'400px':'95%',
           ruleForm: {},
-          plan_list: []
+          plan_list: [],
+          loading: false,
+          parma: {
+            limit: 10,
+            offset: 1,
+            total: 0,
+          },
+          bodyWidth: document.documentElement.clientWidth < 1024 ? true : false,
         }
     },
     watch: {},
@@ -130,28 +155,48 @@ export default {
           });
 
       },
+      sort(data){
+        return data.sort(function(a, b){return a.ID - b.ID})
+      },
+      handleCurrentChange(val) {
+        this.parma.offset = val;
+        this.getData();
+      },
       getData() {
           let _this = this
+          _this.loading = true
           let postUrl = _this.data_api + `/minio/backup/retrieve/plan`
+          let offset = _this.parma.offset > 0 ? _this.parma.offset - 1 : _this.parma.offset;
+          let params = {
+            "Offset": offset,   //default as 0 
+            "Limit": _this.parma.limit   //default as 10
+          }
 
-          axios.get(postUrl, {headers: {
+          axios.post(postUrl, params, {headers: {
                 'Authorization':"Bearer "+ _this.$store.getters.accessToken
           }}).then((response) => {
               let json = response.data
               if (json.status == 'success') {
+                _this.parma.total = json.data.TotalVolumeBackupPlan
                 _this.plan_list = json.data.backupPlans
                 _this.plan_list.map(item => {
                     item.CreatedOn = item.CreatedOn?moment(new Date(parseInt(item.CreatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
                     item.UpdatedOn = item.UpdatedOn?moment(new Date(parseInt(item.UpdatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
                     item.LastBackupOn = item.LastBackupOn?moment(new Date(parseInt(item.LastBackupOn / 1000))).format("YYYY-MM-DD HH:mm:ss"):'-'
-                    _this.plan_list.sort(function(a, b){return a.ID - b.ID})
                 })
+
+                setTimeout(function(){
+                  _this.sort(_this.plan_list)
+                  _this.loading = false
+                }, 500)
               }else{
+                  _this.loading = false
                   _this.$message.error(json.message);
                   return false
               }
 
           }).catch(function (error) {
+              _this.loading = false
               console.log(error);
           });
       }
@@ -350,6 +395,34 @@ export default {
             border: 1px solid;
           }
         }
+      }
+    }
+  }
+  
+  .form_pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 0.35rem;
+    text-align: center;
+    margin: 0.05rem 0;
+    .pagination {
+      display: flex;
+      align-items: center;
+      font-size: 0.1372rem;
+      color: #000;
+
+      .pagination_left {
+        width: 0.24rem;
+        height: 0.24rem;
+        margin: 0 0.2rem;
+        border: 1px solid #f8f8f8;
+        border-radius: 0.04rem;
+        text-align: center;
+        line-height: 0.24rem;
+        font-size: 0.16rem;
+        color: #959494;
+        cursor: pointer;
       }
     }
   }
