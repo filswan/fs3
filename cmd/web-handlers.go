@@ -6663,6 +6663,13 @@ func (web *webAPIHandlers) PsqlRetrieveOfflineDealsVolume(w http.ResponseWriter,
 		writeWebErrorResponse(w, err)
 		return
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer sqlDB.Close()
 
 	var resp []PsqlVolumeBackupJob
 	db.Limit(limit).Offset(offset).Find(&resp)
@@ -6691,14 +6698,6 @@ func (web *webAPIHandlers) PsqlRetrieveOfflineDealsVolume(w http.ResponseWriter,
 		writeWebErrorResponse(w, err)
 	}
 	w.Write(dataBytes)
-
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-	}
-	sqlDB.Close()
 
 	return
 }
@@ -6826,6 +6825,14 @@ func (web *webAPIHandlers) PsqlRebuildVolume(w http.ResponseWriter, r *http.Requ
 		writeWebErrorResponse(w, err)
 		return
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer sqlDB.Close()
+
 	var rebuildJob PsqlVolumeRebuildJob
 	db.First(&rebuildJob, volumeRebuildRequest.VolumeRebuildTaskId)
 	rebuildJob.UpdatedOn = rebuildTimestamp
@@ -6854,14 +6861,6 @@ func (web *webAPIHandlers) PsqlRebuildVolume(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.Write(bodyByte)
-
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-	}
-	sqlDB.Close()
 
 	return
 }
@@ -7145,6 +7144,13 @@ func (web *webAPIHandlers) PsqlBackupVolumeAddPlan(w http.ResponseWriter, r *htt
 		writeWebErrorResponse(w, err)
 		return
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer sqlDB.Close()
 
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
@@ -7183,15 +7189,6 @@ func (web *webAPIHandlers) PsqlBackupVolumeAddPlan(w http.ResponseWriter, r *htt
 		return
 	}
 	w.Write(dataBytes)
-
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-	}
-	sqlDB.Close()
-
 	return
 }
 
@@ -7301,6 +7298,14 @@ func (web *webAPIHandlers) PsqlBackupVolumeUpdatePlan(w http.ResponseWriter, r *
 		return
 	}
 
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer sqlDB.Close()
+
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
 	var updatePlan PsqlVolumeBackupPlan
@@ -7321,15 +7326,6 @@ func (web *webAPIHandlers) PsqlBackupVolumeUpdatePlan(w http.ResponseWriter, r *
 		return
 	}
 	w.Write(dataBytes)
-
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-	}
-	sqlDB.Close()
-
 	return
 }
 
@@ -7358,6 +7354,13 @@ func (web *webAPIHandlers) PsqlBackupAddJob(w http.ResponseWriter, r *http.Reque
 		writeWebErrorResponse(w, err)
 		return
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer sqlDB.Close()
 
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
@@ -7393,15 +7396,6 @@ func (web *webAPIHandlers) PsqlBackupAddJob(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	w.Write(dataBytes)
-
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-	}
-	sqlDB.Close()
-
 	return
 }
 
@@ -7672,6 +7666,14 @@ func (web *webAPIHandlers) PsqlRebuildAddJob(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer sqlDB.Close()
+
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
 	var backupJob PsqlVolumeBackupJob
@@ -7699,15 +7701,6 @@ func (web *webAPIHandlers) PsqlRebuildAddJob(w http.ResponseWriter, r *http.Requ
 		return
 	}
 	w.Write(dataBytes)
-
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-	}
-	sqlDB.Close()
-
 	return
 
 }
@@ -7872,6 +7865,14 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 		return
 	}
 
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer sqlDB.Close()
+
 	var plans []PsqlVolumeBackupPlan
 	db.Limit(limit).Offset(offset).Find(&plans)
 
@@ -7895,14 +7896,6 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 		return
 	}
 	w.Write(dataBytes)
-
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-	}
-	sqlDB.Close()
 
 	return
 
@@ -8008,6 +8001,14 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 		return
 	}
 
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
+	defer sqlDB.Close()
+
 	var rebuildJobs []PsqlVolumeRebuildJob
 	db.Limit(limit).Offset(offset).Find(&rebuildJobs)
 
@@ -8037,15 +8038,6 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 		return
 	}
 	w.Write(dataBytes)
-
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-	}
-	sqlDB.Close()
-
 	return
 }
 

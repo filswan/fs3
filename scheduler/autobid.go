@@ -91,6 +91,13 @@ func UpdateActiveBackupTasksInDb() error {
 		logs.GetLogger().Error(err)
 		return err
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer sqlDB.Close()
 
 	var backupJobs []PsqlVolumeBackupJob
 	db.Find(&backupJobs)
@@ -110,13 +117,6 @@ func UpdateActiveBackupTasksInDb() error {
 			}
 		}
 	}
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	sqlDB.Close()
 	return err
 }
 
@@ -142,6 +142,14 @@ func UpdateSentBackupTasksInDb(tasks [][]*libmodel.FileDesc) error {
 		return err
 	}
 
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer sqlDB.Close()
+
 	//update backuptasks
 	for _, v := range tasks {
 		var backupJob PsqlVolumeBackupJob
@@ -155,13 +163,6 @@ func UpdateSentBackupTasksInDb(tasks [][]*libmodel.FileDesc) error {
 		db.Save(backupJob)
 		logs.GetLogger().Info("Backup job sent to miner, ID: ", backupJob.ID, ", UUID: ", v[0].Uuid)
 	}
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	sqlDB.Close()
 	return err
 }
 

@@ -138,6 +138,13 @@ func BackupVolumeJobs(volumeBackupRequests []VolumeBackupRequest) error {
 		logs.GetLogger().Error(err)
 		return err
 	}
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer sqlDB.Close()
 
 	for _, v := range volumeBackupRequests {
 		backupPlanName, backupPlanId, backupTaskId := v.BackupPlanName, v.BackupPlanId, v.BackupTaskId
@@ -345,13 +352,6 @@ func BackupVolumeJobs(volumeBackupRequests []VolumeBackupRequest) error {
 		}
 		logs.GetLogger().Info("task created")
 	}
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	sqlDB.Close()
 	return nil
 }
 
@@ -362,6 +362,15 @@ func AddBackupVolumeJobs(plansId []int) ([]VolumeBackupRequest, error) {
 		logs.GetLogger().Error(err)
 		return nil, err
 	}
+
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return nil, err
+	}
+	defer sqlDB.Close()
+
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
 	var volumeBackupRequests []VolumeBackupRequest
@@ -388,13 +397,6 @@ func AddBackupVolumeJobs(plansId []int) ([]VolumeBackupRequest, error) {
 		}
 		volumeBackupRequests = append(volumeBackupRequests, volumeBackupRequest)
 	}
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return nil, err
-	}
-	sqlDB.Close()
 	return volumeBackupRequests, err
 }
 
@@ -406,6 +408,14 @@ func UpdateLastBackupTime(plansId []int) error {
 		return err
 	}
 
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer sqlDB.Close()
+
 	for _, v := range plansId {
 		var plan PsqlVolumeBackupPlan
 		db.Where("ID = ?", v).First(&plan)
@@ -413,13 +423,6 @@ func UpdateLastBackupTime(plansId []int) error {
 		plan.LastBackupOn = timestamp
 		db.Save(plan)
 	}
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	sqlDB.Close()
 	return err
 }
 
@@ -432,15 +435,17 @@ func GetRunningBackupPlans() ([]PsqlVolumeBackupPlan, error) {
 		return nil, err
 	}
 
-	var plans []PsqlVolumeBackupPlan
-	result := db.Where("status = ?", "Running").Find(&plans)
 	//close db
 	sqlDB, err := db.DB()
 	if err != nil {
 		logs.GetLogger().Error(err)
 		return nil, err
 	}
-	sqlDB.Close()
+	defer sqlDB.Close()
+
+	var plans []PsqlVolumeBackupPlan
+	result := db.Where("status = ?", "Running").Find(&plans)
+
 	return plans, result.Error
 }
 

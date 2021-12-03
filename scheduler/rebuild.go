@@ -44,6 +44,14 @@ func RebuildVolumeScheduler() error {
 		return err
 	}
 
+	//close db
+	sqlDB, err := db.DB()
+	if err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
+	defer sqlDB.Close()
+
 	//get one running rebuild jobs from db
 	runningRebuildJobs, err := GetOneRunningRebuildJob(db)
 	if err != nil {
@@ -64,14 +72,6 @@ func RebuildVolumeScheduler() error {
 		logs.GetLogger().Error(err)
 		return err
 	}
-
-	//close db
-	sqlDB, err := db.DB()
-	if err != nil {
-		logs.GetLogger().Error(err)
-		return err
-	}
-	sqlDB.Close()
 	return err
 }
 
