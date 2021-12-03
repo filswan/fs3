@@ -103,6 +103,10 @@ func UpdateActiveBackupTasksInDb() error {
 	db.Find(&backupJobs)
 	for _, values := range backupJobs {
 		if values.Status == StatusBackupTaskRunning {
+			if values.DealCid == "" {
+				logs.GetLogger().Info("Backup job missing dealcid, ID: ", values.ID)
+				continue
+			}
 			status, err := CheckDealStatus(values.DealCid)
 			if err != nil {
 				logs.GetLogger().Error(err)
