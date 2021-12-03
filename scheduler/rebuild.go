@@ -163,15 +163,12 @@ func LotusRpcClientRetrieve(minerId string, payloadCid string, outputPath string
 		Params:  params,
 		Id:      LOTUS_JSON_RPC_ID,
 	}
-	bodyByte, _ := json.Marshal(jsonRpcParams)
-	fmt.Println(string(bodyByte))
 	response := client.HttpGet(config.GetUserConfig().LotusClientApiUrl, config.GetUserConfig().LotusClientAccessToken, jsonRpcParams)
 	if response == "" {
 		err := fmt.Errorf("failed to retrieve data %s from miner %s, no response", payloadCid, minerId)
 		logs.GetLogger().Error(err)
 		return err
 	}
-	fmt.Println(response)
 	lotusJsonRpcResult := &LotusJsonRpcResult{}
 	err := json.Unmarshal([]byte(response), lotusJsonRpcResult)
 	if err != nil {

@@ -4610,7 +4610,6 @@ func (web *webAPIHandlers) SendOfflineDeal(w http.ResponseWriter, r *http.Reques
 	}
 
 	decoder := json.NewDecoder(r.Body)
-	fmt.Println(r.Body, decoder)
 
 	var offlineDealRequest OfflineDealRequest
 	err = decoder.Decode(&offlineDealRequest)
@@ -6251,7 +6250,6 @@ func generateCarFileWithIpfs(ipfsApiAddress string, hash string, volumeBackupPat
 	volumeCarPath := filepath.Join(volumeBackupPath, volumeCarName)
 
 	commandLine := "curl -X POST \"" + ipfsApiAddress + "/api/v0/dag/export?arg=" + hash + "&progress=true\" >" + volumeCarPath
-	fmt.Println(commandLine)
 	_, err := ExecCommand(commandLine)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -6277,13 +6275,13 @@ func IpfsAddFolder(volumePath string, ipfsApiUrl string) (string, error) {
 	path, err := api.Unixfs().Add(context.Background(), node)
 	c(err)
 	// Output the resulting CID
-	fmt.Println(path.Root().String())
+	logs.GetLogger().Info("car file generation success.Payload cid: ", fmt.Sprint(path.Root().String()))
 	return fmt.Sprint(path.Root().String()), nil
 }
 
 func c(err error) {
 	if err != nil {
-		fmt.Println(err)
+		logs.GetLogger().Error(err)
 	}
 }
 
@@ -6783,8 +6781,6 @@ func (web *webAPIHandlers) PsqlRebuildVolume(w http.ResponseWriter, r *http.Requ
 		writeWebErrorResponse(w, err)
 		return
 	}
-	bodyBytes, _ := json.Marshal(volumeRebuildRequest)
-	fmt.Println(string(bodyBytes))
 
 	// get volume path
 	volumePath, err := VolumePath()
@@ -6882,8 +6878,6 @@ func (web *webAPIHandlers) RebuildVolume(w http.ResponseWriter, r *http.Request)
 		writeWebErrorResponse(w, err)
 		return
 	}
-	bodyBytes, _ := json.Marshal(volumeRebuildRequest)
-	fmt.Println(string(bodyBytes))
 
 	// get volume path
 	volumePath, err := VolumePath()
@@ -7382,7 +7376,6 @@ func (web *webAPIHandlers) PsqlBackupAddJob(w http.ResponseWriter, r *http.Reque
 
 	var resp2 []PsqlVolumeBackupJob
 	db.Find(&resp2)
-	fmt.Println(resp2)
 
 	addVolumeBackupResponse := PsqlAddVolumeBackupResponse{
 		Data:    resp,
@@ -8131,10 +8124,7 @@ func LotusRpcClientImportCar(carPath string) error {
 		Params:  params,
 		Id:      LOTUS_JSON_RPC_ID,
 	}
-	bodyByte, _ := json.Marshal(jsonRpcParams)
-	fmt.Println(string(bodyByte))
-	response := client.HttpGet(config.GetUserConfig().LotusClientApiUrl, config.GetUserConfig().LotusClientAccessToken, jsonRpcParams)
-	fmt.Println(response)
+	client.HttpGet(config.GetUserConfig().LotusClientApiUrl, config.GetUserConfig().LotusClientAccessToken, jsonRpcParams)
 	return nil
 }
 
@@ -8161,15 +8151,13 @@ func LotusRpcClientRetrieve(minerId string, payloadCid string, outputPath string
 		Params:  params,
 		Id:      LOTUS_JSON_RPC_ID,
 	}
-	bodyByte, _ := json.Marshal(jsonRpcParams)
-	fmt.Println(string(bodyByte))
 	response := client.HttpGet(config.GetUserConfig().LotusClientApiUrl, config.GetUserConfig().LotusClientAccessToken, jsonRpcParams)
 	if response == "" {
 		err := fmt.Errorf("failed to retrieve data %s from miner %s, no response", payloadCid, minerId)
 		logs.GetLogger().Error(err)
 		return err
 	}
-	fmt.Println(response)
+
 	lotusJsonRpcResult := &LotusJsonRpcResult{}
 	err := json.Unmarshal([]byte(response), lotusJsonRpcResult)
 	if err != nil {

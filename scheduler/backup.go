@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/codingsince1985/checksum"
@@ -524,7 +523,7 @@ func NewApi() *http.Client {
 
 func c(err error) {
 	if err != nil {
-		fmt.Println(err)
+		logs.GetLogger().Error(err)
 	}
 }
 
@@ -535,7 +534,6 @@ func generateCarFileWithIpfs(ipfsApiAddress string, hash string, volumeBackupPat
 	volumeCarPath := filepath.Join(volumeBackupPath, volumeCarName)
 
 	commandLine := "curl -X POST \"" + ipfsApiAddress + "/api/v0/dag/export?arg=" + hash + "&progress=true\" >" + volumeCarPath
-	fmt.Println(commandLine)
 	_, err := ExecCommand(commandLine)
 	if err != nil {
 		logs.GetLogger().Error(err)
@@ -698,10 +696,7 @@ func LotusRpcClientImportCar(carPath string) error {
 		Params:  params,
 		Id:      LOTUS_JSON_RPC_ID,
 	}
-	bodyByte, _ := json.Marshal(jsonRpcParams)
-	fmt.Println(string(bodyByte))
-	response := client.HttpGet(config.GetUserConfig().LotusClientApiUrl, config.GetUserConfig().LotusClientAccessToken, jsonRpcParams)
-	fmt.Println(response)
+	client.HttpGet(config.GetUserConfig().LotusClientApiUrl, config.GetUserConfig().LotusClientAccessToken, jsonRpcParams)
 	return nil
 }
 

@@ -70,7 +70,14 @@
                 </div>
             </template>
           </el-table-column>
-          <el-table-column prop="Duration" label="Duration (Due date)" width="130">
+          <el-table-column prop="Duration" width="130">
+            <template slot="header" slot-scope="scope">
+              <div class="tips">
+                Duration
+                <br />
+                (Due date)
+              </div>
+            </template>
             <template slot-scope="scope">
               <!-- {{ scope.row.Duration }} 
               <br>

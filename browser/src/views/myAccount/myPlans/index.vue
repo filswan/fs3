@@ -66,7 +66,7 @@
         :before-close="handleClose">
         <el-card class="box-card">
           <div class="statusStyle">
-            <div class="list"><span>backup Plan ID:</span> {{ruleForm.ID}}</div>
+            <div class="list"><span>Backup Plan ID:</span> {{ruleForm.ID}}</div>
             <div class="list"><span>Backup frequency:</span> {{ruleForm.Interval == '1'?'Backup Daily':'Backup Weekly'}}</div>
             <!-- <div class="list"><span>Backup region:</span> {{ruleForm.region}}</div> -->
             <div class="list"><span>Price:</span> {{ruleForm.Price}} FIL</div>
