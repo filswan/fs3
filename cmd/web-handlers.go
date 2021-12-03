@@ -6670,7 +6670,7 @@ func (web *webAPIHandlers) PsqlRetrieveOfflineDealsVolume(w http.ResponseWriter,
 	defer sqlDB.Close()
 
 	var resp []PsqlVolumeBackupJob
-	db.Limit(limit).Offset(offset).Find(&resp)
+	db.Order("id").Limit(limit).Offset(offset).Find(&resp)
 
 	var count []PsqlVolumeBackupJob
 	var inProcessVolumeBackupTasksCounts, completedVolumeBackupTasksCounts, failedVolumeBackupTasksCounts, totalVolumeBackupTasksCounts int64
@@ -7867,7 +7867,7 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 	defer sqlDB.Close()
 
 	var plans []PsqlVolumeBackupPlan
-	db.Limit(limit).Offset(offset).Find(&plans)
+	db.Order("id").Limit(limit).Offset(offset).Find(&plans)
 
 	var count []PsqlVolumeBackupPlan
 	var totalVolumeBackupPlansCounts int64
@@ -8003,7 +8003,7 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 	defer sqlDB.Close()
 
 	var rebuildJobs []PsqlVolumeRebuildJob
-	db.Limit(limit).Offset(offset).Find(&rebuildJobs)
+	db.Order("id").Limit(limit).Offset(offset).Find(&rebuildJobs)
 
 	var count []PsqlVolumeRebuildJob
 	var inProcessVolumeRebuildTasksCounts, completedVolumeRebuildTasksCounts, failedVolumeRebuildTasksCounts, totalVolumeRebuildTasksCounts int64
