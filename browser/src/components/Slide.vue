@@ -1,46 +1,48 @@
 <template>
     <div class="slide" @click="caozuoFun()">
-        <div class="fes-header">
-            <img :src="logo" alt="">
-        </div>
-        <div class="fs3_backup">
-            <div class="introduce">
-                <router-link :to="{name: 'fs3_backup'}" :style="{'color': introduceColor?'#2f85e5':'#fff'}">FS3 Backup</router-link>
+        <div class="slideScroll">
+            <div class="fes-header">
+                <img :src="logo" alt="">
             </div>
-            <!-- :default-checked-keys="activeTree" -->
-            <el-tree :data="dataBackup" :props="defaultProps" @node-click="handleNodeClick"
-                node-key="id" ref="my-tree"
-                :default-expanded-keys="activeTree?[1]:[]"
-                :current-node-key="activeTree"></el-tree>
-        </div>
-        <div class="fes-search">
-            <el-input
-                placeholder="Search Buckets..."
-                prefix-icon="el-icon-search"
-                v-model="search"
-                @input="searchBucketFun">
-            </el-input>
-            <el-row>
-                <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket && allActive}" @click.native="getListBucket(item.name, true)">
-                    <div>
-                        <i class="iconfont icon-harddriveyingpan"></i>
-                        {{item.name}}
-                    </div>
-                    <i class="caozuo el-icon-more" @click.stop="caozuoFun(index, item.name)"></i>
+            <div class="fes-search">
+                <el-input
+                    placeholder="Search Buckets..."
+                    prefix-icon="el-icon-search"
+                    v-model="search"
+                    @input="searchBucketFun">
+                </el-input>
+                <el-row>
+                    <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket && allActive}" @click.native="getListBucket(item.name, true)">
+                        <div>
+                            <i class="iconfont icon-harddriveyingpan"></i>
+                            {{item.name}}
+                        </div>
+                        <i class="caozuo el-icon-more" @click.stop="caozuoFun(index, item.name)"></i>
 
-                    <ul v-if="item.show && homeClick">
-                        <li @click.stop="dialogFun(item.name, index)">Edit policy</li>
-                        <li @click="backupFun">Backup to Filecoin</li>
-                        <li @click="retrievalFun">Retrieval</li>
-                        <li @click.stop="dialogDeleteFun(item.name, index)">Delete</li>
-                    </ul>
-                </el-col>
+                        <ul v-if="item.show && homeClick">
+                            <li @click.stop="dialogFun(item.name, index)">Edit policy</li>
+                            <li @click="backupFun">Backup to Filecoin</li>
+                            <li @click="retrievalFun">Retrieval</li>
+                            <li @click.stop="dialogDeleteFun(item.name, index)">Delete</li>
+                        </ul>
+                    </el-col>
 
-                <el-col :span="24" class="active"
-                  style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false, false, true)">
-                  All Deals
-                </el-col>
-            </el-row>
+                    <el-col :span="24" class="active"
+                    style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false, false, true)">
+                    All Deals
+                    </el-col>
+                </el-row>
+            </div>
+            <div class="fs3_backup">
+                <div class="introduce">
+                    <router-link :to="{name: 'fs3_backup'}" :style="{'color': introduceColor?'#2f85e5':'#fff'}">FS3 Backup</router-link>
+                </div>
+                <!-- :default-checked-keys="activeTree" -->
+                <el-tree :data="dataBackup" :props="defaultProps" @node-click="handleNodeClick"
+                    node-key="id" ref="my-tree"
+                    :default-expanded-keys="activeTree?[1]:[]"
+                    :current-node-key="activeTree"></el-tree>
+            </div>
         </div>
         <div class="fes-host">
             <i class="iconfont icon-diqiu"></i>
@@ -425,6 +427,7 @@ export default {
 </script>
 <style lang="scss" scoped>
 .slide{
+    position: relative;
     width: 3.2rem;
     background-color: #003040;
     height: 100%;
@@ -432,6 +435,26 @@ export default {
     padding: 0;
     transition: all;
     transition-duration: .3s;
+    .slideScroll{
+        position: relative;
+        height: calc(100% - 0.6rem);
+        overflow: hidden;
+        overflow-y: scroll;
+        scrollbar-color: #ccc #002a39;
+        scrollbar-width: 4px;
+        scrollbar-track-color: transparent;
+        -ms-scrollbar-track-color: transparent;
+        &::-webkit-scrollbar-track {
+            background: #003040;
+        }
+        &::-webkit-scrollbar {
+            width: 4px;
+            background: #002a39;
+        }
+        &::-webkit-scrollbar-thumb {
+            background: #ccc;
+        }
+    }
     .fes-header{
         display: flex;
         width: calc(100% - 0.6rem);
@@ -449,7 +472,7 @@ export default {
         }
     }
     .fs3_backup{
-        margin: 0 0 0.1rem;
+        margin: 0.1rem 0 0;
         .introduce{
             margin: 0 0 0.1rem;
             text-indent: 0.3rem;
@@ -509,7 +532,7 @@ export default {
         }
     }
     .fes-search{
-        height: calc(100% - 1.7rem);
+        // height: calc(100% - 1.7rem);
         .el-input /deep/{
             display: block;
             width: calc(100% - 0.4rem);
@@ -538,9 +561,9 @@ export default {
             margin-left: -0.25rem;
             margin-right: -0.25rem;
             font-size: 0.13rem;
-            height: calc(100% - 1.3rem);
-            overflow: hidden;
-            overflow-y: scroll;
+            // height: calc(100% - 1.3rem);
+            // overflow: hidden;
+            // overflow-y: scroll;
             .el-col{
                 position: relative;
                 display: flex;
@@ -581,7 +604,7 @@ export default {
                 }
                 ul{
                     position: absolute;
-                    right: 0.2rem;
+                    right: 0.24rem;
                     top: 0;
                     padding: 0.15rem 0;
                     background-color: #fff;
@@ -626,6 +649,9 @@ export default {
                 background: rgba(0,0,0,.1);
                 font-size: 0.15rem;
                 color: #fff;
+                @media screen and (max-width:999px){
+                    font-size: 13px;
+                }
                 i{
                     color: #fff;
                 }
@@ -654,14 +680,15 @@ export default {
         }
     }
     .fes-host {
-        position: fixed;
+        position: absolute;
         left: 0;
         bottom: 0;
         z-index: 21;
         background-color: rgba(0,0,0,.1);
         font-size: 15px;
         font-weight: 400;
-        width: calc(3.2rem - 0.4rem);
+        // width: calc(3.2rem - 0.4rem);
+        width: 100%;
         padding: 0.2rem;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -772,7 +799,7 @@ export default {
     position: fixed;
     left: 0;
     top: 0;
-    z-index: 20;
+    z-index: 9998;
     transform: translate3d(-3.2rem,0,0);
     .fes-search {
       .el-row /deep/{

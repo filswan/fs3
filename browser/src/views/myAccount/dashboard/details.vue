@@ -239,10 +239,10 @@
         <br>
         <el-card class="box-card">
           <div class="statusStyle">
-            <div class="list"><span>Backup Job ID: </span> {{backupPlan.BackupJobId}}</div>
+            <div class="list"><span>Rebuild ID: </span> {{backupPlan.ID}}</div>
             <div class="list"><span>Date Created:</span> {{backupPlan.CreatedOn}}</div>
             <div class="list"><span>W3SSID:</span> {{backupPlan.MinerId}}</div>
-            <div class="list"><span>Backup ID:</span> {{backupPlan.backupTaskId}} </div>
+            <div class="list"><span>Backup ID:</span> {{backupPlan.BackupJobId}} </div>
             <div class="list"><span>Data CID:</span> {{backupPlan.PayloadCid}} </div>
             <div class="list"><span>Deal CID:</span> {{backupPlan.DealCid}} </div>
             <div class="list">
@@ -291,7 +291,7 @@ import moment from "moment"
 export default {
     data() {
         return {
-          dialogWidth: document.body.clientWidth<=600?'95%':'50%',
+          dialogWidth: document.body.clientWidth<=600?'95%':'600px',
           dialogIndex: 0,
           dialogVisible: false,
           dialogConfirm: false,
@@ -339,8 +339,33 @@ export default {
         this.$router.push({name: 'my_account_backupPlans'})
       },
       confirm() {
-        this.dialogVisible = false
-        this.dialogConfirm = true
+        let _this=this
+        _this.dialogVisible = false
+        _this.loading = true
+        let postUrl = _this.data_api + `/minio/rebuild/add/job`
+        let params = {
+          "BackupTaskId": _this.backupPlan.ID
+        }
+
+        axios.post(postUrl, params, {headers: {
+              'Authorization':"Bearer "+ _this.$store.getters.accessToken
+        }}).then((response) => {
+            _this.loading = false
+            let json = response.data
+            if (json.status == 'success') {
+              _this.backupPlan = json.data
+              if(_this.backupPlan.CreatedOn) _this.backupPlan.CreatedOn = moment(new Date(parseInt(_this.backupPlan.CreatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
+            
+              _this.dialogConfirm = true
+            }else{
+                _this.$message.error(json.message);
+                return false
+            }
+
+        }).catch(function (error) {
+            console.log(error);
+            _this.loading = false
+        });
       },
       planSubmit(index) {
         console.log(index)
@@ -352,30 +377,9 @@ export default {
       },
       detailFun(row) {
         let _this=this
+        _this.backupPlan.Name = row.Name
+        _this.backupPlan.ID = row.ID
         _this.dialogVisible = true
-        // console.log(row)
-
-        let postUrl = _this.data_api + `/minio/rebuild/add/job`
-        let params = {
-          "BackupTaskId": row.ID
-        }
-
-        axios.post(postUrl, params, {headers: {
-              'Authorization':"Bearer "+ _this.$store.getters.accessToken
-        }}).then((response) => {
-            let json = response.data
-            if (json.status == 'success') {
-              _this.backupPlan = json.data
-              _this.backupPlan.backupTaskId = row.ID
-              if(_this.backupPlan.CreatedOn) _this.backupPlan.CreatedOn = moment(new Date(parseInt(_this.backupPlan.CreatedOn / 1000))).format("YYYY-MM-DD HH:mm:ss")
-            }else{
-                _this.$message.error(json.message);
-                return false
-            }
-
-        }).catch(function (error) {
-            console.log(error);
-        });
       },
       productName() {
         let _this = this
@@ -566,7 +570,7 @@ export default {
     left: 3.2rem;
     background: url('../../../assets/images/page_bg01.png') no-repeat center 16vh;
     background-size: 400px;
-    @media screen and (max-width:600px){
+    @media screen and (max-width:999px){
       left: 0;
       background-size: 95%;
     }
@@ -581,6 +585,9 @@ export default {
         font-size: 0.18rem;
         color: #333;
         box-shadow: 0 4px 10px 0px rgba(0, 0, 0, 0.1);
+        @media screen and (max-width:600px){
+          font-size: 13px;
+        }
         .el-dialog__headerbtn{
           display: none;
           top: 0.2rem;
@@ -592,9 +599,12 @@ export default {
       }
       .el-dialog__body{
         padding: 0.3rem 10%;
+        @media screen and (max-width:600px){
+          padding: 0.3rem 4%;
+        }
         .box-card {
           width: 95%;
-          max-width: 460px;
+          // max-width: 460px;
           margin: auto;
           box-shadow: 0 4px 10px 0px rgba(0, 0, 0, 0.1);
           border-radius: 0.06rem;
@@ -627,12 +637,19 @@ export default {
           display: block;
           width: 0.2rem;
           margin: 0 auto 0.15rem;
+          @media screen and (max-width:600px){
+            width: 20px;
+          }
         }
         .span{
           display: block;
           margin: 0.1rem auto 0;
           font-size: 0.16rem;
           text-align: center;
+          word-break: break-word;
+          @media screen and (max-width:600px){
+            font-size: 14px;
+          }
         }
       }
       .dialog-footer{
@@ -653,7 +670,7 @@ export default {
           background: transparent;
           border: 1px solid;
                 @media screen and (max-width:600px){
-                  font-size: 16px;
+                  font-size: 14px;
                 }
           &:last-child, &:hover{
             color: #fff;
@@ -666,6 +683,9 @@ export default {
 }
 .fs3_back{
   font-size: 0.18rem;
+  @media screen and (max-width:600px){
+    font-size: 14px;
+  }
   .fs3_head{
     position: relative;
     display: flex;
@@ -695,6 +715,9 @@ export default {
         font-size: 0.23rem;
         font-weight: bold;
         // font-family: 'm-semibold';
+        @media screen and (max-width:600px){
+          font-size: 14px;
+        }
       }
       h3{
         margin: 0.2rem 0 0.05rem;
@@ -740,6 +763,9 @@ export default {
           font-size: 0.14rem;
           color: #333;
           word-break: break-word;
+          @media screen and (max-width:600px){
+            font-size: 12px;
+          }
           .el-button{
             margin: 0 auto 0;
             padding: 0 0.07rem;

@@ -35,11 +35,11 @@ export default {
             },
             {
               title: 'Choose your plan',
-              desc: 'Choose your backup plan including frequency,location and price your backup resources.',
+              desc: 'Choose your backup plan based on frequency, duration,and price of your backup resources.',
             },
             {
               title: 'Create successfully',
-              desc: '',
+              desc: 'Users can check all created backup plans at My Plans. FS3 also offers rebuilt services of buckets at Dashboard.',
             }
           ]
         }
@@ -55,6 +55,9 @@ export default {
 <style lang="scss" scoped>
 .fs3_back{
   font-size: 0.18rem;
+  @media screen and (max-width:600px){
+    font-size: 14px;
+  }
   .fs3_head{
     position: relative;
     display: flex;
@@ -84,15 +87,24 @@ export default {
         font-size: 0.23rem;
         font-weight: bold;
         // font-family: 'm-semibold';
+        @media screen and (max-width:600px){
+          font-size: 14px;
+        }
       }
       h3{
         margin: 0.05rem 0 0.05rem;
         line-height: 1.1;
         font-size: 0.22rem;
+        @media screen and (max-width:600px){
+          font-size: 12px;
+        }
       }
       h5{
         line-height: 1.2;
         font-size: 0.14rem;
+        @media screen and (max-width:600px){
+          font-size: 12px;
+        }
       }
     }
   }
@@ -102,12 +114,18 @@ export default {
       font-size: 0.23rem;
       color: #2f85e5;
       line-height: 1.74;
+        @media screen and (max-width:600px){
+          font-size: 15px;
+        }
     }
     .content_list{
       display: flex;
       margin: 0.26rem 0 0;
       .left{
         width: 0.45rem;
+        @media screen and (max-width:600px){
+          width: 30px;
+        }
         span{
           display: flex;
           align-items: center;
@@ -118,17 +136,32 @@ export default {
           font-size: 0.18rem;
           color: #fff;
           border-radius: 100%;
+          @media screen and (max-width:600px){
+            width: 15px;
+            height: 15px;
+            font-size: 12px;
+          }
         }
       }
       .right{
+        width: calc(100% - 0.45rem);
+        @media screen and (max-width:600px){
+          width: calc(100% - 30px);
+        }
         h4{
           font-size: 0.18rem;
           line-height: 1.13;
+          @media screen and (max-width:600px){
+            font-size: 14px;
+          }
         }
         h6{
           margin: 0.1rem 0 0.07rem;
           line-height: 1.8;
           font-size: 0.14rem;
+          @media screen and (max-width:600px){
+            font-size: 12px;
+          }
         }
       }
     }

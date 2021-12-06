@@ -108,6 +108,9 @@ export default {
 <style lang="scss" scoped>
 .fs3_back{
   font-size: 0.18rem;
+  @media screen and (max-width:600px){
+    font-size: 14px;
+  }
   .fs3_head{
     position: relative;
     display: flex;
@@ -137,6 +140,9 @@ export default {
         font-size: 0.23rem;
         font-weight: bold;
         // font-family: 'm-semibold';
+                @media screen and (max-width:600px){
+                  font-size: 14px;
+                }
       }
       h3{
         margin: 0.2rem 0 0.05rem;
@@ -169,6 +175,9 @@ export default {
               font-size: 0.23rem;
               line-height: 1.1;
               text-align: center;
+                @media screen and (max-width:600px){
+                  font-size: 12px;
+                }
             }
           }
           .el-card__body{
@@ -234,6 +243,9 @@ export default {
                 background: #7ecef4;
                 border: 1px solid;
               }
+                @media screen and (max-width:600px){
+                  font-size: 12px;
+                }
             }
           }
         }

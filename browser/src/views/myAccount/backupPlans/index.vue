@@ -103,7 +103,7 @@ export default {
         };
         return {
           width: document.body.clientWidth>600?'400px':'95%',
-          dialogWidth: document.body.clientWidth<=600?'95%':'50%',
+          dialogWidth: document.body.clientWidth<=600?'95%':'600px',
           dialogVisible: false,
           dialogConfirm: false,
           ruleForm: {
@@ -217,7 +217,7 @@ export default {
     left: 3.2rem;
     background: url('../../../assets/images/page_bg01.png') no-repeat center 16vh;
     background-size: 400px;
-    @media screen and (max-width:600px){
+    @media screen and (max-width:999px){
       left: 0;
       background-size: 95%;
     }
@@ -244,7 +244,7 @@ export default {
       .el-dialog__body{
         .box-card {
           width: 95%;
-          max-width: 460px;
+          // max-width: 460px;
           margin: auto;
           box-shadow: 0 4px 10px 0px rgba(0, 0, 0, 0.1);
           border-radius: 0.06rem;
@@ -260,7 +260,7 @@ export default {
                 font-size: 0.14rem;
                 line-height: 2;
                 @media screen and (max-width:600px){
-                  font-size: 14px;
+                  font-size: 13px;
                 }
                 span{
                   display: block;
@@ -274,6 +274,9 @@ export default {
           display: block;
           font-size: 0.18rem;
           text-align: center;
+          @media screen and (max-width:600px){
+            font-size: 14px;
+          }
         }
       }
       .dialog-footer{
@@ -294,7 +297,7 @@ export default {
           background: #84d088;
           border: 1px solid #84d088;
                 @media screen and (max-width:600px){
-                  font-size: 16px;
+                  font-size: 13px;
                 }
         }
       }
@@ -302,6 +305,9 @@ export default {
 }
 .fs3_back{
   font-size: 0.18rem;
+  @media screen and (max-width:600px){
+    font-size: 14px;
+  }
   .fs3_head{
     position: relative;
     display: flex;
@@ -331,6 +337,9 @@ export default {
         font-size: 0.23rem;
         font-weight: bold;
         // font-family: 'm-semibold';
+        @media screen and (max-width:600px){
+          font-size: 14px;
+        }
       }
       h3{
         margin: 0.2rem 0 0.05rem;
@@ -430,8 +439,10 @@ export default {
             .el-form-item__label{
               width: 100%;
               text-align: left;
+              font-size: 12px;
             }
             .el-form-item__content{
+              font-size: 12px;
               .el-button{
                 font-size: 16px;
               }

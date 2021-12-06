@@ -117,7 +117,6 @@ func registerWebRouter(router *mux.Router) error {
 	webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/volume").HandlerFunc(httpTraceHdrs(web.PsqlRebuildVolume))
 	//webBrowserRouter.Methods(http.MethodGet).Path("/rebuild/retrieve/volume").HandlerFunc(httpTraceHdrs(web.RetrieveRebuildVolume))
 	webBrowserRouter.Methods(http.MethodPost).Path("/rebuild/retrieve/volume").HandlerFunc(httpTraceHdrs(web.PsqlRetrieveRebuildVolume))
-	webBrowserRouter.Methods(http.MethodPost).Path("/test").HandlerFunc(httpTraceHdrs(web.Test))
 
 	// These methods use short-expiry tokens in the URLs. These tokens may unintentionally
 	// be logged, so a new one must be generated for each request.

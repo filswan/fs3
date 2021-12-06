@@ -9,35 +9,47 @@
         <img src="@/assets/images/page_bg.png" class="bg" alt="">
       </div>
       <div class="fs3_cont">
-        <el-card class="box-card" v-for="(item, index) in plan_list" v-loading="loading" :key="index">
-          <div class="title">{{ item.Name }}</div>
-          <div class="button">
-            <div class="statusStyle"
-                  v-if="item.Status == 'Created'"
-                  style="color: #0a318e">
-                {{ item.Status }}
+        <div v-loading="loading">
+          <el-card class="box-card" v-for="(item, index) in plan_list" :key="index">
+            <div class="title">{{ item.Name }}</div>
+            <div class="button">
+              <div class="statusStyle"
+                    v-if="item.Status == 'Created'"
+                    style="color: #0a318e">
+                  {{ item.Status }}
+              </div>
+              <div class="statusStyle"
+                    v-else-if="item.Status == 'Running'"
+                    style="color: #ffb822">
+                  {{ item.Status }}
+              </div>
+              <div class="statusStyle"
+                    v-else-if="item.Status == 'Enable'"
+                    style="color: #67c23a">
+                  {{ item.Status }}
+              </div>
+              <div class="statusStyle"
+                    v-else-if="item.Status == 'Completed'"
+                    style="color: #1dc9b7">
+                  {{ item.Status }}
+              </div>
+              <div class="statusStyle"
+                    v-else-if="item.Status == 'Stopped'"
+                    style="color: #f56c6c">
+                  {{ item.Status }}
+              </div>
+              <div class="statusStyle"
+                    v-else-if="item.Status == 'Disabled'"
+                    style="color: #e41f1f">
+                  {{ item.Status }}
+              </div>
+              <div class="statusStyle" v-else style="color: rgb(255, 184, 34)">
+                  {{ item.Status }}
+              </div>
+              <el-button @click="planSubmit(index, item)" :class="{'active': dialogIndex == index}">View details</el-button>
             </div>
-            <div class="statusStyle"
-                  v-else-if="item.Status == 'Running'"
-                  style="color: #ffb822">
-                {{ item.Status }}
-            </div>
-            <div class="statusStyle"
-                  v-else-if="item.Status == 'Completed'"
-                  style="color: #1dc9b7">
-                {{ item.Status }}
-            </div>
-            <div class="statusStyle"
-                  v-else-if="item.Status == 'Stopped'"
-                  style="color: #f56c6c">
-                {{ item.Status }}
-            </div>
-            <div class="statusStyle" v-else style="color: rgb(255, 184, 34)">
-                {{ item.Status }}
-            </div>
-            <el-button @click="planSubmit(index, item)" :class="{'active': dialogIndex == index}">View details</el-button>
-          </div>
-        </el-card>
+          </el-card>
+        </div>
         <div v-if="plan_list.length<=0" style="text-align: center;">No Data</div>
       </div>
 
@@ -80,13 +92,13 @@
         </el-card>
         <div slot="footer" class="dialog-footer">
           <el-button 
-            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'running'?'danger':'info'"
-            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'running'?false:true"
+            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enable'?'danger':'info'"
+            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enable'?false:true"
             @click="planStatus(ruleForm)"
           >STOP</el-button>
           <el-button 
-            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'running'?'info':'success'"
-            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'running'?true:false"
+            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enable'?'info':'success'"
+            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enable'?true:false"
             @click="planStatus(ruleForm)"
           >START</el-button>
           <el-button type="success" @click="handleClose">OK</el-button>
@@ -98,10 +110,11 @@
 <script>
 import axios from 'axios'
 import moment from "moment"
+import retrievalDialogVue from '../../../components/retrievalDialog.vue';
 export default {
     data() {
         return {
-          dialogWidth: document.body.clientWidth<=600?'95%':'50%',
+          dialogWidth: document.body.clientWidth<=600?'95%':'600px',
           dialogIndex: NaN,
           dialogVisible: false,
           width: document.body.clientWidth>600?'400px':'95%',
@@ -132,7 +145,7 @@ export default {
           let _this = this
           let params = {
             "BackupPlanId": row.ID,
-            "Status": row.Status == 'Running'?'Stopped':'Running'
+            "Status": row.Status == 'Enable'?'Disabled':'Enable'
           }
 
           axios.post(`${_this.data_api}/minio/backup/update/plan`, params, {headers: {
@@ -214,9 +227,12 @@ export default {
     left: 3.2rem;
     background: url('../../../assets/images/page_bg01.png') no-repeat center 13vh;
     background-size: 400px;
-    @media screen and (max-width:600px){
+    @media screen and (max-width:999px){
       left: 0;
       background-size: 95%;
+    }
+    @media screen and (max-width:600px){
+      top: 0.7rem;
     }
     .formStyle{
       border-radius: 0.06rem;
@@ -241,7 +257,7 @@ export default {
       .el-dialog__body{
         .box-card {
           width: 95%;
-          max-width: 460px;
+          // max-width: 460px;
           margin: auto;
           box-shadow: 0 4px 10px 0px rgba(0, 0, 0, 0.1);
           border-radius: 0.06rem;
@@ -250,6 +266,9 @@ export default {
             padding: 0;
             .statusStyle{
               padding: 0.1rem 10%;
+              @media screen and (max-width:600px){
+                padding: 0.1rem 4%;
+              }
               .list{
                 position: relative;
                 display: flex;
@@ -258,10 +277,14 @@ export default {
                 line-height: 2;
                 @media screen and (max-width:600px){
                   font-size: 14px;
+                  flex-wrap: wrap;
                 }
                 span{
                   display: block;
                   width: 55%;
+                  @media screen and (max-width:600px){
+                    width: 100%;
+                  }
                 }
               }
             }
@@ -289,7 +312,7 @@ export default {
           text-align: center;
           border-radius: 0.06rem;
           @media screen and (max-width:600px){
-            font-size: 16px;
+            font-size: 14px;
           }
         }
         .el-button--success{
@@ -307,6 +330,9 @@ export default {
 }
 .fs3_back{
   font-size: 0.18rem;
+  @media screen and (max-width:600px){
+    font-size: 14px;
+  }
   .fs3_head{
     position: relative;
     display: flex;
@@ -336,6 +362,9 @@ export default {
         font-size: 0.23rem;
         font-weight: bold;
         // font-family: 'm-semibold';
+                @media screen and (max-width:600px){
+                  font-size: 14px;
+                }
       }
       h3{
         margin: 0.2rem 0 0.05rem;
@@ -439,10 +468,12 @@ export default {
     padding: 0.6rem 4%;
     .box-card /deep/{
        .el-card__body {
-         .title, .button{
-           font-size: 16px;
+         .title{
+           font-size: 15px;
          }
-         
+         .button{
+           font-size: 13px;
+         }
        }
     }
   }

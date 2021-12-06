@@ -8347,32 +8347,6 @@ type PsqlVolumeBackupTaskCsv struct {
 	Cost           string
 }
 
-func (web *webAPIHandlers) Test(w http.ResponseWriter, r *http.Request) {
-	dsn := "host=localhost user=root password=root dbname=fs3 port=5432 sslmode=disable TimeZone=Asia/Shanghai"
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		logs.GetLogger().Error(err)
-		writeWebErrorResponse(w, err)
-		return
-	}
-
-	// create tables
-	db.Migrator().DropTable(&PsqlVolumeBackupPlan{})
-	db.Migrator().DropTable(&PsqlVolumeBackupJob{})
-	db.Migrator().DropTable(&PsqlVolumeRebuildJob{})
-	db.Migrator().DropTable(&PsqlVolumeBackupCarCsv{})
-	db.Migrator().DropTable(&PsqlVolumeBackupMetadataCsv{})
-	db.Migrator().DropTable(&PsqlVolumeBackupTaskCsv{})
-	db.AutoMigrate(&PsqlVolumeBackupPlan{})
-	db.AutoMigrate(&PsqlVolumeBackupJob{})
-	db.AutoMigrate(&PsqlVolumeRebuildJob{})
-	db.AutoMigrate(&PsqlVolumeBackupCarCsv{})
-	db.AutoMigrate(&PsqlVolumeBackupMetadataCsv{})
-	db.AutoMigrate(&PsqlVolumeBackupTaskCsv{})
-	return
-
-}
-
 type PsqlVolumeBackupRequest struct {
 	Offset int `json:"offset"`
 	Limit  int `json:"limit"`
