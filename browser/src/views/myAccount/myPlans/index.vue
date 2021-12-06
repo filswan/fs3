@@ -24,7 +24,7 @@
                   {{ item.Status }}
               </div>
               <div class="statusStyle"
-                    v-else-if="item.Status == 'Enable'"
+                    v-else-if="item.Status == 'Enabled'"
                     style="color: #67c23a">
                   {{ item.Status }}
               </div>
@@ -92,13 +92,13 @@
         </el-card>
         <div slot="footer" class="dialog-footer">
           <el-button 
-            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enable'?'danger':'info'"
-            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enable'?false:true"
+            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enabled'?'danger':'info'"
+            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enabled'?false:true"
             @click="planStatus(ruleForm)"
           >STOP</el-button>
           <el-button 
-            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enable'?'info':'success'"
-            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enable'?true:false"
+            :type="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enabled'?'info':'success'"
+            :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enabled'?true:false"
             @click="planStatus(ruleForm)"
           >START</el-button>
           <el-button type="success" @click="handleClose">OK</el-button>
@@ -145,7 +145,7 @@ export default {
           let _this = this
           let params = {
             "BackupPlanId": row.ID,
-            "Status": row.Status == 'Enable'?'Disabled':'Enable'
+            "Status": row.Status == 'Enabled'?'Disabled':'Enabled'
           }
 
           axios.post(`${_this.data_api}/minio/backup/update/plan`, params, {headers: {
