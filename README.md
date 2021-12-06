@@ -421,7 +421,7 @@ Response from POSTMAN
         "Duration": "518400",
         "VerifiedDeal": false,
         "FastRetrieval": true,
-        "Status": "Running",
+        "Status": "Enabled",            // plan is set to "Enabled" as default when created frist time
         "LastBackupOn": "",
         "CreatedOn": "1638396058992883",
         "UpdatedOn": "1638396058992883"
@@ -449,7 +449,7 @@ Bearer Token = MY_FS3_TOKEN
 # Body
 {
    "BackupPlanId":"2",
-   "Status":"Stopped"
+   "Status":"Disabled"
 }
 ```
 Response from POSTMAN
@@ -464,7 +464,7 @@ Response from POSTMAN
         "Duration": "518400",
         "VerifiedDeal": false,
         "FastRetrieval": true,
-        "Status": "Stopped",
+        "Status": "Disabled",
         "LastBackupOn": "",
         "CreatedOn": "1638396058992883",
         "UpdatedOn": "1638396058992883"
@@ -509,7 +509,7 @@ Response from POSTMAN
                 "Duration": "518400",
                 "VerifiedDeal": false,
                 "FastRetrieval": true,
-                "Status": "Running",
+                "Status": "Enabled",
                 "LastBackupOn": "1638397353014173",
                 "CreatedOn": "1638396058992883",
                 "UpdatedOn": "1638396058992883"

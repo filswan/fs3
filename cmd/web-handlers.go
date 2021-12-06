@@ -110,7 +110,8 @@ const (
 	StatusBackupTaskRunning           = "Running"
 	StatusBackupTaskCompleted         = "Completed"
 	StatusBackupTaskFailed            = "Failed"
-	StatusBackupPlanRunning           = "Running"
+	StatusBackupPlanEnabled           = "Enabled"
+	StatusBackupPlanDisabled          = "Disabled"
 	LOTUS_JSON_RPC_ID                 = 7878
 	LOTUS_JSON_RPC_VERSION            = "2.0"
 	LOTUS_CLIENT_Retrieve_DEAL        = "Filecoin.ClientRetrieve"
@@ -7035,7 +7036,7 @@ func (web *webAPIHandlers) BackupVolumeAddPlan(w http.ResponseWriter, r *http.Re
 			Duration:       addVolumeBackupPlanRequest.Duration,
 			VerifiedDeal:   addVolumeBackupPlanRequest.VerifiedDeal,
 			FastRetrieval:  addVolumeBackupPlanRequest.FastRetrieval,
-			Status:         StatusBackupPlanRunning,
+			Status:         StatusBackupPlanEnabled,
 			CreatedOn:      timestamp,
 			UpdatedOn:      timestamp,
 		}
@@ -7076,7 +7077,7 @@ func (web *webAPIHandlers) BackupVolumeAddPlan(w http.ResponseWriter, r *http.Re
 			Duration:       addVolumeBackupPlanRequest.Duration,
 			VerifiedDeal:   addVolumeBackupPlanRequest.VerifiedDeal,
 			FastRetrieval:  addVolumeBackupPlanRequest.FastRetrieval,
-			Status:         StatusBackupPlanRunning,
+			Status:         StatusBackupPlanEnabled,
 			CreatedOn:      timestamp,
 			UpdatedOn:      timestamp,
 		}
@@ -7157,7 +7158,7 @@ func (web *webAPIHandlers) PsqlBackupVolumeAddPlan(w http.ResponseWriter, r *htt
 		Duration:      addVolumeBackupPlanRequest.Duration,
 		VerifiedDeal:  addVolumeBackupPlanRequest.VerifiedDeal,
 		FastRetrieval: addVolumeBackupPlanRequest.FastRetrieval,
-		Status:        StatusBackupPlanRunning,
+		Status:        StatusBackupPlanEnabled,
 		CreatedOn:     timestamp,
 		UpdatedOn:     timestamp,
 	}
