@@ -38,6 +38,7 @@ const (
 	TableVolumeBackupDealsCarCsv      = "volume_backup_deals_car_csv"
 	StatusBackupTaskCreated           = "Created"
 	StatusRebuildTaskCompleted        = "Completed"
+	StatusBackupPlanEnabled           = "Enabled"
 	LOTUS_JSON_RPC_ID                 = 7878
 	LOTUS_JSON_RPC_VERSION            = "2.0"
 	LOTUS_CLIENT_IMPORT_CAR           = "Filecoin.ClientImport"
@@ -443,7 +444,7 @@ func GetRunningBackupPlans() ([]PsqlVolumeBackupPlan, error) {
 	defer sqlDB.Close()
 
 	var plans []PsqlVolumeBackupPlan
-	result := db.Where("status = ?", "Running").Find(&plans)
+	result := db.Where("status = ?", StatusBackupPlanEnabled).Find(&plans)
 
 	return plans, result.Error
 }
