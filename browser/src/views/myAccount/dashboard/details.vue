@@ -19,6 +19,7 @@
               {{ scope.row.ID }}
             </template>
           </el-table-column>
+          <el-table-column prop="Name" label="Backup Plan Name" width="180"></el-table-column>
           <el-table-column prop="CreatedOn" label="Date Created" width="120">
             <template slot-scope="scope">
               {{ scope.row.CreatedOn }}
@@ -128,9 +129,9 @@
 
         <el-table
           :data="tableData_2" v-loading="loading" stripe empty-text="No data" v-else>
-          <el-table-column prop="ID" label="Rebuild ID"></el-table-column>
-          <el-table-column prop="Name" label="Backup Plan Name"></el-table-column>
-          <el-table-column prop="Status" label="Status">
+          <el-table-column prop="ID" label="Rebuild ID" width="100"></el-table-column>
+          <el-table-column prop="BackupPlanName" label="Backup Plan Name" width="180"></el-table-column>
+          <el-table-column prop="Status" label="Status" width="140">
             <template slot-scope="scope">
                 <div class="statusStyle"
                       v-if="scope.row.Status == 'Created'"
@@ -152,8 +153,8 @@
                 </div>
             </template>
           </el-table-column>
-          <el-table-column prop="MinerId" label="W3SSID"></el-table-column>
-          <el-table-column prop="DealCid" label="Deal CID" min-width="110">
+          <el-table-column prop="MinerId" label="W3SSID" width="120"></el-table-column>
+          <el-table-column prop="DealCid" label="Deal CID" min-width="200">
             <template slot-scope="scope">
                 <div class="hot-cold-box">
                     <el-popover
@@ -171,8 +172,8 @@
                 </div>
             </template>
           </el-table-column>
-          <el-table-column prop="PayloadCid" label="Data CID" min-width="110"></el-table-column>
-          <el-table-column prop="BackupJobId" label="Backup ID"></el-table-column>
+          <el-table-column prop="PayloadCid" label="Data CID" min-width="200"></el-table-column>
+          <el-table-column prop="BackupJobId" label="Backup ID" width="120"></el-table-column>
           <el-table-column prop="CreatedOn" label="Date Created" width="120"></el-table-column>
           <el-table-column prop="UpdatedOn" label="Date Updated" width="120"></el-table-column>
         </el-table>

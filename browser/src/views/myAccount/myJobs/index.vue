@@ -19,6 +19,7 @@
               {{ scope.row.ID }}
             </template>
           </el-table-column>
+          <el-table-column prop="Name" label="Backup Plan Name" width="180"></el-table-column>
           <el-table-column prop="CreatedOn" label="Date Created" width="120">
             <template slot-scope="scope">
               {{ scope.row.CreatedOn }}
@@ -129,7 +130,7 @@
         <el-table
           :data="tableData_2" v-loading="loading" stripe empty-text="No data" v-else>
           <el-table-column prop="ID" label="Rebuild ID" width="100"></el-table-column>
-          <el-table-column prop="Name" label="Backup Plan Name" width="180"></el-table-column>
+          <el-table-column prop="BackupPlanName" label="Backup Plan Name" width="180"></el-table-column>
           <el-table-column prop="Status" label="Status" width="140">
             <template slot-scope="scope">
                 <div class="statusStyle"
