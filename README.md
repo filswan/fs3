@@ -11,13 +11,13 @@
 - Node Js 14.0+.
 - Postgresql 10.19+
 
-__Note__: A Lotus full node is not a must for FS3, but a lite node is required to connect to Lotus. More infomation of how to config a lite node can be found in [Lotus Lite node](https://lotus.filecoin.io/docs/set-up/lotus-lite/).
+__Note__: A Lotus full node is not a must for FS3, but a lite node is required to connect to Lotus should full node is absent. More infomation on how to config a lite node can be found at [Lotus Lite node](https://lotus.filecoin.io/docs/set-up/lotus-lite/).
 
 ## Functions
 * Upload files to FS3 as a local container for storage service.
-* Backup single file or one bucket as a whole to FIL using online deals.
+* Backup a single file or an entire bucket to FIL by using online deals service.
 * Backup the whole volume with customized schedulers(daily/weekly) using offline deals. 
-* Send volume backup task to assigned storage provider automatically using Autobid module.
+* Send volume backup task to the assigned storage provider automatically using Autobid module.
 * Rebuild the volume content from retrieved previous backup volume content specified by users.
 * Save all the deal information into PostgreSQL database.
 * List all the deals history and status.
@@ -57,13 +57,13 @@ vim .env
 Modify the `.env` file based on your use cases:
 
 * __SWAN_ADDRESS__ : The address of filswan platform, default as `https://api.filswan.com`.
-* __FS3_VOLUME_ADDRESS__ : The address of FS3 VOLUME, default as `~/minio-data`. If changed, the FS3 server start command has to be changed accordingly.
+* __FS3_VOLUME_ADDRESS__ : The address of FS3 VOLUME, default as `~/minio-data`. If changed, the FS3 server start command has to be changed accordingly. For example, if the 
 * __FS3_WALLET_ADDRESS__ : A wallet address is a must for sending deals to miner. 
 * __CAR_FILE_SIZE__ : A fixed car file size in bytes need to be predefined before generating car files for trunk via variable `CarFileSize`, such as `8589934592` for 8Gb as default.
-* __IPFS_API_ADDRESS__ :  An available ipfs address with port need to be set up. For example, `https://MyIpfsUrl:Port`. The configuration of IPFS node can be found at `~/.ipfs/config` by following [IPFS Docs](https://docs.ipfs.io/how-to/configure-node/#profiles). For example, look up `API` of `Addresses` in the `config` file, transform `/ip4/192.168.88.41/tcp/5001` into `http://127.0.0.1:5001`.
-* __IPFS_GATEWAY__ :  An available ipfs address with port need to be set up for file downloading. For example, `https://MyIpfsGatewayUrl:Port`. The configuration of IPFS node can be found at `~/.ipfs/config` by following [IPFS Docs](https://docs.ipfs.io/how-to/configure-node/#profiles). For example, look up `Gateway` of `Addresses` in the `config` file, transform `/ip4/192.168.88.41/tcp/8080` into `http://127.0.0.1:8080`.
-* __SWAN_TOKEN__ : A valid swan token is required for posting task on swan platform. It can be received after creating an account on [Filswan](https://www.filswan.com). Check [Filswan APIs](https://documenter.getpostman.com/view/13140808/TWDZJbzV) for more details on how to get authorization token.
-* __LOTUS_CLIENT_API_URL__ : A valid lotus endpoint is required to connect to a Lotus node. For example,`http://[api:port]/rpc/v0`.The Lotus node come with its own local API endpoint,which can be found as explained in [Lotus Configuration](https://lotus.filecoin.io/docs/set-up/configuration/). For example, change the endpint `/ip4/0.0.0.0/tcp/1234/http` found in config file into `http://127.0.0.1:1234/rpc/v0`. Check [Lotus Docs](https://lotus.filecoin.io/) for more details.
+* __IPFS_API_ADDRESS__ :  An available ipfs address with port need to be set up as the format of `https://MyIpfsUrl:Port`. The configuration of ipfs node can be found at `~/.ipfs/config` by following [IPFS Docs](https://docs.ipfs.io/how-to/configure-node/#profiles). For example, look up `API` of `Addresses` in the `config` file, transform `/ip4/192.168.88.41/tcp/5001` into `http://127.0.0.1:5001`.
+* __IPFS_GATEWAY__ :  An available ipfs address with port need to be set up for file downloading as the format of `https://MyIpfsGatewayUrl:Port`. The configuration of ipfs node can be found at `~/.ipfs/config` by following [IPFS Docs](https://docs.ipfs.io/how-to/configure-node/#profiles). For example, look up `Gateway` of `Addresses` in the `config` file, transform `/ip4/192.168.88.41/tcp/8080` into `http://127.0.0.1:8080`.
+* __SWAN_TOKEN__ : A valid swan token is required for posting task on swan platform. It can be received after creating an account on [Filswan](https://www.filswan.com). Check [Filswan APIs](https://documenter.getpostman.com/view/13140808/TWDZJbzV) for more details on how to get an authorization token.
+* __LOTUS_CLIENT_API_URL__ : A valid lotus endpoint is required to connect to a Lotus node as the format of `http://[api:port]/rpc/v0`.The Lotus node come with its own local API endpoint,which can be found as explained in [Lotus Configuration](https://lotus.filecoin.io/docs/set-up/configuration/). For example, transform the endpoint `/ip4/0.0.0.0/tcp/1234/http` found in config file into `http://127.0.0.1:1234/rpc/v0`. Check [Lotus Docs](https://lotus.filecoin.io/) for more details.
 * __LOTUS_CLIENT_ACCESS_TOKEN__ :An `admin` permission token is required to talk to the lotus API endpoints. It can be generated by following the [API Access](https://lotus.filecoin.io/docs/developers/api-access/) steps. Check [Lotus Docs](https://lotus.filecoin.io/) for more details.
 * __PSQL_HOST__ : The host name of the machine on which the server is running.
 * __PSQL_USER__ : The user name to connect to the database(You must have the permission to do so,of course).
