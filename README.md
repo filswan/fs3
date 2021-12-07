@@ -9,7 +9,7 @@
 ### Prerequisite
 - Golang 1.15+.
 - Node Js 14.0+.
-- Postgresql 14.1+
+- Postgresql 10.19+
 
 ## Functions
 * Upload files to FS3 as a local container for storage service.
@@ -493,6 +493,7 @@ Bearer Token = MY_FS3_TOKEN
 {
    "Offset":0,   //default as 0 
    "Limit":10"   //default as 10
+   "Status": ["Enabled","Disabled"]  //default as all status
 }
 ```
 Response from POSTMAN

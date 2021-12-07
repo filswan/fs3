@@ -112,6 +112,7 @@ const (
 	StatusBackupTaskFailed            = "Failed"
 	StatusBackupPlanEnabled           = "Enabled"
 	StatusBackupPlanDisabled          = "Disabled"
+	StatusBackupPlanDeleted           = "Deleted"
 	LOTUS_JSON_RPC_ID                 = 7878
 	LOTUS_JSON_RPC_VERSION            = "2.0"
 	LOTUS_CLIENT_Retrieve_DEAL        = "Filecoin.ClientRetrieve"
@@ -7838,16 +7839,16 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 
 	//get request body
 	decoder := json.NewDecoder(r.Body)
-	var volumeRebuildRequest PsqlVolumeRebuildRequest
-	err := decoder.Decode(&volumeRebuildRequest)
+	var volumeBackupRequest PsqlVolumeBackupRequest
+	err := decoder.Decode(&volumeBackupRequest)
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
 		return
 	}
-
-	offset := volumeRebuildRequest.Offset
-	limit := volumeRebuildRequest.Limit
+	statusList := volumeBackupRequest.Status
+	offset := volumeBackupRequest.Offset
+	limit := volumeBackupRequest.Limit
 	if limit == 0 {
 		limit = 10
 	}
@@ -7870,7 +7871,11 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 	defer sqlDB.Close()
 
 	var plans []PsqlVolumeBackupPlan
-	db.Order("id").Limit(limit).Offset(offset).Find(&plans)
+	if len(statusList) != 0 {
+		db.Where("status IN (?)", statusList).Order("id").Limit(limit).Offset(offset).Find(&plans)
+	} else {
+		db.Order("id").Limit(limit).Offset(offset).Find(&plans)
+	}
 
 	var count []PsqlVolumeBackupPlan
 	var totalVolumeBackupPlansCounts int64
@@ -8349,8 +8354,9 @@ type PsqlVolumeBackupTaskCsv struct {
 }
 
 type PsqlVolumeBackupRequest struct {
-	Offset int `json:"offset"`
-	Limit  int `json:"limit"`
+	Offset int      `json:"offset"`
+	Limit  int      `json:"limit"`
+	Status []string `json:"status"`
 }
 
 type PsqlVolumeRebuildRequest struct {
