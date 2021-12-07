@@ -1,28 +1,7 @@
 <template>
   <div class="landing" @click="actClient(0)">
       <header class="fe-header">
-        <!-- all deals page search -->
-        <div class="form_top" v-if="!allDealShow">
-            <div class="search">
-                <el-input
-                    placeholder="Search for Deal ID/W3SS ID/Data CID"
-                    prefix-icon="el-icon-search"
-                    v-model="searchValue"
-                >
-                </el-input>
-                <div class="search_right" :style="{'opacity': !searchValue?'0.8':'1'}">
-                    <el-button style="background-color: #ffb822"
-                      :disabled="!searchValue">Search</el-button>
-                    <el-button
-                      type="primary"
-                      style="background-color: #0b318f"
-                      :disabled="!searchValue"
-                    >Clear All</el-button>
-                </div>
-            </div>
-        </div>
-        <!-- all deals page search end -->
-        <h2 v-if="allDealShow">
+        <h2>
           <span class="main" v-if="editNameFile" v-for="(item, index) in currentBucketAll" :key="index">
             <a href="javascript:;" @click="buckerAdress(index)">{{item}}</a>
           </span>
@@ -33,7 +12,7 @@
           </a>
           <el-input v-model="user.name_file" ref="mark" placeholder="Choose or create new path" v-else @blur="editFileFun"></el-input>
         </h2>
-        <div class="feh-used" v-if="allDealShow">
+        <div class="feh-used">
           <div class="fehu-chart">
             <div style="width: 0px;"></div>
           </div>
@@ -95,7 +74,7 @@
         </div-->
       </header>
 
-      <div class="table" v-if="allDealShow">
+      <div class="table">
         <el-table
           :data="tableData"
           stripe
@@ -263,60 +242,6 @@
               </ul>
             </template>
           </el-table-column>
-        </el-table>
-      </div>
-
-      <!-- all deals page table -->
-      <div class="table" v-else>
-        <el-table :data="exChangeList" stripe style="width: 100%" class="demo-table-expand">
-            <el-table-column type="expand"></el-table-column>
-            <el-table-column prop="data.timeStamp" label="Date">
-              <template slot-scope="scope">
-                {{exChangeList[scope.$index].data.timeStamp}}
-                <!-- {{ props.row.date }} -->
-              </template>
-            </el-table-column>
-            <el-table-column prop="data.minerId" label="W3SS ID"></el-table-column>
-            <el-table-column prop="data.price" label="Price">
-              <template slot-scope="scope">
-                {{exChangeList[scope.$index].data.price}} FIL
-              </template>
-            </el-table-column>
-            <el-table-column prop="data.dealCid" label="Deal CID">
-              <template slot-scope="scope">
-                <div class="hot-cold-box">
-                    <el-popover
-                        placement="top"
-                        trigger="hover"
-                        v-model="exChangeList[scope.$index].data.visible">
-                        <div class="upload_form_right">
-                            <p>{{exChangeList[scope.$index].data.dealCid}}</p>
-                        </div>
-                        <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dealCid)">
-                            <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dealCid}}</p>
-                        </el-button>
-                    </el-popover>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="data.dataCid" label="Data CID">
-              <template slot-scope="scope">
-                <div class="hot-cold-box">
-                    <el-popover
-                        placement="top"
-                        trigger="hover"
-                        v-model="exChangeList[scope.$index].data.visibleDataCid">
-                        <div class="upload_form_right">
-                            <p>{{exChangeList[scope.$index].data.dataCid}}</p>
-                        </div>
-                        <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dataCid)">
-                            <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dataCid}}</p>
-                        </el-button>
-                    </el-popover>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="data.duration" label="Duration"></el-table-column>
         </el-table>
       </div>
 
@@ -1300,7 +1225,7 @@ export default {
                 color: #fff;
                 line-height: 0.34rem;
                 font-size: 0.15rem;
-                font-family: 'm-regular';
+                font-family: inherit;
                 border: 0;
                 border-radius: 0.08rem;
             }
@@ -1695,7 +1620,7 @@ export default {
                 display: -webkit-box;
                 -webkit-line-clamp: 2;
                 -webkit-box-orient: vertical;
-                font-family: 'm-regular';
+                font-family: inherit;
                 span{
                     line-height: 0.25rem;
                     overflow: hidden;
@@ -1767,7 +1692,7 @@ export default {
         .draw_right{
           .el-button{
             font-size: 0.16rem;
-            font-family: 'm-regular';
+            font-family: inherit;
             i{
               font-weight: bold;
             }
@@ -1949,7 +1874,7 @@ export default {
                 padding: 0.05rem 0.1rem;
                 margin: 0 0.03rem;
                 font-size: 12px;
-                font-family: 'm-regular';
+                font-family: inherit;
                 color: #fff;
                 border: 0;
                 background-color: #ff726f;
@@ -2023,7 +1948,7 @@ export default {
               .el-button /deep/ {
               padding: 0 0.2rem;
               font-size: 0.1372rem;
-              font-family: 'm-regular';
+              font-family: inherit;
               height: auto;
               line-height: 2.5;
               }

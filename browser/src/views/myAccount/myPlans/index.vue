@@ -9,7 +9,10 @@
         <img src="@/assets/images/page_bg.png" class="bg" alt="">
       </div>
       <div class="fs3_cont">
-        <div v-loading="loading">
+        <div class="backupCreate">
+          <router-link :to="{name: 'my_account_backupPlans'}">Create Backup Plan</router-link>
+        </div>
+        <div v-loading="loading" v-if="plan_list.length>0">
           <el-card class="box-card" v-for="(item, index) in plan_list" :key="index">
             <div class="title">{{ item.Name }}</div>
             <div class="button">
@@ -46,11 +49,12 @@
               <div class="statusStyle" v-else style="color: rgb(255, 184, 34)">
                   {{ item.Status }}
               </div>
-              <el-button @click="planSubmit(index, item)" :class="{'active': dialogIndex == index}">View details</el-button>
+              <el-button @click="planSubmit(index, item)" :class="{'active': dialogIndex == index, 'btnSub': 1==1}">View details</el-button>
+              <el-button type="danger" @click="deleteAct(item, 1)">Delete</el-button>
             </div>
           </el-card>
         </div>
-        <div v-if="plan_list.length<=0" style="text-align: center;">No Data</div>
+        <div v-else style="text-align: center;">No Data</div>
       </div>
 
       <div class="form_pagination">
@@ -101,7 +105,17 @@
             :disabled="ruleForm.Status&&ruleForm.Status.toLowerCase() == 'enabled'?true:false"
             @click="planStatus(ruleForm)"
           >START</el-button>
-          <el-button type="success" @click="handleClose">OK</el-button>
+        </div>
+      </el-dialog>
+
+      <el-dialog
+        title="Tips" custom-class="formStyle"
+        :visible.sync="deleteConfirm"
+        :width="dialogWidth">
+        <span class="span">Are you sure you want to delete?</span>
+        <div slot="footer" class="dialog-footer">
+          <el-button type="danger" @click="planStatus(ruleForm, 1)">Yes, delete</el-button>
+          <el-button type="info" @click="deleteConfirm=false">No, close the window</el-button>
         </div>
       </el-dialog>
     </div>
@@ -110,7 +124,6 @@
 <script>
 import axios from 'axios'
 import moment from "moment"
-import retrievalDialogVue from '../../../components/retrievalDialog.vue';
 export default {
     data() {
         return {
@@ -127,6 +140,7 @@ export default {
             total: 0,
           },
           bodyWidth: document.documentElement.clientWidth < 1024 ? true : false,
+          deleteConfirm: false
         }
     },
     watch: {},
@@ -141,11 +155,19 @@ export default {
         this.dialogIndex = NaN
         this.dialogVisible = false
       },
-      planStatus(row){
+      deleteAct(row) {
+        this.deleteConfirm = true
+        this.ruleForm = row
+      },
+      planStatus(row, type){
           let _this = this
+          _this.deleteConfirm = false
+          _this.dialogVisible = false
+          _this.dialogIndex = NaN
+          _this.loading = true
           let params = {
             "BackupPlanId": row.ID,
-            "Status": row.Status == 'Enabled'?'Disabled':'Enabled'
+            "Status": type ? 'Deleted' : row.Status == 'Enabled'?'Disabled':'Enabled'
           }
 
           axios.post(`${_this.data_api}/minio/backup/update/plan`, params, {headers: {
@@ -160,11 +182,13 @@ export default {
                 _this.getData()
               }else{
                   _this.$message.error(json.message);
+                  _this.loading = false
                   return false
               }
 
           }).catch(function (error) {
               console.log(error);
+              _this.loading = false
           });
 
       },
@@ -182,7 +206,8 @@ export default {
           let offset = _this.parma.offset > 0 ? _this.parma.offset - 1 : _this.parma.offset;
           let params = {
             "Offset": offset,   //default as 0 
-            "Limit": _this.parma.limit   //default as 10
+            "Limit": _this.parma.limit,   //default as 10
+            "Status": ["Enabled","Disabled"] //default as all status
           }
 
           axios.post(postUrl, params, {headers: {
@@ -238,6 +263,7 @@ export default {
       border-radius: 0.06rem;
       overflow: hidden;
       .el-dialog__header{
+        position: relative;
         padding: 0;
         line-height: 2.2;
         background: #eeeeee;
@@ -246,11 +272,11 @@ export default {
         color: #333;
         box-shadow: 0 4px 10px 0px rgba(0, 0, 0, 0.1);
         .el-dialog__headerbtn{
-          display: none;
-          top: 0.2rem;
-          font-size: 0.4rem;
+          top: 0;
+          height: 100%;
+          font-size: 16px;
           .el-dialog__close{
-            color: #fff;
+            color: #333;
           }
         }
       }
@@ -303,10 +329,10 @@ export default {
         padding: 0 0 0.1rem;
         .el-button{
           display: block;
-          margin: 0 5%;
+          // margin: 0 5%;
           padding: 0 0.2rem;
           font-size: 0.14rem;
-          font-family: 'm-regular';
+          font-family: inherit;
           line-height: 2.3;
           color: #fff;
           text-align: center;
@@ -379,6 +405,31 @@ export default {
   }
   .fs3_cont{
     padding: 0.4rem 9%;
+    .backupCreate{
+      display: flex;
+      justify-content: flex-end;
+      padding: 0.2rem 0;
+      a{
+        display: block;
+        margin: 0;
+        padding: 0.1rem 0.15rem;
+        background-color: #ffb822;
+        line-height: 1;
+        border: 0;
+        border-radius: 0.04rem;
+        color: #fff;
+        font-size: .18rem;
+        cursor: pointer;
+        font-weight: 600;
+        box-shadow: 0 0 5px rgba(255, 184, 34, 0.4);
+        &:hover{
+          opacity: .8;
+        }
+        @media screen and (max-width:600px){
+          font-size: 15px;
+        }
+      }
+    }
     .box-card /deep/{
       width: 100%;
       margin: 0 0 0.2rem;
@@ -392,11 +443,17 @@ export default {
         padding: 0.2rem;
         .title{
           font-size: 0.18rem;
+          @media screen and (max-width:600px){
+            font-size: 15px;
+          }
         }
         .button{
           display: flex;
           align-items: center;
           font-size: 0.14rem;
+          @media screen and (max-width:600px){
+            font-size: 13px;
+          }
           .statusStyle {
             display: inline-block;
             border: 1px solid;
@@ -410,15 +467,20 @@ export default {
           .el-button{
             padding: 0 0.25rem;
             font-size: inherit;
-            font-family: 'm-regular';
+            font-family: inherit;
             line-height: 1.8;
             text-align: center;
             border-radius: 0.04rem;
-            color: #333;
-            background: transparent;
             border: 1px solid;    
           }
-          .active, .el-button:hover{
+          .btnSub{
+            color: #333;
+            background: transparent;
+          }
+          .el-button--danger{
+            padding: 0 0.1rem;
+          }
+          .active, .btnSub:hover{
             color: #fff;
             background: #7ecef4;
             border: 1px solid;

@@ -762,7 +762,7 @@ export default {
                     background: none;
                     color: #fff;
                     font-size: 21px;
-                    font-family: 'm-regular';
+                    font-family: inherit;
                     line-height: 45px;
                     -webkit-transition: all;
                     transition: all;

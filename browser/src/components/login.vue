@@ -184,7 +184,7 @@ export default {
                     border-radius: 50%;
                     opacity: 0.3;
                     font-size: 0.2rem;
-                    font-family: 'm-regular';
+                    font-family: inherit;
                     color: #fff;
                     i{
                         font-size: 0.22rem;

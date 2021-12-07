@@ -27,21 +27,27 @@
                         </ul>
                     </el-col>
 
-                    <el-col :span="24" class="active"
+                    <!-- <el-col :span="24" class="active"
                     style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false, false, true)">
                     All Deals
-                    </el-col>
+                    </el-col> -->
                 </el-row>
             </div>
             <div class="fs3_backup">
                 <div class="introduce">
                     <router-link :to="{name: 'fs3_backup'}" :style="{'color': introduceColor?'#2f85e5':'#fff'}">FS3 Backup</router-link>
                 </div>
+                <div class="introRouter">
+                    <router-link :to="{name: 'my_account_dashboard'}" :class="{'active': activeTree == '2'}">Dashboard</router-link>
+                    <router-link :to="{name: 'my_account_myPlans'}" :class="{'active': activeTree == '3'}">Backup Plans</router-link>
+                    <router-link :to="{name: 'my_account_jobs'}" :class="{'active': activeTree == '4'}">Jobs</router-link>
+                </div>
                 <!-- :default-checked-keys="activeTree" -->
-                <el-tree :data="dataBackup" :props="defaultProps" @node-click="handleNodeClick"
-                    node-key="id" ref="my-tree"
+                <!-- <el-tree :data="dataBackup" :props="defaultProps" @node-click="handleNodeClick"
+                    node-key="id" ref="my-tree" default-expand-all
                     :default-expanded-keys="activeTree?[1]:[]"
-                    :current-node-key="activeTree"></el-tree>
+                    :current-node-key="activeTree"></el-tree> -->
+
             </div>
         </div>
         <div class="fes-host">
@@ -164,14 +170,14 @@ export default {
         'minioListBuckets': function (to, from) {
             this.getMinioData()
         },
-        activeTree(id) {
-            // Tree 内部使用了 Node 类型的对象来包装用户传入的数据，用来保存目前节点的状态。可以用 $refs 获取 Tree 实例
-            if (id.toString()) {
-                this.$refs["my-tree"].setCurrentKey(id);
-            } else {
-                this.$refs["my-tree"].setCurrentKey(null);
-            }
-        }
+        // activeTree(id) {
+        //     // Tree 内部使用了 Node 类型的对象来包装用户传入的数据，用来保存目前节点的状态。可以用 $refs 获取 Tree 实例
+        //     if (id.toString()) {
+        //         this.$refs["my-tree"].setCurrentKey(id);
+        //     } else {
+        //         this.$refs["my-tree"].setCurrentKey(null);
+        //     }
+        // }
     },
     methods: {
       handleNodeClick(data) {
@@ -185,9 +191,9 @@ export default {
         _this.introduceColor = _this.$route.name == 'fs3_backup'?true:false
         _this.activeTree = ''
         if(_this.$route.name.indexOf('my_account') > -1){
-            if(_this.$route.name == 'my_account_backupPlans') {
+            if(_this.$route.name == 'my_account_backupPlans' || _this.$route.name == 'my_account_myPlans') {
                 _this.activeTree = '3'
-            }else if(_this.$route.name == 'my_account_myPlans') {
+            }else if(_this.$route.name == 'my_account_jobs') {
                 _this.activeTree = '4'
             }else {
                 _this.activeTree = '2'
@@ -457,12 +463,12 @@ export default {
     }
     .fes-header{
         display: flex;
-        width: calc(100% - 0.6rem);
-        padding: 0.25rem 0.3rem;
+        width: calc(100% - 0.4rem);
+        padding: 0.25rem 0.2rem;
         img{
             width: auto;
             max-width: 100%;
-            height: 0.4rem;
+            height: 0.35rem;
         }
         h2{
             margin: 10px 0 0 13px;
@@ -474,19 +480,38 @@ export default {
     .fs3_backup{
         margin: 0.1rem 0 0;
         .introduce{
-            margin: 0 0 0.1rem;
-            text-indent: 0.3rem;
+            margin: 0 0 0.05rem;
+            text-indent: 0.2rem;
             background: #002a39;
             // font-family: 'm-semibold';
             font-weight: bold;
             a{
                 display: block;
-                line-height: 2.5;
-                font-size: 0.18rem;
+                line-height: 3;
+                font-size: 0.14rem;
                 color: #2f85e5;
                 @media screen and (max-width:999px){
-                  font-size: 16px;
+                  font-size: 13px;
                 }
+            }
+        }
+        .introRouter{
+            font-size: 0.14rem;
+            @media screen and (max-width:999px){
+                font-size: 13px;
+            }
+            a{
+                display: block;
+                padding: 0.07rem 0.2rem;
+                color: rgba(255, 255, 255, 0.85);
+                font-size: inherit;
+                &:hover{
+                    color: #7ecef4;
+                    background-color: rgba(0,0,0,.1);
+                }
+            }
+            .active{
+                color: #7ecef4;
             }
         }
         .el-tree /deep/{
@@ -539,6 +564,7 @@ export default {
             margin: 0 0.2rem;
             clear: both;
             .el-input__inner{
+                padding-left: 25px;
                 background-color: transparent;
                 box-shadow: none;
                 border: 0;
@@ -546,20 +572,24 @@ export default {
                 border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                 color: #fff;
                 text-align: left;
-                font-family: 'm-regular';
                 font-size: 0.14rem;
-                        @media screen and (max-width:999px){
-                            font-size: 13px;
-                        }
+                font-family: inherit;
+                @media screen and (max-width:999px){
+                    font-size: 13px;
+                }
             }
             .el-input__prefix{
                 color: #fff;
+                left: 0;
+                .el-input__icon{
+                    text-align: left;
+                }
             }
         }
         .el-row /deep/{
             margin-top: 0.2rem;
-            margin-left: -0.25rem;
-            margin-right: -0.25rem;
+            margin-left: 0;
+            margin-right: 0;
             font-size: 0.13rem;
             // height: calc(100% - 1.3rem);
             // overflow: hidden;
@@ -569,14 +599,14 @@ export default {
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 0.1rem 0.25rem 0.1rem 0.45rem;
+                padding: 0.08rem 0.05rem 0.08rem 0.2rem;
                 color: rgba(255, 255, 255, 0.75);
                 word-wrap: break-word;
                 font-size: 0.14rem;
                 cursor: pointer;
-                        @media screen and (max-width:999px){
-                            font-size: 13px;
-                        }
+                @media screen and (max-width:999px){
+                    font-size: 13px;
+                }
                 div{
                     display: flex;
                     align-items: center;
@@ -584,10 +614,10 @@ export default {
                 i{
                     font-size: 0.18rem;
                     margin-right: 0.08rem;
-                    color: rgba(255, 255, 255, 0.75);
-                        @media screen and (max-width:999px){
-                            font-size: 16px;
-                        }
+                    color: rgba(255, 255, 255, 0.85);
+                    @media screen and (max-width:999px){
+                        font-size: 16px;
+                    }
                 }
                 .caozuo{
                     opacity: 0;
@@ -604,9 +634,9 @@ export default {
                 }
                 ul{
                     position: absolute;
-                    right: 0.24rem;
+                    right: 0;
                     top: 0;
-                    padding: 0.15rem 0;
+                    padding: 0.1rem 0;
                     background-color: #fff;
                     border-radius: 0.05rem;
                     z-index: 1000;
@@ -688,7 +718,7 @@ export default {
         font-size: 15px;
         font-weight: 400;
         // width: calc(3.2rem - 0.4rem);
-        width: 100%;
+        width: calc(100% - 0.4rem);
         padding: 0.2rem;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -771,7 +801,7 @@ export default {
                         line-height: 0.3rem;
                         color: #fff;
                         font-size: 12px;
-                        font-family: 'm-regular';
+                        font-family: inherit;
                         border: 0;
                         border-radius: 0.02rem;
                         text-align: center;

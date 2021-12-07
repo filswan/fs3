@@ -2,11 +2,11 @@
   font-family: 'm-light';
   src: url('../font/pingfang_ultralight.ttf') format('truetype');
 }
-@font-face {
+/* @font-face {
   font-family: 'm-regular';
   src: url('../font/pingfang.ttf') format('truetype');
   font-weight: normal;
-}
+} */
 /* @font-face {
   font-family: 'm-semibold';
   src: url('../font/pingfang_semibold.ttf') format('truetype');
@@ -44,7 +44,7 @@ body,
 
 body {
     font-family: 'PingFang SC', "Helvetica Neue", Helvetica, "microsoft yahei", arial, STHeiTi, sans-serif;
-    font-family: 'm-regular';
+    /* font-family: 'm-regular'; */
     min-height: 100%;
     overflow: hidden;
     /* overflow-y: scroll; */

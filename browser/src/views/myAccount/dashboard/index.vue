@@ -231,7 +231,7 @@ export default {
               width: 100%;
               padding: 0.1rem 0;
               font-size: 0.18rem;
-              font-family: 'm-regular';
+              font-family: inherit;
               line-height: 0.3rem;
               text-align: center;
               border-radius: 0.06rem;

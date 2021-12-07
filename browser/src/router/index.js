@@ -13,6 +13,7 @@ const my_account_dashboard = () => import("@/views/myAccount/dashboard/index");
 const my_account_dashboard_detail = () => import("@/views/myAccount/dashboard/details");
 const backupPlans = () => import("@/views/myAccount/backupPlans/index");
 const myPlans = () => import("@/views/myAccount/myPlans/index");
+const myJobs = () => import("@/views/myAccount/myJobs/index");
 
 export default new Router({
 	// mode: 'history', // Back end support can be opened
@@ -73,6 +74,11 @@ export default new Router({
                       path: '/my_account/myPlans',
                       name: 'my_account_myPlans',
                       component: myPlans
+                    },
+                    {
+                      path: '/my_account/jobs',
+                      name: 'my_account_jobs',
+                      component: myJobs
                     }
                   ]
                 },

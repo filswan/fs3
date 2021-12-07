@@ -8,6 +8,10 @@
         <img src="@/assets/images/page_bg.png" class="bg" alt="">
       </div>
       <div class="fs3_cont">
+        <el-breadcrumb separator-class="el-icon-right">
+          <el-breadcrumb-item :to="{ name: 'my_account_myPlans' }">Backup Plan</el-breadcrumb-item>
+          <el-breadcrumb-item>Create Backup Plan</el-breadcrumb-item>
+        </el-breadcrumb>
         <el-form :model="ruleForm" :rules="rules" ref="ruleForm" class="demo-ruleForm" v-loading="loading">
           <el-form-item label="Backup plan name:" prop="name">
             <el-input v-model="ruleForm.name"></el-input>
@@ -78,7 +82,7 @@
         <span class="span">Your backup has created successfully</span>
         <div slot="footer" class="dialog-footer">
           <router-link :to="{name: 'my_account_myPlans'}">VIEW</router-link>
-          <el-button @click="dialogConfirm=false">OK</el-button>
+          <!-- <el-button @click="dialogConfirm=false">OK</el-button> -->
         </div>
       </el-dialog>
     </div>
@@ -225,6 +229,7 @@ export default {
       border-radius: 0.06rem;
       overflow: hidden;
       .el-dialog__header{
+        position: relative;
         padding: 0;
         line-height: 2.2;
         background: #eeeeee;
@@ -233,11 +238,11 @@ export default {
         color: #333;
         box-shadow: 0 4px 10px 0px rgba(0, 0, 0, 0.1);
         .el-dialog__headerbtn{
-          display: none;
-          top: 0.2rem;
-          font-size: 0.4rem;
+          top: 0;
+          height: 100%;
+          font-size: 16px;
           .el-dialog__close{
-            color: #fff;
+            color: #333;
           }
         }
       }
@@ -289,7 +294,7 @@ export default {
           margin: 0 5%;
           padding: 0 0.2rem;
           font-size: 0.14rem;
-          font-family: 'm-regular';
+          font-family: inherit;
           line-height: 2.3;
           color: #fff;
           text-align: center;
@@ -353,7 +358,30 @@ export default {
     }
   }
   .fs3_cont{
-    padding: 0.5rem 16%;
+    padding: 0.6rem 9% 0.5rem;
+    .el-breadcrumb /deep/{
+      display: flex;
+      justify-content: flex-end;
+      padding: 0;
+      .el-breadcrumb__item{
+        line-height: 0.37rem;
+        font-size: 0.14rem;
+        .el-breadcrumb__separator{
+          color: #333;
+        }
+        .el-breadcrumb__inner{
+          color: #2f85e5;
+          font-weight: normal;
+        }
+        .is-link{
+          color: #333;
+          &:hover{
+            text-decoration: underline;
+            color: #2f85e5;
+          }
+        }
+      }
+    }
     .el-form /deep/{
       width: 100%;
       padding: 0.5rem 0 0.4rem;
@@ -404,7 +432,7 @@ export default {
             margin: 0.4rem auto 0;
             padding: 0.1rem 0.2rem;
             font-size: 0.18rem;
-            font-family: 'm-regular';
+            font-family: inherit;
             line-height: 1.2;
             color: #fff;
             text-align: center;

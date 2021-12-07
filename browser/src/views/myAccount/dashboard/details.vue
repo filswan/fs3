@@ -129,6 +129,7 @@
         <el-table
           :data="tableData_2" v-loading="loading" stripe empty-text="No data" v-else>
           <el-table-column prop="ID" label="Rebuild ID"></el-table-column>
+          <el-table-column prop="Name" label="Backup Plan Name"></el-table-column>
           <el-table-column prop="Status" label="Status">
             <template slot-scope="scope">
                 <div class="statusStyle"
@@ -662,7 +663,7 @@ export default {
           margin: 0 3%;
           padding: 0 0.2rem;
           font-size: 0.14rem;
-          font-family: 'm-regular';
+          font-family: inherit;
           line-height: 2.3;
           text-align: center;
           border-radius: 0.06rem;
@@ -770,7 +771,7 @@ export default {
             margin: 0 auto 0;
             padding: 0 0.07rem;
             font-size: 0.14rem;
-            font-family: 'm-regular';
+            font-family: inherit;
             line-height: 2.2;
             color: #fff;
             text-align: center;
