@@ -100,6 +100,7 @@ func BackupVolumeScheduler() error {
 			logs.GetLogger().Error(err)
 			return err
 		}
+
 		if timestamp >= int64(LastBackupOn)+int64(MicroSecondPerDay)*int64(backupInterval) {
 			ExecuteBackupPlansId = append(ExecuteBackupPlansId, v.ID)
 		}
@@ -508,7 +509,6 @@ func IpfsAddFolder(volumePath string, ipfsApiUrl string) (string, error) {
 	path, err := api.Unixfs().Add(context.Background(), node)
 	c(err)
 	// Output the resulting CID
-	fmt.Println(path.Root().String())
 	return fmt.Sprint(path.Root().String()), nil
 }
 
@@ -543,7 +543,7 @@ func generateCarFileWithIpfs(ipfsApiAddress string, hash string, volumeBackupPat
 	if _, err := os.Stat(volumeCarPath); errors.Is(err, os.ErrNotExist) {
 		logs.GetLogger().Error("volume backup car file generation failed")
 	}
-	logs.GetLogger().Info("volume backup car file generation success. Car file path: %s", volumeCarPath)
+	logs.GetLogger().Info("volume backup car file generation success. Car file path:  ", volumeCarPath)
 	return volumeCarPath, nil
 }
 
@@ -576,6 +576,7 @@ func generateCarInfo(hash string, volumeCarPath string, confCar *clientmodel.Con
 	carFile.SourceFileSize, _ = DirSize(confCar.InputDir)
 	carFile.CarFileName = filepath.Base(volumeCarPath)
 	carFile.CarFilePath = filepath.Join(confCar.OutputDir, carFile.CarFileName)
+	fmt.Println()
 
 	pieceCid := lotusClient.LotusClientCalcCommP(carFile.CarFilePath)
 	if pieceCid == nil {
