@@ -700,6 +700,7 @@ Response from POSTMAN
                 "Status": "Created",
                 "CreatedOn": "1638398434961766",
                 "UpdatedOn": "1638398434961766",
+                "BackupPlanName": "daily",
                 "BackupJobId": 1,
                 "BackupJob": {
                     "ID": 0,

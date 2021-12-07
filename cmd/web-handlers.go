@@ -6553,11 +6553,11 @@ type PsqlVolumeRebuildJobsResponse struct {
 }
 
 type PsqlVolumeRebuildJobResp struct {
-	VolumeRebuildJobs                 []PsqlVolumeRebuildJob `json:"volumeRebuildJobs"`
-	TotalVolumeRebuildTasksCounts     int                    `json:"totalVolumeRebuildTasksCounts"`
-	CompletedVolumeRebuildTasksCounts int                    `json:"completedVolumeRebuildTasksCounts"`
-	InProcessVolumeRebuildTasksCounts int                    `json:"inProcessVolumeRebuildTasksCounts"`
-	FailedVolumeRebuildTasksCounts    int                    `json:"failedVolumeRebuildTasksCounts"`
+	VolumeRebuildJobs                 []PsqlVolumeRebuildJobFull `json:"volumeRebuildJobs"`
+	TotalVolumeRebuildTasksCounts     int                        `json:"totalVolumeRebuildTasksCounts"`
+	CompletedVolumeRebuildTasksCounts int                        `json:"completedVolumeRebuildTasksCounts"`
+	InProcessVolumeRebuildTasksCounts int                        `json:"inProcessVolumeRebuildTasksCounts"`
+	FailedVolumeRebuildTasksCounts    int                        `json:"failedVolumeRebuildTasksCounts"`
 }
 
 type VolumeRebuildJobsResponse struct {
@@ -8014,6 +8014,25 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 	var rebuildJobs []PsqlVolumeRebuildJob
 	db.Order("id").Limit(limit).Offset(offset).Find(&rebuildJobs)
 
+	var rebuildJobsFull []PsqlVolumeRebuildJobFull
+	for _, v := range rebuildJobs {
+		var backupJob PsqlVolumeBackupJob
+		db.Where("id=?", v.BackupJobId).First(&backupJob)
+		rebuildJobFull := PsqlVolumeRebuildJobFull{
+			ID:             v.ID,
+			MinerId:        v.MinerId,
+			DealCid:        v.DealCid,
+			PayloadCid:     v.PayloadCid,
+			Status:         v.Status,
+			CreatedOn:      v.CreatedOn,
+			UpdatedOn:      v.UpdatedOn,
+			BackupPlanName: backupJob.Name,
+			BackupJobId:    v.BackupJobId,
+			BackupJob:      v.BackupJob,
+		}
+		rebuildJobsFull = append(rebuildJobsFull, rebuildJobFull)
+	}
+
 	var count []PsqlVolumeRebuildJob
 	var inProcessVolumeRebuildTasksCounts, completedVolumeRebuildTasksCounts, failedVolumeRebuildTasksCounts, totalVolumeRebuildTasksCounts int64
 	db.Where("status=?", StatusRebuildTaskCreated).Or("status=?", StatusRebuildTaskRunning).Find(&count).Count(&inProcessVolumeRebuildTasksCounts)
@@ -8022,7 +8041,7 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 	db.Find(&count).Count(&totalVolumeRebuildTasksCounts)
 
 	psqlVolumeRebuildJobsResp := PsqlVolumeRebuildJobResp{
-		VolumeRebuildJobs:                 rebuildJobs,
+		VolumeRebuildJobs:                 rebuildJobsFull,
 		TotalVolumeRebuildTasksCounts:     int(totalVolumeRebuildTasksCounts),
 		InProcessVolumeRebuildTasksCounts: int(inProcessVolumeRebuildTasksCounts),
 		CompletedVolumeRebuildTasksCounts: int(completedVolumeRebuildTasksCounts),
@@ -8294,6 +8313,19 @@ type PsqlVolumeRebuildJob struct {
 	UpdatedOn   string
 	BackupJobId int
 	BackupJob   PsqlVolumeBackupJob
+}
+
+type PsqlVolumeRebuildJobFull struct {
+	ID             int
+	MinerId        string
+	DealCid        string
+	PayloadCid     string
+	Status         string
+	CreatedOn      string
+	UpdatedOn      string
+	BackupPlanName string
+	BackupJobId    int
+	BackupJob      PsqlVolumeBackupJob
 }
 
 type PsqlVolumeBackupCarCsv struct {
