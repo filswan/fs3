@@ -26,9 +26,190 @@ __Note__: A Lotus full node is not a must for FS3 if a lite node is already conf
 
 ## Install Prerequisite Dependencies
 ### IPFS node
-A running IPFS node is needed for files uploading and storage. You can refer [IPFS Docs](https://docs.ipfs.io/install/) for installation instructions and configuration.
+A running IPFS node is needed for CAR file generation and files uploading and storage. You can refer [IPFS Docs](https://docs.ipfs.io/install/) for installation instructions and configuration.
 ### Lotus node
-A running lotus node is needed for CAR file generation, deals sending and deals retrieval. You can refer [Lotus Docs](https://lotus.filecoin.io/docs/set-up/install/) for installation instructions and configuration.
+A running lotus node is needed for CAR file information generation, deals sending and deals retrieval. You can refer [Lotus Docs](https://lotus.filecoin.io/docs/set-up/install/) for installation instructions and configuration.
+### PostgreSQL
+A PostgreSQL database is required to be pre-built for FS3 server usage. Check [PostgreSQL Tutorial](https://www.postgresqltutorial.com/) on installation and connection instructions. The required database schema and tables schema are listed below.
+#### Database Schema
+```sh
+                          List of relations
+ Schema |                  Name                   |   Type   | Owner 
+--------+-----------------------------------------+----------+-------
+ public | psql_volume_backup_car_csvs             | table    | root
+ public | psql_volume_backup_car_csvs_id_seq      | sequence | root
+ public | psql_volume_backup_jobs                 | table    | root
+ public | psql_volume_backup_jobs_id_seq          | sequence | root
+ public | psql_volume_backup_metadata_csvs        | table    | root
+ public | psql_volume_backup_metadata_csvs_id_seq | sequence | root
+ public | psql_volume_backup_plans                | table    | root
+ public | psql_volume_backup_plans_id_seq         | sequence | root
+ public | psql_volume_backup_task_csvs            | table    | root
+ public | psql_volume_backup_task_csvs_id_seq     | sequence | root
+ public | psql_volume_rebuild_jobs                | table    | root
+ public | psql_volume_rebuild_jobs_id_seq         | sequence | root
+(12 rows)
+```
+
+#### Tables schema
+##### Table psql_volume_backup_car_csvs
+```sh
+                                          Table "public.psql_volume_backup_car_csvs"
+      Column      |           Type           | Collation | Nullable |                         Default                         
+------------------+--------------------------+-----------+----------+---------------------------------------------------------
+ id               | bigint                   |           | not null | nextval('psql_volume_backup_car_csvs_id_seq'::regclass)
+ created_at       | timestamp with time zone |           |          | 
+ updated_at       | timestamp with time zone |           |          | 
+ deleted_at       | timestamp with time zone |           |          | 
+ uuid             | text                     |           |          | 
+ source_file_name | text                     |           |          | 
+ source_file_path | text                     |           |          | 
+ source_file_md5  | text                     |           |          | 
+ source_file_size | bigint                   |           |          | 
+ car_file_name    | text                     |           |          | 
+ car_file_path    | text                     |           |          | 
+ car_file_md5     | text                     |           |          | 
+ car_file_url     | text                     |           |          | 
+ car_file_size    | bigint                   |           |          | 
+ deal_cid         | text                     |           |          | 
+ data_cid         | text                     |           |          | 
+ piece_cid        | text                     |           |          | 
+ miner_fid        | text                     |           |          | 
+ start_epoch      | bigint                   |           |          | 
+ source_id        | bigint                   |           |          | 
+ cost             | text                     |           |          | 
+Indexes:
+    "psql_volume_backup_car_csvs_pkey" PRIMARY KEY, btree (id)
+    "idx_psql_volume_backup_car_csvs_deleted_at" btree (deleted_at)
+```
+
+##### Table psql_volume_backup_jobs
+```sh
+                                   Table "public.psql_volume_backup_jobs"
+        Column         |  Type  | Collation | Nullable |                       Default                       
+-----------------------+--------+-----------+----------+-----------------------------------------------------
+ id                    | bigint |           | not null | nextval('psql_volume_backup_jobs_id_seq'::regclass)
+ name                  | text   |           |          | 
+ uuid                  | text   |           |          | 
+ source_file_name      | text   |           |          | 
+ miner_id              | text   |           |          | 
+ deal_cid              | text   |           |          | 
+ payload_cid           | text   |           |          | 
+ file_source_url       | text   |           |          | 
+ md5                   | text   |           |          | 
+ start_epoch           | bigint |           |          | 
+ piece_cid             | text   |           |          | 
+ file_size             | bigint |           |          | 
+ cost                  | text   |           |          | 
+ duration              | text   |           |          | 
+ status                | text   |           |          | 
+ created_on            | text   |           |          | 
+ updated_on            | text   |           |          | 
+ volume_backup_plan_id | bigint |           |          | 
+Indexes:
+    "psql_volume_backup_jobs_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "fk_psql_volume_backup_jobs_volume_backup_plan" FOREIGN KEY (volume_backup_plan_id) REFERENCES psql_volume_backup_plans(id)
+Referenced by:
+    TABLE "psql_volume_rebuild_jobs" CONSTRAINT "fk_psql_volume_rebuild_jobs_backup_job" FOREIGN KEY (backup_job_id) REFERENCES psql_volume_backup_jobs(id)
+```
+
+##### Table psql_volume_backup_metadata_csvs
+```sh
+                                          Table "public.psql_volume_backup_metadata_csvs"
+      Column      |           Type           | Collation | Nullable |                           Default                            
+------------------+--------------------------+-----------+----------+--------------------------------------------------------------
+ id               | bigint                   |           | not null | nextval('psql_volume_backup_metadata_csvs_id_seq'::regclass)
+ created_at       | timestamp with time zone |           |          | 
+ updated_at       | timestamp with time zone |           |          | 
+ deleted_at       | timestamp with time zone |           |          | 
+ uuid             | text                     |           |          | 
+ source_file_name | text                     |           |          | 
+ source_file_path | text                     |           |          | 
+ source_file_md5  | text                     |           |          | 
+ source_file_size | bigint                   |           |          | 
+ car_file_name    | text                     |           |          | 
+ car_file_path    | text                     |           |          | 
+ car_file_md5     | text                     |           |          | 
+ car_file_url     | text                     |           |          | 
+ car_file_size    | bigint                   |           |          | 
+ deal_cid         | text                     |           |          | 
+ data_cid         | text                     |           |          | 
+ piece_cid        | text                     |           |          | 
+ miner_fid        | text                     |           |          | 
+ start_epoch      | bigint                   |           |          | 
+ source_id        | bigint                   |           |          | 
+ cost             | text                     |           |          | 
+Indexes:
+    "psql_volume_backup_metadata_csvs_pkey" PRIMARY KEY, btree (id)
+    "idx_psql_volume_backup_metadata_csvs_deleted_at" btree (deleted_at)
+```
+
+##### Table psql_volume_backup_plans
+```sh
+                                Table "public.psql_volume_backup_plans"
+     Column     |  Type   | Collation | Nullable |                       Default                        
+----------------+---------+-----------+----------+------------------------------------------------------
+ id             | bigint  |           | not null | nextval('psql_volume_backup_plans_id_seq'::regclass)
+ name           | text    |           |          | 
+ interval       | text    |           |          | 
+ miner_region   | text    |           |          | 
+ price          | text    |           |          | 
+ duration       | text    |           |          | 
+ verified_deal  | boolean |           |          | 
+ fast_retrieval | boolean |           |          | 
+ status         | text    |           |          | 
+ last_backup_on | text    |           |          | 
+ created_on     | text    |           |          | 
+ updated_on     | text    |           |          | 
+Indexes:
+    "psql_volume_backup_plans_pkey" PRIMARY KEY, btree (id)
+Referenced by:
+    TABLE "psql_volume_backup_jobs" CONSTRAINT "fk_psql_volume_backup_jobs_volume_backup_plan" FOREIGN KEY (volume_backup_plan_id) REFERENCES psql_volume_backup_plans(id)
+```
+##### Table psql_volume_backup_task_csvs
+```sh
+                                          Table "public.psql_volume_backup_task_csvs"
+      Column      |           Type           | Collation | Nullable |                         Default                          
+------------------+--------------------------+-----------+----------+----------------------------------------------------------
+ id               | bigint                   |           | not null | nextval('psql_volume_backup_task_csvs_id_seq'::regclass)
+ created_at       | timestamp with time zone |           |          | 
+ updated_at       | timestamp with time zone |           |          | 
+ deleted_at       | timestamp with time zone |           |          | 
+ uuid             | text                     |           |          | 
+ source_file_name | text                     |           |          | 
+ miner_id         | text                     |           |          | 
+ deal_cid         | text                     |           |          | 
+ payload_cid      | text                     |           |          | 
+ file_source_url  | text                     |           |          | 
+ md5              | text                     |           |          | 
+ start_epoch      | bigint                   |           |          | 
+ piece_cid        | text                     |           |          | 
+ file_size        | bigint                   |           |          | 
+ cost             | text                     |           |          | 
+Indexes:
+    "psql_volume_backup_task_csvs_pkey" PRIMARY KEY, btree (id)
+    "idx_psql_volume_backup_task_csvs_deleted_at" btree (deleted_at)
+```
+##### Table psql_volume_rebuild_jobs
+```sh
+                               Table "public.psql_volume_rebuild_jobs"
+    Column     |  Type  | Collation | Nullable |                       Default                        
+---------------+--------+-----------+----------+------------------------------------------------------
+ id            | bigint |           | not null | nextval('psql_volume_rebuild_jobs_id_seq'::regclass)
+ miner_id      | text   |           |          | 
+ deal_cid      | text   |           |          | 
+ payload_cid   | text   |           |          | 
+ status        | text   |           |          | 
+ created_on    | text   |           |          | 
+ updated_on    | text   |           |          | 
+ backup_job_id | bigint |           |          | 
+Indexes:
+    "psql_volume_rebuild_jobs_pkey" PRIMARY KEY, btree (id)
+Foreign-key constraints:
+    "fk_psql_volume_rebuild_jobs_backup_job" FOREIGN KEY (backup_job_id) REFERENCES psql_volume_backup_jobs(id)
+```
+
 
 # Install from Source
 ## Checkout source code
