@@ -1,37 +1,54 @@
 <template>
     <div class="slide" @click="caozuoFun()">
-        <div class="fes-header">
-            <img :src="logo" alt="">
-            <h2>FS3 Browser</h2>
-        </div>
-        <div class="fes-search">
-            <el-input
-                placeholder="Search Buckets..."
-                prefix-icon="el-icon-search"
-                v-model="search"
-                @input="searchBucketFun">
-            </el-input>
-            <el-row>
-                <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket && allActive}" @click.native="getListBucket(item.name, true)">
-                    <div>
-                        <i class="iconfont icon-harddriveyingpan"></i>
-                        {{item.name}}
-                    </div>
-                    <i class="caozuo el-icon-more" @click.stop="caozuoFun(index, item.name)"></i>
+        <div class="slideScroll">
+            <div class="fes-header">
+                <img :src="logo" alt="">
+            </div>
+            <div class="fes-search">
+                <el-input
+                    placeholder="Search Buckets..."
+                    prefix-icon="el-icon-search"
+                    v-model="search"
+                    @input="searchBucketFun">
+                </el-input>
+                <el-row>
+                    <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket && allActive}" @click.native="getListBucket(item.name, true)">
+                        <div>
+                            <i class="iconfont icon-harddriveyingpan"></i>
+                            {{item.name}}
+                        </div>
+                        <i class="caozuo el-icon-more" @click.stop="caozuoFun(index, item.name)"></i>
 
-                    <ul v-if="item.show && homeClick">
-                        <li @click.stop="dialogFun(item.name, index)">Edit policy</li>
-                        <li @click="backupFun">Backup to Filecoin</li>
-                        <li @click="retrievalFun">Retrieval</li>
-                        <li @click.stop="dialogDeleteFun(item.name, index)">Delete</li>
-                    </ul>
-                </el-col>
+                        <ul v-if="item.show && homeClick">
+                            <li @click.stop="dialogFun(item.name, index)">Edit policy</li>
+                            <li @click="backupFun">Backup to Filecoin</li>
+                            <li @click="retrievalFun">Retrieval</li>
+                            <li @click.stop="dialogDeleteFun(item.name, index)">Delete</li>
+                        </ul>
+                    </el-col>
 
-                <el-col :span="24" :class="{'active': !allActive}"
-                  style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false)">
-                  All Deals
-                </el-col>
-            </el-row>
+                    <!-- <el-col :span="24" class="active"
+                    style="margin-top:0.2rem;justify-content: center;padding: 0.1rem 0;color: #fff" @click.native="getListBucket('', false, false, true)">
+                    All Deals
+                    </el-col> -->
+                </el-row>
+            </div>
+            <div class="fs3_backup">
+                <div class="introduce">
+                    <router-link :to="{name: 'fs3_backup'}" :style="{'color': introduceColor?'#2f85e5':'#fff'}">FS3 Backup</router-link>
+                </div>
+                <div class="introRouter">
+                    <router-link :to="{name: 'my_account_dashboard'}" :class="{'active': activeTree == '2'}">Dashboard</router-link>
+                    <router-link :to="{name: 'my_account_myPlans'}" :class="{'active': activeTree == '3'}">Backup Plans</router-link>
+                    <router-link :to="{name: 'my_account_jobs'}" :class="{'active': activeTree == '4'}">Jobs</router-link>
+                </div>
+                <!-- :default-checked-keys="activeTree" -->
+                <!-- <el-tree :data="dataBackup" :props="defaultProps" @node-click="handleNodeClick"
+                    node-key="id" ref="my-tree" default-expand-all
+                    :default-expanded-keys="activeTree?[1]:[]"
+                    :current-node-key="activeTree"></el-tree> -->
+
+            </div>
         </div>
         <div class="fes-host">
             <i class="iconfont icon-diqiu"></i>
@@ -79,7 +96,7 @@ export default {
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
-            logo: require("@/assets/images/title.png"),
+            logo: require("@/assets/images/logo.png"),
             activeIndex: '1',
             mobileMenuShow: false,
             search: '',
@@ -109,7 +126,30 @@ export default {
             shareFileShow: false,
             sendApi: 1,
             retrievalDialog: false,
-            allActive: true
+            allActive: true,
+            dataBackup: [{
+                label: 'My account',
+                id: 1,
+                children: [{
+                    label: 'Dashboard',
+                    id: 2,
+                    urlName: 'my_account_dashboard'
+                },{
+                    label: 'Backup Plans',
+                    id: 3,
+                    urlName: 'my_account_backupPlans'
+                },{
+                    label: 'My Plans',
+                    id: 4,
+                    urlName: 'my_account_myPlans'
+                }]
+            }],
+            activeTree: '',
+            defaultProps: {
+                children: 'children',
+                label: 'label'
+            },
+            introduceColor: false
         };
     },
     props: ['minioListBuckets', 'currentBucket', 'homeClick'],
@@ -121,6 +161,7 @@ export default {
     },
     watch: {
         $route: function (to, from) {
+            this.productName()
             if(this.bodyWidth){
                 this.collapse = true
                 this.collapseChage();
@@ -129,8 +170,36 @@ export default {
         'minioListBuckets': function (to, from) {
             this.getMinioData()
         },
+        // activeTree(id) {
+        //     // Tree 内部使用了 Node 类型的对象来包装用户传入的数据，用来保存目前节点的状态。可以用 $refs 获取 Tree 实例
+        //     if (id.toString()) {
+        //         this.$refs["my-tree"].setCurrentKey(id);
+        //     } else {
+        //         this.$refs["my-tree"].setCurrentKey(null);
+        //     }
+        // }
     },
     methods: {
+      handleNodeClick(data) {
+        if(data.urlName){
+            this.$router.push({name: data.urlName})
+            this.getListBucket('', false, true)
+        } 
+      },
+      productName() {
+        let _this = this
+        _this.introduceColor = _this.$route.name == 'fs3_backup'?true:false
+        _this.activeTree = ''
+        if(_this.$route.name.indexOf('my_account') > -1){
+            if(_this.$route.name == 'my_account_backupPlans' || _this.$route.name == 'my_account_myPlans') {
+                _this.activeTree = '3'
+            }else if(_this.$route.name == 'my_account_jobs') {
+                _this.activeTree = '4'
+            }else {
+                _this.activeTree = '2'
+            }
+        }
+      },
       getshareDialog(shareDialog) {
         this.shareDialog = shareDialog
       },
@@ -339,8 +408,8 @@ export default {
               _this.minioListBucketsAll = JSON.parse(JSON.stringify(_this.minioListBuckets))
           }
       },
-      getListBucket(name, allDeal) {
-          this.$emit('getminioListBucket', name, allDeal);
+      getListBucket(name, allDeal, silde, push) {
+          this.$emit('getminioListBucket', name, allDeal, silde, push);
           this.allActive = allDeal ? true : false
       },
       getMinioData() {
@@ -358,25 +427,48 @@ export default {
     },
     mounted() {
       this.getMinioData()
+      this.productName()
     },
 };
 </script>
 <style lang="scss" scoped>
 .slide{
-    width: 2.5rem;
-    background-color: #00303f;
-    height: calc(100% - 0.5rem);
+    position: relative;
+    width: 3.2rem;
+    background-color: #003040;
+    height: 100%;
     overflow: hidden;
-    padding: 0.25rem;
+    padding: 0;
     transition: all;
     transition-duration: .3s;
+    .slideScroll{
+        position: relative;
+        height: calc(100% - 0.6rem);
+        overflow: hidden;
+        overflow-y: scroll;
+        scrollbar-color: #ccc #002a39;
+        scrollbar-width: 4px;
+        scrollbar-track-color: transparent;
+        -ms-scrollbar-track-color: transparent;
+        &::-webkit-scrollbar-track {
+            background: #003040;
+        }
+        &::-webkit-scrollbar {
+            width: 4px;
+            background: #002a39;
+        }
+        &::-webkit-scrollbar-thumb {
+            background: #ccc;
+        }
+    }
     .fes-header{
         display: flex;
-        width: 100%;
-        margin-bottom: 40px;
+        width: calc(100% - 0.4rem);
+        padding: 0.25rem 0.2rem;
         img{
-            width: 20px;
-            margin-top: 5px;
+            width: auto;
+            max-width: 100%;
+            height: 0.35rem;
         }
         h2{
             margin: 10px 0 0 13px;
@@ -385,12 +477,94 @@ export default {
             font-size: 0.2rem;
         }
     }
+    .fs3_backup{
+        margin: 0.1rem 0 0;
+        .introduce{
+            margin: 0 0 0.05rem;
+            text-indent: 0.2rem;
+            background: #002a39;
+            // font-family: 'm-semibold';
+            font-weight: bold;
+            a{
+                display: block;
+                line-height: 3;
+                font-size: 0.14rem;
+                color: #2f85e5;
+                @media screen and (max-width:999px){
+                  font-size: 13px;
+                }
+            }
+        }
+        .introRouter{
+            font-size: 0.14rem;
+            @media screen and (max-width:999px){
+                font-size: 13px;
+            }
+            a{
+                display: block;
+                padding: 0.07rem 0.2rem;
+                color: rgba(255, 255, 255, 0.85);
+                font-size: inherit;
+                &:hover{
+                    color: #7ecef4;
+                    background-color: rgba(0,0,0,.1);
+                }
+            }
+            .active{
+                color: #7ecef4;
+            }
+        }
+        .el-tree /deep/{
+            padding: 0 0.25rem;
+            background: transparent;
+            color: #fff;
+            .el-tree-node {
+                .el-tree-node__content{
+                    height: auto;
+                    background: transparent !important;
+                    margin: 0 0 0.08rem;
+                    .el-tree-node__expand-icon{
+                        padding: 0 0.05rem;
+                        &:before{
+                            font-size: 0.2rem;
+                        }
+                    }
+                    .el-tree-node__label{
+                        font-size: 0.15rem;
+                        @media screen and (max-width:999px){
+                            font-size: 14px;
+                        }
+                    }
+                    &:hover{
+                        color: #5f9dcc;
+                    }
+                }
+                .el-tree-node__children{
+                    .el-tree-node__content{
+                        .el-tree-node__label{
+                            font-size: 0.14rem;
+                            line-height: 1.5;
+                            @media screen and (max-width:999px){
+                                font-size: 13px;
+                            }
+                        }
+                    }
+                }
+                .is-current, .is-checked{
+                        color: #5f9dcc;
+                }
+            }
+        }
+    }
     .fes-search{
-        height: calc(100% - 1.5rem);
+        // height: calc(100% - 1.7rem);
         .el-input /deep/{
             display: block;
+            width: calc(100% - 0.4rem);
+            margin: 0 0.2rem;
             clear: both;
             .el-input__inner{
+                padding-left: 25px;
                 background-color: transparent;
                 box-shadow: none;
                 border: 0;
@@ -398,27 +572,41 @@ export default {
                 border-bottom: 1px solid rgba(255, 255, 255, 0.1);
                 color: #fff;
                 text-align: left;
-                font-size: 0.13rem;
+                font-size: 0.14rem;
+                font-family: inherit;
+                @media screen and (max-width:999px){
+                    font-size: 13px;
+                }
+            }
+            .el-input__prefix{
+                color: #fff;
+                left: 0;
+                .el-input__icon{
+                    text-align: left;
+                }
             }
         }
         .el-row /deep/{
             margin-top: 0.2rem;
-            margin-left: -0.25rem;
-            margin-right: -0.25rem;
+            margin-left: 0;
+            margin-right: 0;
             font-size: 0.13rem;
-            height: calc(100% - 0.6rem);
-            overflow: hidden;
-            overflow-y: scroll;
+            // height: calc(100% - 1.3rem);
+            // overflow: hidden;
+            // overflow-y: scroll;
             .el-col{
                 position: relative;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                padding: 0.1rem 0.05rem 0.1rem 0.25rem;
+                padding: 0.08rem 0.05rem 0.08rem 0.2rem;
                 color: rgba(255, 255, 255, 0.75);
                 word-wrap: break-word;
                 font-size: 0.14rem;
                 cursor: pointer;
+                @media screen and (max-width:999px){
+                    font-size: 13px;
+                }
                 div{
                     display: flex;
                     align-items: center;
@@ -426,13 +614,19 @@ export default {
                 i{
                     font-size: 0.18rem;
                     margin-right: 0.08rem;
-                    color: rgba(255, 255, 255, 0.75);
+                    color: rgba(255, 255, 255, 0.85);
+                    @media screen and (max-width:999px){
+                        font-size: 16px;
+                    }
                 }
                 .caozuo{
                     opacity: 0;
                     float: right;
                     transform: rotate(90deg);
                     font-size: 0.15rem;
+                        @media screen and (max-width:999px){
+                            font-size: 14px;
+                        }
                     color: rgba(255, 255, 255, 0.75);
                     &:hover{
                         color: #fff;
@@ -442,7 +636,7 @@ export default {
                     position: absolute;
                     right: 0;
                     top: 0;
-                    padding: 0.15rem 0;
+                    padding: 0.1rem 0;
                     background-color: #fff;
                     border-radius: 0.05rem;
                     z-index: 1000;
@@ -455,6 +649,9 @@ export default {
                     border-radius: 4px;
                     box-shadow: 0 6px 12px rgba(0,0,0,.18);
                     background-clip: padding-box;
+                        @media screen and (max-width:999px){
+                            font-size: 14px;
+                        }
                     li{
                         display: block;
                         padding: 0.08rem 0.1rem;
@@ -482,6 +679,9 @@ export default {
                 background: rgba(0,0,0,.1);
                 font-size: 0.15rem;
                 color: #fff;
+                @media screen and (max-width:999px){
+                    font-size: 13px;
+                }
                 i{
                     color: #fff;
                 }
@@ -510,14 +710,15 @@ export default {
         }
     }
     .fes-host {
-        position: fixed;
+        position: absolute;
         left: 0;
         bottom: 0;
         z-index: 21;
         background-color: rgba(0,0,0,.1);
         font-size: 15px;
         font-weight: 400;
-        width: calc(3rem - 0.4rem);
+        // width: calc(3.2rem - 0.4rem);
+        width: calc(100% - 0.4rem);
         padding: 0.2rem;
         overflow: hidden;
         text-overflow: ellipsis;
@@ -600,6 +801,7 @@ export default {
                         line-height: 0.3rem;
                         color: #fff;
                         font-size: 12px;
+                        font-family: inherit;
                         border: 0;
                         border-radius: 0.02rem;
                         text-align: center;
@@ -611,6 +813,12 @@ export default {
 }
 .sliMobile{
     transform: translate3d(0,0,0) !important;
+    width: 80%;
+    max-width: 400px;
+    .fes-header{
+        padding: 0;
+        height: 65px;
+    }
 }
 
 @media screen and (max-width:1024px){
@@ -621,8 +829,8 @@ export default {
     position: fixed;
     left: 0;
     top: 0;
-    z-index: 20;
-    transform: translate3d(-3rem,0,0);
+    z-index: 9998;
+    transform: translate3d(-3.2rem,0,0);
     .fes-search {
       .el-row /deep/{
         .el-col{

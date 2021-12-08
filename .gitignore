@@ -24,3 +24,4 @@ config.json
 sysconfig.toml
 node_modules/
 .env
+**/*.log

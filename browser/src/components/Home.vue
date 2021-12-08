@@ -43,7 +43,7 @@
                         </el-upload>
                     </el-col>
                     <el-col :span="24">
-                        <el-tooltip class="item" effect="dark" content="Create bucket" placement="left" @click.native="dialogFormVisible = true">
+                        <el-tooltip class="item" effect="dark" content="Create bucket" placement="left" @click.native="createHomeBuck">
                             <i class="iconfont icon-harddriveyingpan"></i>
                         </el-tooltip>
                     </el-col>
@@ -88,7 +88,7 @@ export default {
     data() {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
-            logo: require("@/assets/images/title.png"),
+            logo: require("@/assets/images/logo.png"),
             bodyWidth: document.body.clientWidth<=1024?true:false,
             addFileShow: false,
             dialogFormVisible: false,
@@ -100,7 +100,7 @@ export default {
                 buckets: [],
                 uiVersion: ""
             },
-            currentBucket: 'nbai',
+            currentBucket: '',
             minioStorageInfo: {
                 storageInfo: {},
                 uiVersion: ""
@@ -354,12 +354,15 @@ export default {
             let _this = this
             _this.aboutListObjects.objects = JSON.parse(JSON.stringify(data))
         },
-        getminioListBucket(listName, all) {
+        getminioListBucket(listName, all, silde, push) {
+          if(push) this.$router.push({name: 'minio'})
           if(listName){
+            this.$router.push({name: 'minio'})
             this.getListObjects(listName)
             this.slideListClick += 1
           }
           this.allDealShow = all
+          if(silde) this.slideShow=false
         },
         addToggle() {
            this.addFileShow = !this.addFileShow
@@ -378,7 +381,15 @@ export default {
             this.homeClick = now
             this.addFileShow = false
         },
-
+        createHomeBuck(){
+            let _this = this
+            let path = _this.$route.path
+            if(path.indexOf('/minio') < 0){
+                this.$router.push({name: 'minio'})
+                this.allDealShow = true
+            }
+            this.dialogFormVisible = true
+        },
 
     //File upload
     httpRequest(file) {
@@ -547,7 +558,8 @@ export default {
     display: flex;
     flex-wrap: wrap;
     .content{
-        width: calc(100% - 3rem);
+        position: relative;
+        width: calc(100% - 3.2rem);
         height: 100%;
         overflow-y: scroll;
         transition: all;
@@ -569,6 +581,9 @@ export default {
             bottom: 0.2rem;
             width: 0.55rem;
             z-index: 9;
+            @media screen and (max-width:600px){
+                width: 40px;
+            }
             .el-icon-plus{
                 width: 0.55rem;
                 height: 0.55rem;
@@ -586,6 +601,15 @@ export default {
                 cursor: pointer;
                 transition: all;
                 transition-duration: .3s;
+                @media screen and (max-width:600px){
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    line-height: 40px;
+                    font-size: 15px;
+                }
             }
             .el-icon-plus-new{
                 background-color: #ff403c;
@@ -615,6 +639,15 @@ export default {
                         color: #fff;
                         cursor: pointer;
                         font-size: 0.18rem;
+                        @media screen and (max-width:999px){
+                            width: 30px;
+                            height: 30px;
+                            display: flex;
+                            justify-content: center;
+                            align-items: center;
+                            line-height: 30px;
+                            font-size: 15px;
+                        }
                     }
                 }
                 @-webkit-keyframes feba-btn-anim {
@@ -698,14 +731,15 @@ export default {
 .wrapper{
     .content{
         width: 100%;
-        padding-top: 0.55rem;
+        height: calc(100% - 65px);
+        padding-top: 65px;
         .headStyle.el-row /deep/{
             display: block;
             background-color: #32393f;
             padding: 10px 12px 9px 12px;
             text-align: center;
             position: fixed;
-            z-index: 21;
+            z-index: 9999;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
             left: 0;
             top: 0;
@@ -715,7 +749,7 @@ export default {
                 img{
                     display: block;
                     height: 35px;
-                    margin: auto;
+                    margin: 5px auto 0;
                 }
                 .el-button{
                     display: block;
@@ -728,6 +762,7 @@ export default {
                     background: none;
                     color: #fff;
                     font-size: 21px;
+                    font-family: inherit;
                     line-height: 45px;
                     -webkit-transition: all;
                     transition: all;
