@@ -28,7 +28,7 @@ __Note__: A Lotus full node is not a must for FS3 if a lite node is already conf
 ### IPFS node
 A running IPFS node is needed for CAR file generation and files uploading and storage. You can refer [IPFS Docs](https://docs.ipfs.io/install/) for installation instructions and configuration.
 ### Lotus node
-A running lotus node is needed for CAR file information generation, deals sending and deals retrieval. You can refer [Lotus Docs](https://lotus.filecoin.io/docs/set-up/install/) for installation instructions and configuration.
+A running lotus node is needed for CAR file information generation, deals sending and deals retrieval. You can refer [Lotus Docs](https://lotus.filecoin.io/docs/set-up/install/) for installation instructions and configuration. As mentioned before, a Lotus full node is not a must for FS3 server but if you dont have a lotus full node, a lite node which configured to connect to a full node is a required. More information on how to use a [Lotus Lite node](https://lotus.filecoin.io/docs/set-up/lotus-lite/).
 ### PostgreSQL
 A PostgreSQL database is required to be pre-built for FS3 server usage. Check [PostgreSQL Tutorial](https://www.postgresqltutorial.com/) on installation and connection instructions. The required database schema and tables schema are listed below.
 #### Database Schema
