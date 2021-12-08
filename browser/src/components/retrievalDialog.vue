@@ -230,6 +230,7 @@ export default {
                           display: -webkit-box;
                           -webkit-line-clamp: 2;
                           -webkit-box-orient: vertical;
+                          font-family: inherit;
                           span{
                               line-height: 0.25rem;
                               overflow: hidden;

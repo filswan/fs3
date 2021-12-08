@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/storage v1.10.0
 	github.com/Azure/azure-pipeline-go v0.2.2
 	github.com/Azure/azure-storage-blob-go v0.10.0
-	github.com/BurntSushi/toml v0.3.1
+	github.com/BurntSushi/toml v0.4.1
 	github.com/Shopify/sarama v1.27.2
 	github.com/VividCortex/ewma v1.1.1
 	github.com/alecthomas/participle v0.2.1
@@ -15,6 +15,7 @@ require (
 	github.com/bits-and-blooms/bloom/v3 v3.0.1
 	github.com/cespare/xxhash/v2 v2.1.1
 	github.com/cheggaaa/pb v1.0.29
+	github.com/codingsince1985/checksum v1.2.3
 	github.com/colinmarc/hdfs/v2 v2.2.0
 	github.com/coredns/coredns v1.4.0
 	github.com/dchest/siphash v1.2.1
@@ -26,12 +27,16 @@ require (
 	github.com/elastic/go-elasticsearch/v7 v7.12.0
 	github.com/fatih/color v1.12.0
 	github.com/filedrive-team/go-graphsplit v0.4.1
+	github.com/filswan/go-swan-client v0.0.38
+	github.com/filswan/go-swan-lib v0.2.52
 	github.com/go-ldap/ldap/v3 v3.2.4
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gomodule/redigo v2.0.0+incompatible
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
+	github.com/ipfs/go-ipfs-files v0.0.8
+	github.com/ipfs/go-ipfs-http-client v0.1.0
 	github.com/jcmturner/gokrb5/v8 v8.4.2
 	github.com/joho/godotenv v1.4.0
 	github.com/json-iterator/go v1.1.11
@@ -40,7 +45,7 @@ require (
 	github.com/klauspost/pgzip v1.2.5
 	github.com/klauspost/readahead v1.3.1
 	github.com/klauspost/reedsolomon v1.9.11
-	github.com/lib/pq v1.9.0
+	github.com/lib/pq v1.10.2
 	github.com/miekg/dns v1.1.35
 	github.com/minio/cli v1.22.0
 	github.com/minio/csvparser v1.0.0
@@ -72,9 +77,11 @@ require (
 	github.com/prometheus/client_model v0.2.0
 	github.com/prometheus/procfs v0.6.0
 	github.com/rifflock/lfshook v0.0.0-20180920164130-b9218ef580f5
+	github.com/robfig/cron v1.2.0
 	github.com/rs/cors v1.7.0
 	github.com/secure-io/sio-go v0.3.1
-	github.com/sirupsen/logrus v1.8.0
+	github.com/shopspring/decimal v1.3.1
+	github.com/sirupsen/logrus v1.8.1
 	github.com/streadway/amqp v1.0.0
 	github.com/syndtr/goleveldb v1.0.0
 	github.com/tinylib/msgp v1.1.6-0.20210521143832-0becd170c402
@@ -84,11 +91,13 @@ require (
 	go.etcd.io/etcd/api/v3 v3.5.0-beta.4
 	go.etcd.io/etcd/client/v3 v3.5.0-beta.4
 	go.uber.org/zap v1.16.1-0.20210329175301-c23abee72d19
-	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
-	golang.org/x/sys v0.0.0-20210510120138-977fb7262007
+	golang.org/x/crypto v0.0.0-20210921155107-089bfa567519
+	golang.org/x/sys v0.0.0-20210615035016-665e8c7367d1
 	golang.org/x/tools v0.1.1 // indirect
 	google.golang.org/api v0.31.0
 	gopkg.in/yaml.v2 v2.4.0
+	gorm.io/driver/postgres v1.2.3
+	gorm.io/gorm v1.22.4
 )
 
 replace (

@@ -1,28 +1,7 @@
 <template>
   <div class="landing" @click="actClient(0)">
       <header class="fe-header">
-        <!-- all deals page search -->
-        <div class="form_top" v-if="!allDealShow">
-            <div class="search">
-                <el-input
-                    placeholder="Search for Deal ID/W3SS ID/Data CID"
-                    prefix-icon="el-icon-search"
-                    v-model="searchValue"
-                >
-                </el-input>
-                <div class="search_right" :style="{'opacity': !searchValue?'0.8':'1'}">
-                    <el-button style="background-color: #ffb822"
-                      :disabled="!searchValue">Search</el-button>
-                    <el-button
-                      type="primary"
-                      style="background-color: #0b318f"
-                      :disabled="!searchValue"
-                    >Clear All</el-button>
-                </div>
-            </div>
-        </div>
-        <!-- all deals page search end -->
-        <h2 v-if="allDealShow">
+        <h2>
           <span class="main" v-if="editNameFile" v-for="(item, index) in currentBucketAll" :key="index">
             <a href="javascript:;" @click="buckerAdress(index)">{{item}}</a>
           </span>
@@ -33,7 +12,7 @@
           </a>
           <el-input v-model="user.name_file" ref="mark" placeholder="Choose or create new path" v-else @blur="editFileFun"></el-input>
         </h2>
-        <div class="feh-used" v-if="allDealShow">
+        <div class="feh-used">
           <div class="fehu-chart">
             <div style="width: 0px;"></div>
           </div>
@@ -95,7 +74,7 @@
         </div-->
       </header>
 
-      <div class="table" v-if="allDealShow">
+      <div class="table">
         <el-table
           :data="tableData"
           stripe
@@ -263,60 +242,6 @@
               </ul>
             </template>
           </el-table-column>
-        </el-table>
-      </div>
-
-      // all deals page table
-      <div class="table" v-else>
-        <el-table :data="exChangeList" stripe style="width: 100%" class="demo-table-expand">
-            <el-table-column type="expand"></el-table-column>
-            <el-table-column prop="data.timeStamp" label="Date">
-              <template slot-scope="scope">
-                {{exChangeList[scope.$index].data.timeStamp}}
-                <!-- {{ props.row.date }} -->
-              </template>
-            </el-table-column>
-            <el-table-column prop="data.minerId" label="W3SS ID"></el-table-column>
-            <el-table-column prop="data.price" label="Price">
-              <template slot-scope="scope">
-                {{exChangeList[scope.$index].data.price}} FIL
-              </template>
-            </el-table-column>
-            <el-table-column prop="data.dealCid" label="Deal CID">
-              <template slot-scope="scope">
-                <div class="hot-cold-box">
-                    <el-popover
-                        placement="top"
-                        trigger="hover"
-                        v-model="exChangeList[scope.$index].data.visible">
-                        <div class="upload_form_right">
-                            <p>{{exChangeList[scope.$index].data.dealCid}}</p>
-                        </div>
-                        <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dealCid)">
-                            <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dealCid}}</p>
-                        </el-button>
-                    </el-popover>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="data.dataCid" label="Data CID">
-              <template slot-scope="scope">
-                <div class="hot-cold-box">
-                    <el-popover
-                        placement="top"
-                        trigger="hover"
-                        v-model="exChangeList[scope.$index].data.visibleDataCid">
-                        <div class="upload_form_right">
-                            <p>{{exChangeList[scope.$index].data.dataCid}}</p>
-                        </div>
-                        <el-button slot="reference" @click="copyLink(exChangeList[scope.$index].data.dataCid)">
-                            <p><i class="el-icon-document-copy"></i>{{exChangeList[scope.$index].data.dataCid}}</p>
-                        </el-button>
-                    </el-popover>
-                </div>
-              </template>
-            </el-table-column>
-            <el-table-column prop="data.duration" label="Duration"></el-table-column>
         </el-table>
       </div>
 
@@ -1057,6 +982,65 @@ export default {
 
 
                 return false
+            },
+            getOS() {
+                var sUserAgent = navigator.userAgent;
+                var isWin = (navigator.platform == "Win32") || (navigator.platform == "Windows");
+                var isMac = (navigator.platform == "Mac68K") || (navigator.platform == "MacPPC") || (navigator.platform == "Macintosh") || (navigator.platform == "MacIntel");
+                if (isMac) return "Mac";
+                var isUnix = (navigator.platform == "X11") && !isWin && !isMac;
+                if (isUnix) return "Unix";
+                var isLinux = (String(navigator.platform).indexOf("Linux") > -1);
+                if (isLinux) return "Linux";
+                if (isWin) {
+                    var isWin2K = sUserAgent.indexOf("Windows NT 5.0") > -1 || sUserAgent.indexOf("Windows 2000") > -1;
+                    if (isWin2K) return "Win2000";
+                    var isWinXP = sUserAgent.indexOf("Windows NT 5.1") > -1 || sUserAgent.indexOf("Windows XP") > -1;
+                    if (isWinXP) return "WinXP";
+                    var isWin2003 = sUserAgent.indexOf("Windows NT 5.2") > -1 || sUserAgent.indexOf("Windows 2003") > -1;
+                    if (isWin2003) return "Win2003";
+                    var isWinVista= sUserAgent.indexOf("Windows NT 6.0") > -1 || sUserAgent.indexOf("Windows Vista") > -1;
+                    if (isWinVista) return "WinVista";
+                    var isWin7 = sUserAgent.indexOf("Windows NT 6.1") > -1 || sUserAgent.indexOf("Windows 7") > -1;
+                    if (isWin7) return "Win7";
+                    var isWin10 = sUserAgent.indexOf("Windows NT 10") > -1 || sUserAgent.indexOf("Windows 10") > -1;
+                    if (isWin10) return "Win10";
+                }
+                return "other";
+            },
+            Browse () {
+                var browser = {};
+                var userAgent = navigator.userAgent.toLowerCase();
+                var s;
+                (s = userAgent.match(/msie ([\d.]+)/)) ? browser.ie = s[1] : (s = userAgent.match(/firefox\/([\d.]+)/)) ? browser.firefox = s[1] : (s = userAgent.match(/chrome\/([\d.]+)/)) ? browser.chrome = s[1] : (s = userAgent.match(/opera.([\d.]+)/)) ? browser.opera = s[1] : (s = userAgent.match(/version\/([\d.]+).*safari/)) ? browser.safari = s[1] : 0;
+                var version = "";
+                if (browser.ie) {
+                    version = 'IE ' + browser.ie;
+                }
+                else {
+                    if (browser.firefox) {
+                        version = 'firefox ' + browser.firefox;
+                    }
+                    else {
+                        if (browser.chrome) {
+                            version = 'chrome ' + browser.chrome;
+                        }
+                        else {
+                            if (browser.opera) {
+                                version = 'opera ' + browser.opera;
+                            }
+                            else {
+                                if (browser.safari) {
+                                    version = 'safari ' + browser.safari;
+                                }
+                                else {
+                                    version = 'Unknown browser';
+                                }
+                            }
+                        }
+                    }
+                }
+                return version;
             }
   },
   watch: {
@@ -1241,6 +1225,7 @@ export default {
                 color: #fff;
                 line-height: 0.34rem;
                 font-size: 0.15rem;
+                font-family: inherit;
                 border: 0;
                 border-radius: 0.08rem;
             }
@@ -1635,6 +1620,7 @@ export default {
                 display: -webkit-box;
                 -webkit-line-clamp: 2;
                 -webkit-box-orient: vertical;
+                font-family: inherit;
                 span{
                     line-height: 0.25rem;
                     overflow: hidden;
@@ -1706,6 +1692,7 @@ export default {
         .draw_right{
           .el-button{
             font-size: 0.16rem;
+            font-family: inherit;
             i{
               font-weight: bold;
             }
@@ -1887,6 +1874,7 @@ export default {
                 padding: 0.05rem 0.1rem;
                 margin: 0 0.03rem;
                 font-size: 12px;
+                font-family: inherit;
                 color: #fff;
                 border: 0;
                 background-color: #ff726f;
@@ -1908,48 +1896,74 @@ export default {
 @media screen and (max-width:999px){
 .landing{
   .fe-header{
-      .form_top {
-         .search {
-           flex-wrap: wrap;
-           height: auto;
-
-           .el-input /deep/ {
-               width: 100%;
-               margin: 0.1rem 0;
-
-               .el-input__inner {
-               width: 100%;
-               font-size: 0.1372rem;
-               }
-           }
-
-           span {
-               margin-left: 0;
-           }
-
-           .search_right {
-
-               .el-select /deep/ {
-               .el-input__inner {
-                   font-size: 0.1372rem;
-               }
-               }
-
-               .el-button /deep/ {
-               padding: 0 0.2rem;
-               font-size: 0.1372rem;
-               }
-           }
-         }
+    h2 {
+      span {
+        a{
+          font-size: 16px;
+        }
       }
+      .fe-edit{
+        font-size: 16px;
+        i{
+          font-size: inherit;
+        }
+      }
+    }
+    .feh-used {
+      ul{
+        li{
+          font-size: 13px;
+        }
+      }
+    }
+    .form_top {
+        .search {
+          flex-wrap: wrap;
+          height: auto;
+
+          .el-input /deep/ {
+              width: 100%;
+              margin: 0.1rem 0;
+
+              .el-input__inner {
+              width: calc(100% - 32px);
+              font-size: 0.1372rem;
+              height: 35px;
+              padding: 0 0 0 32px;
+              }
+          }
+
+          span {
+              margin-left: 0;
+          }
+
+          .search_right {
+
+              .el-select /deep/ {
+              .el-input__inner {
+                  font-size: 0.1372rem;
+              }
+              }
+
+              .el-button /deep/ {
+              padding: 0 0.2rem;
+              font-size: 0.1372rem;
+              font-family: inherit;
+              height: auto;
+              line-height: 2.5;
+              }
+          }
+        }
+    }
     .feh-metamask{
         top: 0.21rem;
         right: 45px;
         position: fixed;
     }
     .feh-actions{
-        top: 0.1rem;
+        top: 10px;
         right: 0;
+        height: 45px;
         position: fixed;
         .btn-group>button, >a{
           color: #fff;
@@ -1960,9 +1974,16 @@ export default {
         .mobileIcon{
           display: block !important;
           i{
-            font-size: 0.16rem !important;
+            font-size: 16px !important;
           }
         }
+    }
+  }
+  .table {
+    .el-table /deep/ {
+      th>.cell{
+        font-size: 15px;
+      }
     }
   }
 }
