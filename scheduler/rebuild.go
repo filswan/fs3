@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/filswan/go-swan-lib/client"
 	"github.com/minio/minio/internal/config"
@@ -78,7 +79,14 @@ func RebuildVolumeScheduler() error {
 func GetOneRunningRebuildJob(db *gorm.DB) ([]PsqlVolumeRebuildJob, error) {
 	//get backupplans
 	var runningRebuildJob PsqlVolumeRebuildJob
-	db.Where("status=?", StatusRebuildTaskCreated).Or("status=?", StatusRebuildTaskRunning).First(&runningRebuildJob)
+	if err := db.Where("status=?", StatusRebuildTaskCreated).Or("status=?", StatusRebuildTaskRunning).First(&runningRebuildJob).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+		} else {
+			logs.GetLogger().Error(err)
+			return []PsqlVolumeRebuildJob{}, err
+		}
+	}
 	var runningRebuildJobs []PsqlVolumeRebuildJob
 	runningRebuildJobs = append(runningRebuildJobs, runningRebuildJob)
 	return runningRebuildJobs, nil
@@ -137,6 +145,10 @@ func RebuildVolumeAndUpdateDb(rebuildJob PsqlVolumeRebuildJob, db *gorm.DB) erro
 	rebuildJob.UpdatedOn = rebuildTimestamp
 	rebuildJob.Status = StatusRebuildTaskCompleted
 	db.Save(&rebuildJob)
+	if err := db.Save(&rebuildJob).Error; err != nil {
+		logs.GetLogger().Error(err)
+		return err
+	}
 	return err
 }
 

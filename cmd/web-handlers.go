@@ -6680,7 +6680,11 @@ func (web *webAPIHandlers) PsqlRetrieveOfflineDealsVolume(w http.ResponseWriter,
 	db.Where("status=?", StatusBackupTaskCreated).Or("status=?", StatusBackupTaskRunning).Find(&count).Count(&inProcessVolumeBackupTasksCounts)
 	db.Where("status=?", StatusBackupTaskCompleted).Find(&count).Count(&completedVolumeBackupTasksCounts)
 	db.Where("status=?", StatusBackupTaskFailed).Find(&count).Count(&failedVolumeBackupTasksCounts)
-	db.Find(&count).Count(&totalVolumeBackupTasksCounts)
+	if err := db.Find(&count).Count(&totalVolumeBackupTasksCounts).Error; err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 
 	psqlRetrieveVolume := PsqlRetrieveVolume{
 		VolumeBackupJobs:                 resp,
@@ -6833,10 +6837,16 @@ func (web *webAPIHandlers) PsqlRebuildVolume(w http.ResponseWriter, r *http.Requ
 	defer sqlDB.Close()
 
 	var rebuildJob PsqlVolumeRebuildJob
-	db.First(&rebuildJob, volumeRebuildRequest.VolumeRebuildTaskId)
+	if err := db.First(&rebuildJob, volumeRebuildRequest.VolumeRebuildTaskId).Error; err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
 	rebuildJob.UpdatedOn = rebuildTimestamp
 	rebuildJob.Status = StatusRebuildTaskCompleted
-	db.Save(&rebuildJob)
+	if err := db.Save(&rebuildJob).Error; err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+	}
 
 	//send response
 	volumeRebuildJobResponse := PsqlVolumeRebuildJobResponse{
@@ -7172,7 +7182,15 @@ func (web *webAPIHandlers) PsqlBackupVolumeAddPlan(w http.ResponseWriter, r *htt
 	}
 
 	var resp PsqlVolumeBackupPlan
-	db.Last(&resp)
+	if err := db.Last(&resp).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+		} else {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
 
 	addVolumeBackupPlanResponse := PsqlAddVolumeBackupPlanResponse{
 		Data:    resp,
@@ -7306,7 +7324,13 @@ func (web *webAPIHandlers) PsqlBackupVolumeUpdatePlan(w http.ResponseWriter, r *
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
 	var updatePlan PsqlVolumeBackupPlan
-	db.First(&updatePlan, updateVolumeBackupPlanRequest.BackupPlanId)
+	if err := db.First(&updatePlan, updateVolumeBackupPlanRequest.BackupPlanId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
 	updatePlan.Status = updateVolumeBackupPlanRequest.Status
 	updatePlan.UpdatedOn = timestamp
 	db.Save(&updatePlan)
@@ -7356,14 +7380,22 @@ func (web *webAPIHandlers) PsqlBackupAddJob(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
+		return
 	}
 	defer sqlDB.Close()
 
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
 	var backupPlan PsqlVolumeBackupPlan
-	db.First(&backupPlan, addVolumeBackupRequest.BackupPlanId)
-
+	if err := db.First(&backupPlan, addVolumeBackupRequest.BackupPlanId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+		} else {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
 	backupJob := PsqlVolumeBackupJob{
 		Name:               backupPlan.Name,
 		VolumeBackupPlanID: backupPlan.ID,
@@ -7375,10 +7407,26 @@ func (web *webAPIHandlers) PsqlBackupAddJob(w http.ResponseWriter, r *http.Reque
 	db.Create(&backupJob)
 
 	var resp PsqlVolumeBackupJob
-	db.Last(&resp)
+	if err := db.Last(&resp).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+		} else {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
 
 	var resp2 []PsqlVolumeBackupJob
-	db.Find(&resp2)
+	if err := db.Find(&resp2).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+		} else {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
 
 	addVolumeBackupResponse := PsqlAddVolumeBackupResponse{
 		Data:    resp,
@@ -7673,7 +7721,15 @@ func (web *webAPIHandlers) PsqlRebuildAddJob(w http.ResponseWriter, r *http.Requ
 	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 
 	var backupJob PsqlVolumeBackupJob
-	db.First(&backupJob, addVolumeRebuildRequest.BackupTaskId)
+	if err := db.First(&backupJob, addVolumeRebuildRequest.BackupTaskId).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+		} else {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
 	rebuildJob := PsqlVolumeRebuildJob{
 		MinerId:     backupJob.MinerId,
 		DealCid:     backupJob.DealCid,
@@ -7867,19 +7923,40 @@ func (web *webAPIHandlers) PsqlRetrieveBackupPlan(w http.ResponseWriter, r *http
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
+		return
 	}
 	defer sqlDB.Close()
 
 	var plans []PsqlVolumeBackupPlan
 	if len(statusList) != 0 {
-		db.Where("status IN (?)", statusList).Order("id").Limit(limit).Offset(offset).Find(&plans)
+		if err := db.Where("status IN (?)", statusList).Order("id").Limit(limit).Offset(offset).Find(&plans).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logs.GetLogger().Info("No record found in database")
+			} else {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+		}
 	} else {
-		db.Order("id").Limit(limit).Offset(offset).Find(&plans)
+		if err := db.Order("id").Limit(limit).Offset(offset).Find(&plans).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logs.GetLogger().Info("No record found in database")
+			} else {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+		}
 	}
 
 	var count []PsqlVolumeBackupPlan
 	var totalVolumeBackupPlansCounts int64
-	db.Find(&count).Count(&totalVolumeBackupPlansCounts)
+	if err := db.Find(&count).Count(&totalVolumeBackupPlansCounts).Error; err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 
 	plan := PsqlVolumeBackupPlanResponse{
 		BackupPlans:                  plans,
@@ -8008,6 +8085,7 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 	if err != nil {
 		logs.GetLogger().Error(err)
 		writeWebErrorResponse(w, err)
+		return
 	}
 	defer sqlDB.Close()
 
@@ -8017,7 +8095,15 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 	var rebuildJobsFull []PsqlVolumeRebuildJobFull
 	for _, v := range rebuildJobs {
 		var backupJob PsqlVolumeBackupJob
-		db.Where("id=?", v.BackupJobId).First(&backupJob)
+		if err := db.Where("id=?", v.BackupJobId).First(&backupJob).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logs.GetLogger().Info("No record found in database")
+			} else {
+				logs.GetLogger().Error(err)
+				writeWebErrorResponse(w, err)
+				return
+			}
+		}
 		rebuildJobFull := PsqlVolumeRebuildJobFull{
 			ID:             v.ID,
 			MinerId:        v.MinerId,
@@ -8035,11 +8121,39 @@ func (web *webAPIHandlers) PsqlRetrieveRebuildVolume(w http.ResponseWriter, r *h
 
 	var count []PsqlVolumeRebuildJob
 	var inProcessVolumeRebuildTasksCounts, completedVolumeRebuildTasksCounts, failedVolumeRebuildTasksCounts, totalVolumeRebuildTasksCounts int64
-	db.Where("status=?", StatusRebuildTaskCreated).Or("status=?", StatusRebuildTaskRunning).Find(&count).Count(&inProcessVolumeRebuildTasksCounts)
-	db.Where("status=?", StatusRebuildTaskCompleted).Find(&count).Count(&completedVolumeRebuildTasksCounts)
-	db.Where("status=?", StatusRebuildTaskFailed).Find(&count).Count(&failedVolumeRebuildTasksCounts)
-	db.Find(&count).Count(&totalVolumeRebuildTasksCounts)
+	if err := db.Where("status=?", StatusRebuildTaskCreated).Or("status=?", StatusRebuildTaskRunning).Find(&count).Count(&inProcessVolumeRebuildTasksCounts).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+		} else {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
+	if err := db.Where("status=?", StatusRebuildTaskCompleted).Find(&count).Count(&completedVolumeRebuildTasksCounts).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+		} else {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
+	if err := db.Where("status=?", StatusRebuildTaskFailed).Find(&count).Count(&failedVolumeRebuildTasksCounts).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+		} else {
+			logs.GetLogger().Error(err)
+			writeWebErrorResponse(w, err)
+			return
+		}
+	}
 
+	if err := db.Find(&count).Count(&totalVolumeRebuildTasksCounts).Error; err != nil {
+		logs.GetLogger().Error(err)
+		writeWebErrorResponse(w, err)
+		return
+	}
 	psqlVolumeRebuildJobsResp := PsqlVolumeRebuildJobResp{
 		VolumeRebuildJobs:                 rebuildJobsFull,
 		TotalVolumeRebuildTasksCounts:     int(totalVolumeRebuildTasksCounts),

@@ -250,7 +250,15 @@ func BackupVolumeJobs(volumeBackupRequests []VolumeBackupRequest) error {
 		logs.GetLogger().Info("car files uploaded")
 
 		var uploadedFileDesc PsqlVolumeBackupCarCsv
-		db.Last(&uploadedFileDesc)
+		if err := db.Last(&uploadedFileDesc).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logs.GetLogger().Info("No record found in database")
+				return nil
+			} else {
+				logs.GetLogger().Error(err)
+				return err
+			}
+		}
 
 		for _, v := range uploadedCarCsvStructList {
 			uploadedFileDesc.Uuid = v.Uuid
@@ -268,8 +276,10 @@ func BackupVolumeJobs(volumeBackupRequests []VolumeBackupRequest) error {
 			uploadedFileDesc.PieceCid = v.PieceCid
 			uploadedFileDesc.MinerFid = v.MinerFid
 			uploadedFileDesc.Cost = v.Cost
-
-			db.Save(&uploadedFileDesc)
+			if err := db.Save(&uploadedFileDesc).Error; err != nil {
+				logs.GetLogger().Error(err)
+				continue
+			}
 		}
 
 		backupPlanInfo, err := GetBackupPlanInfo(db, backupPlanId)
@@ -377,8 +387,15 @@ func AddBackupVolumeJobs(plansId []int) ([]VolumeBackupRequest, error) {
 	var volumeBackupRequests []VolumeBackupRequest
 	for _, v := range plansId {
 		var backupPlan PsqlVolumeBackupPlan
-		db.First(&backupPlan, v)
-
+		if err := db.First(&backupPlan, v).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logs.GetLogger().Info("No record found in database")
+				continue
+			} else {
+				logs.GetLogger().Error(err)
+				continue
+			}
+		}
 		backupJob := PsqlVolumeBackupJob{
 			Name:               backupPlan.Name,
 			VolumeBackupPlanID: backupPlan.ID,
@@ -387,10 +404,25 @@ func AddBackupVolumeJobs(plansId []int) ([]VolumeBackupRequest, error) {
 			UpdatedOn:          timestamp,
 			Status:             StatusBackupTaskCreated,
 		}
-		db.Create(&backupJob)
-
+		if err := db.Create(&backupJob).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logs.GetLogger().Info("No record found in database")
+				continue
+			} else {
+				logs.GetLogger().Error(err)
+				continue
+			}
+		}
 		var job PsqlVolumeBackupJob
-		db.Last(&job)
+		if err := db.Last(&job).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logs.GetLogger().Info("No record found in database")
+				continue
+			} else {
+				logs.GetLogger().Error(err)
+				continue
+			}
+		}
 		volumeBackupRequest := VolumeBackupRequest{
 			BackupTaskId:   job.ID,
 			BackupPlanId:   backupPlan.ID,

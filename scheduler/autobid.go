@@ -1,6 +1,7 @@
 package scheduler
 
 import (
+	"errors"
 	clientmodel "github.com/filswan/go-swan-client/model"
 	"github.com/filswan/go-swan-client/subcommand"
 	"github.com/filswan/go-swan-lib/client/lotus"
@@ -10,6 +11,7 @@ import (
 	"github.com/minio/minio/logs"
 	oshomedir "github.com/mitchellh/go-homedir"
 	"github.com/robfig/cron"
+	"gorm.io/gorm"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -100,7 +102,16 @@ func UpdateActiveBackupTasksInDb() error {
 	defer sqlDB.Close()
 
 	var backupJobs []PsqlVolumeBackupJob
-	db.Find(&backupJobs)
+	if err := db.Find(&backupJobs).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			logs.GetLogger().Info("No record found in database")
+			return nil
+		} else {
+			logs.GetLogger().Error(err)
+			return err
+		}
+	}
+
 	for _, values := range backupJobs {
 		if values.Status == StatusBackupTaskRunning {
 			if values.DealCid == "" {
@@ -117,7 +128,9 @@ func UpdateActiveBackupTasksInDb() error {
 				timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 				values.UpdatedOn = timestamp
 				logs.GetLogger().Info("Backup job done, ID: ", values.ID, ", UUID: ", values.Uuid)
-				db.Save(&values)
+				if err := db.Save(&values).Error; err != nil {
+					logs.GetLogger().Error(err)
+				}
 			}
 		}
 	}
@@ -157,14 +170,24 @@ func UpdateSentBackupTasksInDb(tasks [][]*libmodel.FileDesc) error {
 	//update backuptasks
 	for _, v := range tasks {
 		var backupJob PsqlVolumeBackupJob
-		db.Where("uuid=?", v[0].Uuid).First(&backupJob)
+		if err := db.Where("uuid=?", v[0].Uuid).First(&backupJob).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				logs.GetLogger().Info("No record found in database")
+			} else {
+				logs.GetLogger().Error(err)
+				continue
+			}
+		}
 		timestamp := strconv.FormatInt(time.Now().UTC().UnixNano()/1000, 10)
 		backupJob.Status = StatusBackupTaskRunning
 		backupJob.UpdatedOn = timestamp
 		backupJob.MinerId = v[0].MinerFid
 		backupJob.DealCid = v[0].DealCid
 		backupJob.Cost = v[0].Cost
-		db.Save(backupJob)
+		if err := db.Save(backupJob).Error; err != nil {
+			logs.GetLogger().Error(err)
+			continue
+		}
 		logs.GetLogger().Info("Backup job sent to miner, ID: ", backupJob.ID, ", UUID: ", v[0].Uuid)
 	}
 	return err

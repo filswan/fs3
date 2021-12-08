@@ -18,7 +18,6 @@
 package cmd
 
 import (
-	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/minio/cli"
 	sysconfig "github.com/minio/minio/config"
@@ -175,7 +174,7 @@ func Main(args []string) {
 	scheduler.BackupScheduler()
 	scheduler.RebuildScheduler()
 
-	fmt.Println("Your FS3 Server is running successfully. Please copy and paste the url below to open in a browser")
+	logs.GetLogger().Info("Your FS3 Server is running successfully. Please copy and paste the url below to open in a browser")
 
 	// Run the app - exit on error.
 	if err := newApp(appName).Run(args); err != nil {
