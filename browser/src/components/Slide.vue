@@ -492,6 +492,7 @@ export default {
                 color: #2f85e5;
                 @media screen and (max-width:999px){
                   font-size: 13px;
+                  line-height: 3.5;
                 }
             }
         }
@@ -505,6 +506,9 @@ export default {
                 padding: 0.07rem 0.2rem;
                 color: rgba(255, 255, 255, 0.85);
                 font-size: inherit;
+                @media screen and (max-width:999px){
+                    padding: 8px 0.2rem;
+                }
                 &:hover{
                     color: #7ecef4;
                     background-color: rgba(0,0,0,.1);
@@ -605,6 +609,7 @@ export default {
                 font-size: 0.14rem;
                 cursor: pointer;
                 @media screen and (max-width:999px){
+                    padding: 8px 0.05rem 8px 0.2rem;
                     font-size: 13px;
                 }
                 div{

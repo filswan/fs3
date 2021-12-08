@@ -215,7 +215,7 @@ export default {
                 // console.log(error.request.status);
                 if(error.request.status == '401'){
                   _this.$store.dispatch("FedLogOut").then(() => {
-                    _this.$router.push("/minio/login")
+                    _this.$router.push("/fs3/login")
                   })
                 }
             });
@@ -355,9 +355,9 @@ export default {
             _this.aboutListObjects.objects = JSON.parse(JSON.stringify(data))
         },
         getminioListBucket(listName, all, silde, push) {
-          if(push) this.$router.push({name: 'minio'})
+          if(push) this.$router.push({name: 'fs3'})
           if(listName){
-            this.$router.push({name: 'minio'})
+            this.$router.push({name: 'fs3'})
             this.getListObjects(listName)
             this.slideListClick += 1
           }
@@ -384,8 +384,8 @@ export default {
         createHomeBuck(){
             let _this = this
             let path = _this.$route.path
-            if(path.indexOf('/minio') < 0){
-                this.$router.push({name: 'minio'})
+            if(path.indexOf('/fs3') < 0){
+                this.$router.push({name: 'fs3'})
                 this.allDealShow = true
             }
             this.dialogFormVisible = true

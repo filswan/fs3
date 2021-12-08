@@ -128,7 +128,7 @@
         </el-table>
 
         <el-table
-          :data="tableData_2" v-loading="loading" stripe empty-text="No data" v-else>
+          :data="tableData_2" v-loading="loading_rebuild" stripe empty-text="No data" v-else>
           <el-table-column prop="ID" label="Rebuild ID" width="100"></el-table-column>
           <el-table-column prop="BackupPlanName" label="Backup Plan Name" width="180"></el-table-column>
           <el-table-column prop="Status" label="Status" width="140">
@@ -322,6 +322,7 @@ export default {
             ],
           },
           loading: false,
+          loading_rebuild: false,
           parma: {
             limit: 10,
             offset: 1,
@@ -443,11 +444,10 @@ export default {
       },
       getData(type) {
         let _this = this
-        _this.loading = true
-        let postUrl = ''
 
         if(type){
-          postUrl = _this.data_api + `/minio/backup/retrieve/volume`
+          _this.loading = true
+          let postUrl = _this.data_api + `/minio/backup/retrieve/volume`
           let offset = _this.parma.offset > 0 ? _this.parma.offset - 1 : _this.parma.offset;
           let params = {
             "Offset": offset,   //default as 0 
@@ -497,7 +497,8 @@ export default {
               _this.loading = false
           });
         }else{
-          postUrl = _this.data_api + `/minio/rebuild/retrieve/volume`
+          _this.loading_rebuild = true
+          let postUrl = _this.data_api + `/minio/rebuild/retrieve/volume`
           let offsetRebuild = _this.parmaRebuild.offset > 0 ? _this.parmaRebuild.offset - 1 : _this.parmaRebuild.offset;
           let paramsRebuild = {
             "Offset": offsetRebuild,   //default as 0 
@@ -519,17 +520,17 @@ export default {
                 
                 setTimeout(function(){
                   _this.sort(_this.tableData_2)
-                  _this.loading = false
+                  _this.loading_rebuild = false
                 }, 500)
               }else{
-                  _this.loading = false
+                  _this.loading_rebuild = false
                   _this.$message.error(json.message);
                   return false
               }
 
           }).catch(function (error) {
               console.log(error);
-              _this.loading = false
+              _this.loading_rebuild = false
           });
         }
       }

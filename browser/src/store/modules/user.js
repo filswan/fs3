@@ -5,7 +5,7 @@ const user = {
   state: {
     name: sessionStorage.oaxLoginName || '',
     userId: sessionStorage.oaxLoginUserId || '',
-    accessToken: sessionStorage.oaxMinioLoginAccessToken || ''
+    accessToken: sessionStorage.fs3MinioLoginAccessToken || ''
   },
 
   mutations: {
@@ -34,13 +34,13 @@ const user = {
                 duration: 5 * 1000
               })
               sessionStorage.oaxRegisterMail = userInfo.username
-              _this.$router.push("/minio")
+              _this.$router.push("/fs3")
               return false
             }
             _this.loginLoad = false
             if (response.success === true) {
               sessionStorage.oaxLoginUserId = response.data.userId
-              sessionStorage.oaxMinioLoginAccessToken = response.data.accessToken
+              sessionStorage.fs3MinioLoginAccessToken = response.data.accessToken
               sessionStorage.oaxLoginName = response.data.name
               sessionStorage.oaxLoginEmail = response.data.email
               const data = response.data
@@ -81,7 +81,7 @@ const user = {
       // var _this = this
       return new Promise(resolve => {
         sessionStorage.removeItem('oaxLoginUserId')
-        sessionStorage.removeItem('oaxMinioLoginAccessToken')
+        sessionStorage.removeItem('fs3MinioLoginAccessToken')
         sessionStorage.removeItem('oaxLoginName')
         sessionStorage.removeItem('oaxLoginEmail')
         commit('SET_ACCESSTOKEN', '')

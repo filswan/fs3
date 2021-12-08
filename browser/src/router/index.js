@@ -21,20 +21,20 @@ export default new Router({
 	routes: [
         {
             path: '/',
-            redirect: '/minio'
+            redirect: '/fs3'
         },
         {
             path: '/',
             component: home,
             children: [
                 {
-                    path: '/minio',
-                    name: 'minio',
+                    path: '/fs3',
+                    name: 'fs3',
                     component: minio,
                     beforeEnter: (to, from, next) => {
-                      if (!sessionStorage.getItem('oaxMinioLoginAccessToken')) {
+                      if (!sessionStorage.getItem('fs3MinioLoginAccessToken')) {
                         next({
-                          path: '/minio/login',
+                          path: '/fs3/login',
                           query: { redirect: to.fullPath }
                         })
                       } else {
@@ -85,7 +85,7 @@ export default new Router({
             ]
         },
         {
-          path: '/minio/login',
+          path: '/fs3/login',
           name: 'login',
           component: login,
         },

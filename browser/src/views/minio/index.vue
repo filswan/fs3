@@ -42,7 +42,7 @@
                   <a href="javascript:;" id="show-about">About <i class="iconfont icon-i"></i></a>
                 </li>
                 <li @click="logout">
-                  <router-link to="/minio/login" id="logout">Sign Out <i class="iconfont icon-signout"></i></router-link>
+                  <router-link to="/fs3/login" id="logout">Sign Out <i class="iconfont icon-signout"></i></router-link>
                 </li>
               </ul>
             </div>

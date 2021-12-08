@@ -471,6 +471,7 @@ export default {
             }
             .el-form-item__content{
               font-size: 12px;
+              width: 100%;
               .el-button{
                 font-size: 16px;
               }
