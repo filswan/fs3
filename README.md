@@ -9,7 +9,7 @@
 ### Prerequisite
 - Golang 1.15+.
 - Node Js 14.0+.
-- Postgresql 10.19+
+- PostgreSQL 10.19+
 
 __Note__: A Lotus full node is not a must for FS3, but a lite node is required to connect to Lotus should full node is absent. More infomation on how to config a lite node can be found at [Lotus Lite node](https://lotus.filecoin.io/docs/set-up/lotus-lite/).
 
