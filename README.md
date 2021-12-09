@@ -91,20 +91,6 @@ postgres=# \q                                                                  /
 postgres@ubuntu-dev:~$ exit                                                    //continue as the system user
 ```
 
-#### Create Tables and Sequences
-Get source code 
-```sh
-git clone https://github.com/filswan/fs3
-cd fs3
-git checkout <release_branch>                 
-```
-Create tables and sequences
-```sh
-bash db_setup.sh             
-```
-It’ll prompt for the password of the current user.It’ll prompt for the password of the current user. You need to provide the password and hit the `Enter` keyboard.Then it'll prompt for the password of the database user. Type `root` and hit the `Enter` keyboard.
-
-
 #### Database Schema
 ```sh
                           List of relations
@@ -311,7 +297,14 @@ git submodule update --init --recursive
 make ffi
 ```
 
-#### 2.4 Set up FS3 configuration
+#### 2.4 Build up Tables in Postgresql Database
+Create tables and sequences
+```sh
+bash db_setup.sh             
+```
+It’ll prompt for the password of the current user.It’ll prompt for the password of the current user. You need to provide the password and hit the `Enter` keyboard.Then it'll prompt for the password of the database user. Type `root` and hit the `Enter` keyboard.
+
+#### 2.5 Set up FS3 configuration
 Set up and customize FS3 configuration by making modifications on `.env` file, which stores your information as environment variables. An example config is given as `.env.example` for reference. 
 ``` bash
 vim .env
@@ -445,7 +438,7 @@ __Note__:If the configuration is changed in the future, build up the FS3 server 
 
 
        
-#### 2.5 Build up FS3 server
+#### 2.6 Build up FS3 server
 ``` bash
 make
 ```
