@@ -286,32 +286,32 @@ Foreign-key constraints:
 
 
 # Install from Source
-## Checkout source code
+## 1. Checkout source code
 ```
 git clone https://github.com/filswan/fs3
 cd fs3
 git checkout <release_branch>
 ```
 
-## Build the Source Code
-#### Build UI
+## 2. Build the Source Code
+#### 2.1 Build UI
 ```bash
 cd browser
 npm install
 npm run release
 ```
-#### Install Filecoin dependency
+#### 2.2 Install Filecoin dependency
 ```bash
 sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
 ```
-#### Install go module dependency
+#### 2.3 Install go module dependency
 ``` bash 
 cd ..
 git submodule update --init --recursive
 make ffi
 ```
 
-#### Set up FS3 configuration
+#### 2.4 Set up FS3 configuration
 Set up and customize FS3 configuration by making modifications on `.env` file, which stores your information as environment variables. An example config is given as `.env.example` for reference. 
 ``` bash
 vim .env
@@ -336,7 +336,7 @@ Modify the `.env` file based on your use cases:
   
 __Note__:If the configuration is changed in the future, build up the FS3 server again to make the changes take effect.
 
-#### Examples
+#### Examples:
 *  __FS3_WALLET_ADDRESS__
     1. Creata a wallet
           ```shell
@@ -445,7 +445,7 @@ __Note__:If the configuration is changed in the future, build up the FS3 server 
 
 
        
-#### Build up FS3 server
+#### 2.5 Build up FS3 server
 ``` bash
 make
 ```
