@@ -26,11 +26,85 @@ __Note__: A Lotus full node is not a must for FS3 if a lite node is already conf
 
 ## Install Prerequisite Dependencies
 ### IPFS node
-A running IPFS node is needed for CAR file generation and files uploading and storage. You can refer [IPFS Docs](https://docs.ipfs.io/install/) for installation instructions and configuration.
+A running IPFS node is needed for CAR file generation and files uploading and storage. You can refer [IPFS Command-line Docs](https://docs.ipfs.io/install/command-line/#official-distributions) for installation instructions and configuration.
 ### Lotus node
 A running lotus node is needed for CAR file information generation, deals sending and deals retrieval. You can refer [Lotus Docs](https://lotus.filecoin.io/docs/set-up/install/) for installation instructions and configuration. As mentioned before, a Lotus full node is not a must for FS3 server but if you dont have a lotus full node, a lite node which configured to connect to a full node is a required. More information on how to use a [Lotus Lite node](https://lotus.filecoin.io/docs/set-up/lotus-lite/).
 ### PostgreSQL
 A PostgreSQL database is required to be pre-built for FS3 server usage. Check [PostgreSQL Tutorial](https://www.postgresqltutorial.com/) on installation and connection instructions. The required database schema and tables schema are listed below.
+
+#### Install PostgreSQL on Ubuntu
+First, execute the following command to create the file repository configuration:
+```sh
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+```
+Second, import the repository signing key:
+```sh
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+```
+Third, update the package list:
+```sh
+sudo apt-get update
+```
+Finally, install the latest version of PostgreSQL:
+```sh
+sudo apt-get install postgresql
+```
+If you want to install a specific version, you can use `postgresql-version` instead of `postgresql`. For example, to install PostgreSQL version 12, you use the following command:
+```sh
+sudo apt-get install postgresql-12
+```
+
+#### Connect to the PostgreSQL database server via psql
+In PostgreSQL, a user account is referred to as a role.When you installed PostgreSQL, the installation process created a user account called `postgres` associated with the default `postgres` role. To connect to PostgreSQL using the `postgres` role, you switch over to the `postgres` account on your server by typing:
+```sh
+sudo -i -u postgres
+```
+It’ll prompt for the password of the current user. You need to provide the password and hit the `Enter` keyboard.
+Then, you can access the PostgreSQL using the psql by typing the following command:
+```sh
+psql
+```
+You’ll access the postgres prompt like this:
+```sh
+postgres=#
+```
+To quit the PostgreSQL prompt, you run the following command:
+```sh
+postgres=# \q
+```
+This above command will bring you back to the postgres Linux command prompt.
+```sh
+postgres@ubuntu-dev:~$
+```
+To return to your regular system user, you execute the `exit` command like this:
+```sh
+postgres@ubuntu-dev:~$ exit
+```
+
+#### Create PostgreSQL Database
+```sh
+sudo -u postgres psql
+postgres=# create database fs3;                                                //create 'fs3' PostgreSQL database                                    
+postgres=# create user root with encrypted password 'root';                    //create USER and PASSWORD as 'root'
+postgres=# grant all privileges on database fs3 to root;                       //grant privileges
+postgres=# \q                                                                  //logout postgres
+postgres@ubuntu-dev:~$ exit                                                    //continue as the system user
+```
+
+#### Create Tables and Sequences
+Get source code 
+```sh
+git clone https://github.com/filswan/fs3
+cd fs3
+git checkout <release_branch>                 
+```
+Create tables and sequences
+```sh
+bash db_setup.sh             
+```
+It’ll prompt for the password of the current user.It’ll prompt for the password of the current user. You need to provide the password and hit the `Enter` keyboard.Then it'll prompt for the password of the database user. Type `root` and hit the `Enter` keyboard.
+
+
 #### Database Schema
 ```sh
                           List of relations
@@ -246,22 +320,134 @@ vim .env
 Modify the `.env` file based on your use cases:
 
 * __SWAN_ADDRESS__ : The address of filswan platform, default as `https://api.filswan.com`.
-* __FS3_VOLUME_ADDRESS__ : The address of FS3 VOLUME, default as `~/minio-data`. If changed, the FS3 server start command has to be changed accordingly. For example, if the 
-* __FS3_WALLET_ADDRESS__ : A wallet address is a must for sending deals to miner. 
+* __FS3_VOLUME_ADDRESS__ : The address of FS3 VOLUME where the uploaded data stored, default as `~/fs3-data`. If changed, the FS3 server start command has to be changed accordingly. For example, if the `FS3_VOLUME_ADDRESS` is changed to `/PATH/TO/MY_FS3_VOLUME_ADDRESS`, the server running command line will change from `./minio server ~/fs3-data` to `./minio server /PATH/TO/MY_FS3_VOLUME_ADDRESS`.
+* __FS3_WALLET_ADDRESS__ : A wallet address is a must for sending deals to miner. Firstly,follow the instruction on [Manage FIL](https://lotus.filecoin.io/docs/set-up/manage-fil/#creating-a-wallet) to create a wallet. Secondly, after creating a wallet, check [obtaining FIL](https://lotus.filecoin.io/docs/set-up/manage-fil/#obtaining-fil) on how to receive FIL.
 * __CAR_FILE_SIZE__ : A fixed car file size in bytes need to be predefined before generating car files for trunk via variable `CarFileSize`, such as `8589934592` for 8Gb as default.
-* __IPFS_API_ADDRESS__ :  An available IPFS address with port need to be set up as the format of `https://MyIPFSUrl:Port`. The configuration of IPFS node can be found at `~/.ipfs/config` by following [IPFS Docs](https://docs.ipfs.io/how-to/configure-node/#profiles). For example, look up `API` of `Addresses` in the `config` file, transform `/ip4/192.168.88.41/tcp/5001` into `http://127.0.0.1:5001`.
-* __IPFS_GATEWAY__ :  An available IPFS address with port need to be set up for file downloading as the format of `https://MyIPFSGatewayUrl:Port`. The configuration of IPFS node can be found at `~/.ipfs/config` by following [IPFS Docs](https://docs.ipfs.io/how-to/configure-node/#profiles). For example, look up `Gateway` of `Addresses` in the `config` file, transform `/ip4/192.168.88.41/tcp/8080` into `http://127.0.0.1:8080`.
-* __SWAN_TOKEN__ : A valid swan token is required for posting task on swan platform. It can be received after creating an account on [Filswan](https://www.filswan.com). Check [Filswan APIs](https://documenter.getpostman.com/view/13140808/TWDZJbzV) for more details on how to get an authorization token.
-* __LOTUS_CLIENT_API_URL__ : A valid lotus endpoint is required to connect to a Lotus node as the format of `http://[api:port]/rpc/v0`.The Lotus node come with its own local API endpoint,which can be found as explained in [Lotus Configuration](https://lotus.filecoin.io/docs/set-up/configuration/). For example, transform the endpoint `/ip4/0.0.0.0/tcp/1234/http` found in config file into `http://127.0.0.1:1234/rpc/v0`. Check [Lotus Docs](https://lotus.filecoin.io/) for more details.
-* __LOTUS_CLIENT_ACCESS_TOKEN__ :An `admin` permission token is required to talk to the lotus API endpoints. It can be generated by following the [API Access](https://lotus.filecoin.io/docs/developers/api-access/) steps. Check [Lotus Docs](https://lotus.filecoin.io/) for more details.
-* __PSQL_HOST__ : The host name of the machine on which the server is running.
-* __PSQL_USER__ : The user name to connect to the database(You must have the permission to do so,of course).
-* __PSQL_PASSWORD__ : The password for connecting to a database if password authentification is required.
-* __PSQL_DBNAME__ : The name of the database you want to connect to.
-* __PSQL_PORT__ : The database server port to which you want to connect.
+* __IPFS_API_ADDRESS__ :  An available IPFS address with port need to be set up as the format of `https://MyIPFSUrl:Port`. Firstly, find the configuration file of IPFS node, which is located at `~/.ipfs/config` by default. Secondly, look up `API` in `Addresses` section of the `config` file. Thirdly, transform the `API` url into form of `https://MyIPFSUrl:Port`. For example, transform `/ip4/192.168.88.41/tcp/5001` into `http://127.0.0.1:5001`. Check [IPFS Docs](https://docs.ipfs.io/how-to/configure-node/#profiles) for more information of IPFS node configuration.
+* __IPFS_GATEWAY__ :  An available IPFS address with port need to be set up for file downloading as the format of `https://MyIPFSGatewayUrl:Port`. Firstly, find the configuration file of IPFS node, which is located at `~/.ipfs/config` by default. Secondly, look up `Gateway` in `Addresses` section of the `config` file. Thirdly, transform the `Gateway` url into form of `https://MyIPFSUrl:Port`. For example, transform `/ip4/192.168.88.41/tcp/5001` into `http://127.0.0.1:5001`. The process is similar to that of `IPFS_API_ADDRESS`. Check [IPFS Docs](https://docs.ipfs.io/how-to/configure-node/#profiles) for more information of IPFS node configuration.
+* __SWAN_TOKEN__ : A valid swan token is required for posting task on swan platform. It can be received after creating an account on [Filswan](https://console.filswan.com/). Check [Filswan APIs](https://documenter.getpostman.com/view/13140808/TWDZJbzV) for more details on how to get an authorization token.
+* __LOTUS_CLIENT_API_URL__ : A valid lotus endpoint is required to connect to a Lotus node as the format of `http://[api:port]/rpc/v0`.The Lotus node comes with its own local API endpoint. Firstly, find the lotus configuration file which is located at `~/.lotus/config.toml` by default. Secondly, look up `ListenAddress` in the `[API]` section of the `config.toml` file. Thirdly,transform the lotus api address found into format as `http://[api:port]/rpc/v0`. For example, transform the endpoint `/ip4/0.0.0.0/tcp/1234/http` found in config file into `http://127.0.0.1:1234/rpc/v0`. Check  [Lotus Configuration](https://lotus.filecoin.io/docs/set-up/configuration/) for more information of Lotus configuration.
+* __LOTUS_CLIENT_ACCESS_TOKEN__ :An `admin` permission token is required to talk to the lotus API endpoints. It can be generated by following the [Obtaining tokens](https://lotus.filecoin.io/docs/developers/api-access/#obtaining-tokens) steps. Check [Lotus Docs](https://lotus.filecoin.io/) for more details.
+* __PSQL_HOST__ : The host name of the machine on which the server is running. Default as:`127.0.0.1`
+* __PSQL_USER__ : The user name to connect to the database(You must have the permission to do so,of course). Default as `root`.
+* __PSQL_PASSWORD__ : The password for connecting to a database if password authentification is required. Default as `root`.
+* __PSQL_DBNAME__ : The name of the database you want to connect to. Default as `fs3`.
+* __PSQL_PORT__ : The database server port to which you want to connect. Default as `5432`.
   
 __Note__:If the configuration is changed in the future, build up the FS3 server again to make the changes take effect.
-  
+
+##### Examples
+*  __FS3_WALLET_ADDRESS__
+    1. Creata a wallet
+          ```shell
+          # Create a BLS wallet
+          lotus wallet new bls
+          ```
+          Or
+          ```shell
+          # Create a secp256k1 wallet
+          lotus wallet new
+          ```
+   
+*  __IPFS_API_ADDRESS__ and __IPFS_GATEWAY__:
+    1. Open the IPFS configuration file:
+          ```shell
+          vim ~/.ipfs/config               //default configuration location
+          ```
+    2. IPFS Configuration file example (truncated):
+          ```shell
+          {
+              "API": {
+                "HTTPHeaders": {
+                  "Access-Control-Allow-Methods": [
+                    "PUT",
+                    "GET",
+                    "POST"
+                  ],
+                  "Access-Control-Allow-Origin": [
+                    "http://localhost:3000",
+                    "http://127.0.0.1:5001",
+                    "https://webui.ipfs.io"
+                  ]
+                }
+              },
+              "Addresses": {
+                "API": "/ip4/127.0.0.1/tcp/5001",             // IPFS API ADDRESS
+                "Announce": [],
+                "Gateway": "/ip4/127.0.0.1/tcp/5050",         // IPFS GATEWAY
+                ...       
+              }
+              ...
+          }
+          ```
+    3. Transform format and fill in the `.env` file:
+          ```shell
+          IPFS_API_URL = http://127.0.0.1:5001               //transformed from "API": "/ip4/127.0.0.1/tcp/5001"
+          IPFS_GATEWAY = http://127.0.0.1:8080               //transformed from "Gateway": "/ip4/127.0.0.1/tcp/5050"
+          ```
+* __SWAN_TOKEN__:
+    1. Create an account on [Filswan](https://console.filswan.com/) with your Eamil and Password.
+    2. Send request to [Filswan APIs](https://documenter.getpostman.com/view/13140808/TWDZJbzV):
+       Example Request:
+          ```shell
+          curl --location --request POST 'https://api.filswan.com//auth/login' \
+          --data-raw '{
+          "email":"my-email",
+          "password":"my-password"
+          }'
+          ```
+       Example Response
+       ```shell
+       curl --location --request POST 'https://api.filswan.com//auth/login' \
+       --data-raw '{
+       "email":"my-email",
+       "password":"my-password"
+       }'
+          ```
+    3. Fill in the `.env` file:
+          ```shell
+          {
+          "auth_token": "eyJXXX.eyJXXX.nqVXXX",
+          "message": "Successfully logged in.",
+          "status": "success"
+          }
+          ```
+       
+* __LOTUS_CLIENT_API_URL__:
+    1. Open the Lotus configuration file:
+          ```shell
+          vim ~/.lotus/config.toml               //default configuration location
+          ```
+    2. Lotus Configuration file example (truncated):
+          ```shell
+          # Default config:
+          [API]
+          ListenAddress = /ip4/127.0.0.1/tcp/1234/http  // LOTUS CLIENT API URL
+          RemoteListenAddress = ""
+          #  Timeout = "30s"
+          ...
+          ```
+    3. Transform format and fill in the `.env` file:
+          ```shell
+          IPFS_API_URL = http://127.0.0.1/rpc/v0        //transformed from "ListenAddress": /ip4/127.0.0.1/tcp/1234/http
+          ```
+
+* __LOTUS_CLIENT_ACCESS_TOKEN__:
+    1. Create lotus node access token with `admin` permission:
+          ```shell
+          lotus auth create-token --perm admin             //admin permission 
+          ```
+    2. `admin` token example :
+          ```shell
+          eyJXXXX.eyJXXXX._J7XXXX
+          ```
+    3. Fill in the `.env` file:
+          ```shell
+          LOTUS_CLIENT_ACCESS_TOKEN = eyJXXXX.eyJXXXX._J7XXXX
+          ```
+
+
+       
 #### Build up FS3 server
 ``` bash
 make
@@ -269,7 +455,7 @@ make
 
 ## Run a Standalone FS3 Server
 ``` bash
-./minio server ~/minio-data
+./minio server ~/fs3-data
 ```
 
 The default FS3 volume address `Fs3VolumeAddress` is set as `~/minio-data`, which can be changed in `.env`. If the volume address is changed in the future, build up the FS3 server again to make the changes take effect.
@@ -285,7 +471,7 @@ If you change the credential, build up FS3 server again to make it take effect. 
 ``` bash
 make
 
-./minio server ~/minio-data
+./minio server ~/fs3-data
 ```
 
 You can test the deployment using the FS3 Browser, an embedded
