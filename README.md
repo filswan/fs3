@@ -336,7 +336,7 @@ Modify the `.env` file based on your use cases:
   
 __Note__:If the configuration is changed in the future, build up the FS3 server again to make the changes take effect.
 
-##### Examples
+#### Examples
 *  __FS3_WALLET_ADDRESS__
     1. Creata a wallet
           ```shell
@@ -388,6 +388,7 @@ __Note__:If the configuration is changed in the future, build up the FS3 server 
 * __SWAN_TOKEN__:
     1. Create an account on [Filswan](https://console.filswan.com/) with your Eamil and Password.
     2. Send request to [Filswan APIs](https://documenter.getpostman.com/view/13140808/TWDZJbzV):
+       
        Example Request:
           ```shell
           curl --location --request POST 'https://api.filswan.com//auth/login' \
@@ -397,20 +398,16 @@ __Note__:If the configuration is changed in the future, build up the FS3 server 
           }'
           ```
        Example Response
-       ```shell
-       curl --location --request POST 'https://api.filswan.com//auth/login' \
-       --data-raw '{
-       "email":"my-email",
-       "password":"my-password"
-       }'
-          ```
-    3. Fill in the `.env` file:
           ```shell
           {
-          "auth_token": "eyJXXX.eyJXXX.nqVXXX",
+          "auth_token": "eyJXXX.eyJXXX9.nqVRXXX",
           "message": "Successfully logged in.",
           "status": "success"
           }
+          ```
+    3. Fill in the `.env` file:
+          ```shell
+          SWAN_TOKEN = eyJXXX.eyJXXX9.nqVRXXX
           ```
        
 * __LOTUS_CLIENT_API_URL__:
