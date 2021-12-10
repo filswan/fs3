@@ -21,7 +21,7 @@ __Note__: A Lotus full node is not a must for FS3 if a lite node is already conf
 * Backup the whole volume with customized schedulers(daily/weekly) using offline deals. 
 * Send volume backup task to the assigned storage provider automatically using Autobid module.
 * Rebuild the volume content by retrieving previous volume backup content specified by users.
-* Save all the deal information into PostgreSQL database.
+* Save all the deals information into PostgreSQL database.
 * List all the deals history and status.
 
 ## Install Prerequisite Dependencies
@@ -55,11 +55,11 @@ sudo apt-get install postgresql-12
 ```
 
 #### Connect to the PostgreSQL database server via psql
-In PostgreSQL, a user account is referred to as a role.When you installed PostgreSQL, the installation process created a user account called `postgres` associated with the default `postgres` role. To connect to PostgreSQL using the `postgres` role, you switch over to the `postgres` account on your server by typing:
+In PostgreSQL, a user account is referred as a role. When you installed PostgreSQL, the installation process created a user account called `postgres` associated with the default `postgres` role. To connect to PostgreSQL using the `postgres` role, you switch over to the `postgres` account on your server by typing:
 ```sh
 sudo -i -u postgres
 ```
-It’ll prompt for the password of the current user. You need to provide the password and hit the `Enter` keyboard.
+It’ll prompt for the password of the current user. You need to provide the password and hit the `Enter/Return` keyboard.
 Then, you can access the PostgreSQL using the psql by typing the following command:
 ```sh
 psql
@@ -121,7 +121,7 @@ Create tables and sequences
 ```sh
 bash db_setup.sh             
 ```
-It’ll prompt for the password of the current user.It’ll prompt for the password of the current user. You need to provide the password and hit the `Enter` keyboard.Then it'll prompt for the password of the database user. Type `root` and hit the `Enter` keyboard.
+It’ll prompt for the password of the current user. You need to provide the password and hit the `Enter/Return` keyboard.Then it'll prompt for the password of the database user. Type `root` and hit the `Enter/Return` keyboard.
 
 #### 2.5 Set up FS3 configuration
 Set up and customize FS3 configuration by making modifications on `.env` file, which stores your information as environment variables. An example config is given as `.env.example` for reference. 
@@ -198,7 +198,7 @@ __Note__:If the configuration is changed in the future, build up the FS3 server 
           IPFS_GATEWAY = http://127.0.0.1:8080               //transformed from "Gateway": "/ip4/127.0.0.1/tcp/5050"
           ```
 * __SWAN_TOKEN__:
-    1. Create an account on [Filswan](https://console.filswan.com/) with your Eamil and Password.
+    1. Create an account on [Filswan](https://console.filswan.com/) with your Email and Password.
     2. Send request to [Filswan APIs](https://documenter.getpostman.com/view/13140808/TWDZJbzV):
        
        Example Request:
@@ -288,7 +288,7 @@ make
 ## Open FS3 Browser
 You can test the deployment using the FS3 Browser, an embedded
 web-based object browser built into FS3 Server. Point a web browser running on the host machine to http://127.0.0.1:9000 and log in with the
-root credentials. You can use the Browser to create buckets, upload objects, send deals, retrieve data and browse the contents of the FS3 server.
+root credentials. You can use the Browser to create buckets, upload objects, send deals, retrieve data and browse the contents on the FS3 server.
 
 You can also connect using any S3-compatible tool, such as the [FS3-mc](https://github.com/filswan/fs3-mc) commandline tool.
 
