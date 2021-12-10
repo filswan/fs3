@@ -1,8 +1,10 @@
 <template>
-    <div class="slide" @click="caozuoFun()">
-        <div class="slideScroll">
+    <div class="slide" :class="{'slide_stretch': menuStretch}" @click="caozuoFun()">
+        <div class="slideScroll" v-if="!menuStretch">
             <div class="fes-header">
                 <img :src="logo" alt="">
+                <!-- <i class="el-icon-close"></i> -->
+                <svg t="1639106161967" @click="menuToggleStreth(true)" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="1779"><path d="M561.17013333 509.06026667L858.02666667 213.73973333c14.03733333-13.968 14.1088-36.60053333 0.1408-50.63786666-13.99893333-14.06826667-36.592-14.10773333-50.62933334-0.1408L510.6048 458.31466667 216.256 163.06986667c-13.9328-13.96693333-36.59733333-14.03733333-50.63466667-0.07146667-14.00426667 13.96586667-14.03733333 36.63146667-0.0704 50.6688l294.27733334 295.1744-296.71466667 295.14026667c-14.0384 13.968-14.1088 36.59733333-0.14293333 50.63786666a35.7216 35.7216 0 0 0 25.3856 10.56c9.13066667 0 18.26666667-3.4688 25.25013333-10.4192l296.78613333-295.2128L807.4304 857.48266667c6.9824 7.02186667 16.15253333 10.53013333 25.35253333 10.53013333a35.72906667 35.72906667 0 0 0 25.28213334-10.45973333c13.99893333-13.96586667 14.03733333-36.592 0.07146666-50.62933334L561.17013333 509.06026667z m0 0" p-id="1780" fill="#ffffff"></path></svg>
             </div>
             <div class="fes-search">
                 <el-input
@@ -35,7 +37,7 @@
             </div>
             <div class="fs3_backup">
                 <div class="introduce">
-                    <router-link :to="{name: 'fs3_backup'}" :style="{'color': introduceColor?'#2f85e5':'#fff'}">FS3 Backup</router-link>
+                    <router-link :to="{name: 'backup'}" :style="{'color': introduceColor?'#2f85e5':'#fff'}">FS3 Backup</router-link>
                 </div>
                 <div class="introRouter">
                     <router-link :to="{name: 'my_account_dashboard'}" :class="{'active': activeTree == '2'}">Dashboard</router-link>
@@ -50,9 +52,18 @@
 
             </div>
         </div>
+        <div class="slide_stretch_show" v-if="menuStretch">
+            <img src="@/assets/images/logo_small.png" alt="">
+            <i class="iconfont icon-ziyuan" @click="menuToggleStreth(false)"></i>
+        </div>
         <div class="fes-host">
-            <i class="iconfont icon-diqiu"></i>
-            <a href="/">{{location}}</a>
+            <div class="fesHostLink" v-if="!menuStretch">
+                <i class="iconfont icon-diqiu"></i>
+                <a href="/">{{location}}</a>
+            </div>
+            <div class="fesHostLogout" @click="logout">
+                <router-link to="/fs3/login" id="logout"><i class="iconfont icon-signout"></i></router-link>
+            </div>
         </div>
 
         <el-dialog :title="titlePolicy" :visible.sync="dialogFormVisible" custom-class="policyStyle">
@@ -149,7 +160,8 @@ export default {
                 children: 'children',
                 label: 'label'
             },
-            introduceColor: false
+            introduceColor: false,
+            menuStretch: false
         };
     },
     props: ['minioListBuckets', 'currentBucket', 'homeClick'],
@@ -180,6 +192,38 @@ export default {
         // }
     },
     methods: {
+      menuToggleStreth(stretch) {
+        this.menuStretch = stretch
+        this.$emit('getMenuStretch', stretch);
+      },
+      logout() {
+        var _this = this;
+
+        let dataGetDiscoveryDoc = {
+            id: 1,
+            jsonrpc: "2.0",
+            method: "web.GetDiscoveryDoc",
+            params:{}
+        }
+        axios.post(_this.postUrl, dataGetDiscoveryDoc, {headers: {
+            'Authorization':"Bearer "+ _this.$store.getters.accessToken
+        }}).then((response) => {
+            let json = response.data
+            let error = json.error
+            let result = json.result
+            if (error) {
+                _this.$message.error(error.message);
+                return false
+            }
+
+            _this.$store.dispatch("FedLogOut").then(() => {
+                _this.$router.replace({ name: 'login' })
+            });
+
+        }).catch(function (error) {
+            console.log(error);
+        });
+      },
       handleNodeClick(data) {
         if(data.urlName){
             this.$router.push({name: data.urlName})
@@ -188,7 +232,7 @@ export default {
       },
       productName() {
         let _this = this
-        _this.introduceColor = _this.$route.name == 'fs3_backup'?true:false
+        _this.introduceColor = _this.$route.name == 'backup'?true:false
         _this.activeTree = ''
         if(_this.$route.name.indexOf('my_account') > -1){
             if(_this.$route.name == 'my_account_backupPlans' || _this.$route.name == 'my_account_myPlans') {
@@ -463,12 +507,22 @@ export default {
     }
     .fes-header{
         display: flex;
+        justify-content: space-between;
+        align-content: center;
         width: calc(100% - 0.4rem);
         padding: 0.25rem 0.2rem;
         img{
             width: auto;
             max-width: 100%;
             height: 0.35rem;
+        }
+        svg{
+            font-size: 0.25rem;
+            width: 0.25rem;
+            height: 0.25rem;
+            margin: 0.05rem 0 0;
+            color: rgba(255,255,255,0.75);
+            cursor: pointer;
         }
         h2{
             margin: 10px 0 0 13px;
@@ -715,6 +769,8 @@ export default {
         }
     }
     .fes-host {
+        display: flex;
+        justify-content: space-between;
         position: absolute;
         left: 0;
         bottom: 0;
@@ -743,11 +799,24 @@ export default {
             color: #888b83;
             // background: url(../assets/images/icon_01.jpg) no-repeat center;
             // background-size: 100%;
+            @media screen and (max-width: 999px) {
+                font-size: 18px;
+            }
         }
         a{
             color: hsla(0,0%,100%,.75);
             font-size: 15px;
             font-weight: 400;
+        }
+        .fesHostLogout{
+            cursor: pointer;
+            i{
+                margin: 0;
+                color: #fff;
+                &:hover{
+                    color: #7ecef4;
+                }
+            }
         }
     }
     .el-dialog__wrapper /deep/{
@@ -823,6 +892,30 @@ export default {
     .fes-header{
         padding: 0;
         height: 65px;
+    }
+}
+.slide_stretch{
+    width: 0.65rem;
+    .slide_stretch_show{
+        display: block;
+        padding: 0.2rem 0.1rem;
+        img{
+            display: block;
+            width: 0.4rem;
+            max-width: 100%;
+            margin: 0 auto 0.15rem;
+        }
+        i{
+            font-size: 25px;
+            font-weight: 900;
+            color: rgba(255, 255, 255, 0.75);
+            display: block;
+            text-align: center;
+            cursor: pointer;
+            &:hover{
+                color: #fff;
+            }
+        }
     }
 }
 

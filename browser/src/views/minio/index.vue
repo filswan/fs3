@@ -224,9 +224,14 @@
               <span class="point el-icon-more" @click.stop="actClient(scope.$index, 1)" v-if="drawIndex<1"></span>
 
               <ul class="dropdown-menu" :class="{'dropdown-show': tableData[scope.$index].dropShow}">
-                <a href="javascript:;" class="fiad-action" @click="deleteBtn(tableData[scope.$index].name)">
-                  <el-tooltip class="item" effect="dark" content="Delete Object" placement="top">
-                    <i class="el-icon-delete"></i>
+                <a href="javascript:;" class="fiad-action" @click="drawPlay(scope.$index, true)">
+                  <el-tooltip class="item" effect="dark" content="Download Object" placement="top">
+                    <i class="el-icon-download"></i>
+                  </el-tooltip>
+                </a>
+                <a href="javascript:;" class="fiad-action" @click="ShareToFil(tableData[scope.$index])">
+                  <el-tooltip class="item" effect="dark" content="Backup to Filecoin" placement="top">
+                    <img :src="ShareToFilecoin" />
                   </el-tooltip>
                 </a>
                 <a href="javascript:;" class="fiad-action" @click="shareBtn(scope.$index)">
@@ -234,9 +239,9 @@
                     <i class="el-icon-share"></i>
                   </el-tooltip>
                 </a>
-                <a href="javascript:;" class="fiad-action" @click="ShareToFil(tableData[scope.$index])">
-                  <el-tooltip class="item" effect="dark" content="Backup to Filecoin" placement="top">
-                    <img :src="ShareToFilecoin" />
+                <a href="javascript:;" class="fiad-action" @click="deleteBtn(tableData[scope.$index].name)">
+                  <el-tooltip class="item" effect="dark" content="Delete Object" placement="top">
+                    <i class="el-icon-delete"></i>
                   </el-tooltip>
                 </a>
               </ul>
@@ -347,7 +352,7 @@ export default {
   data() {
     return {
       postUrl: this.data_api + `/minio/webrpc`,
-      logo: require("@/assets/images/title.png"),
+      logo: require("@/assets/images/logo_small.png"),
       ShareToFilecoin: require("@/assets/images/WechatIMG1133.png"),
       danger_img: require("@/assets/images/danger.png"),
       bodyWidth: document.body.clientWidth>600?true:false,
@@ -860,6 +865,7 @@ export default {
             item.dropShow = false
             item.lastModified = Moment(item.lastModified).format('YYYY-MM-DD HH:mm:ss')
           })
+          
           _this.tableData = JSON.parse(JSON.stringify(_this.aboutListObjects.objects))
       }else{
         _this.tableData = []
@@ -1547,7 +1553,7 @@ export default {
           }
         }
         .dropdown-show{
-          display: block;
+          display: flex;
           background-color: transparent;
           box-shadow: none;
           padding: 0;

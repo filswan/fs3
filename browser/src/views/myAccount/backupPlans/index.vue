@@ -324,9 +324,16 @@ export default {
     .bg{
       position: absolute;
       right: 18%;
-      width: 13%;
+      width: 1.1rem;
       top: 0.2rem;
       z-index: 5;
+      @media screen and (max-width:999px){    
+        top: 0.2rem;
+        width: 1.6rem;
+      }
+      @media screen and (max-width:600px){    
+        right: 0.2rem;
+      }
     }
     .fs3_head_text{
       .titleBg{

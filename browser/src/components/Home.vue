@@ -3,8 +3,8 @@
         <v-slide :class="{'sliMobile': slideShow}"
             :minioListBuckets="minioListBuckets" :currentBucket="currentBucket"
             :homeClick="homeClick" @homeClickFun="homeClickFun" @getshareHome="getshareHome" @getretrievalHome="getretrievalHome"
-            @getminioListBucket="getminioListBucket" @getListBuckets="getListBuckets"></v-slide>
-        <div class="content">
+            @getminioListBucket="getminioListBucket" @getListBuckets="getListBuckets" @getMenuStretch="getMenuStretch"></v-slide>
+        <div class="content" :class="{'content_stretch': menuStretch}">
             <el-row class="headStyle">
                 <el-col :span="6">
                     <el-button class="iconfont icon-ziyuan" @click.stop="slideBtn" v-if="!slideShow"></el-button>
@@ -139,7 +139,8 @@ export default {
             sendApi: 1,
             allDealShow: true,
             retrievalDialog: false,
-            isRouterAlive: true
+            isRouterAlive: true,
+            menuStretch: false
         }
     },
     components: {
@@ -156,6 +157,9 @@ export default {
         },
     },
     methods: {
+        getMenuStretch(stretch) {
+            this.menuStretch = stretch
+        },
         reload () {
             this.isRouterAlive = false;
             this.$nextTick(function () {
@@ -725,6 +729,9 @@ export default {
             margin: 0.2rem 0 0;
           }
         }
+    }
+    .content_stretch{
+        width: calc(100% - 0.65rem);
     }
 }
 @media screen and (max-width:999px){

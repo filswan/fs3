@@ -43,8 +43,8 @@ export default new Router({
                     }
                 },
                 {
-                  path: '/fs3_backup',
-                  name: 'fs3_backup',
+                  path: '/backup',
+                  name: 'backup',
                   component: fs3_backup
                 },
                 {
