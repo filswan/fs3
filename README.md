@@ -267,7 +267,7 @@ make
 ./minio server ~/fs3-data
 ```
 
-The default FS3 volume address `Fs3VolumeAddress` is set as `~/minio-data`, which can be changed in `.env`. If the volume address is changed in the future, build up the FS3 server again to make the changes take effect.
+The default FS3 volume address `Fs3VolumeAddress` is set as `~/fs3-data`, which can be changed in `.env`. If the volume address is changed in the future, build up the FS3 server again to make the changes take effect.
 
 The FS3 deployment starts using default root credentials `minioadmin:minioadmin` but you can change it with your own credentials.
 
@@ -354,7 +354,7 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "filename": "~/minio-data/test/waymo.zip",
+        "filename": "~/fs3-data/test/waymo.zip",
         "walletAddress": "wabkhtadjzfydxxda2vzyasg7cimd3jie6ermpw",
         "verifiedDeal": "false",
         "fastRetrieval": "true",
@@ -394,7 +394,7 @@ Response from POSTMAN
         "deals": [
             {
                 "data": {
-                    "filename": "~/minio-data/test/waymo.zip",
+                    "filename": "~/fs3-data/test/waymo.zip",
                     "walletAddress": "5wabkhtadjzfydxxdq66j4dubbhwpnojqd3jmpw",
                     "verifiedDeal": "false",
                     "fastRetrieval": "true",
@@ -410,7 +410,7 @@ Response from POSTMAN
             },
             {
                 "data": {
-                    "filename": "~/minio-data/testre/waymo.zip",
+                    "filename": "~/fs3-data/testre/waymo.zip",
                     "walletAddress": "5wabkhtadjzfydxxda2vzyasg7cimkcphswrq66j4dubbhwpnoj",
                     "verifiedDeal": "false",
                     "fastRetrieval": "true",
@@ -459,7 +459,7 @@ Response from POSTMAN
 ```bash
 {
     "data": {
-        "filename": "~/minio-data/test_deals.zip",
+        "filename": "~/fs3-data/test_deals.zip",
         "walletAddress": "h376xbytsd3jie6ermpw",
         "verifiedDeal": "false",
         "fastRetrieval": "true",
@@ -499,7 +499,7 @@ Response from POSTMAN
         "deals": [
             {
                 "data": {
-                    "filename": "~/minio-data/test_deals.zip",
+                    "filename": "~/fs3-data/test_deals.zip",
                     "walletAddress": "t3u7pum2vzyasg7cimkpnojqd3jie6erm",
                     "verifiedDeal": "false",
                     "fastRetrieval": "true",
@@ -515,7 +515,7 @@ Response from POSTMAN
             },
             {
                 "data": {
-                    "filename": "~/minio-data/test_deals.zip",
+                    "filename": "~/fs3-data/test_deals.zip",
                     "walletAddress": "t3u7khtadjzfydxxdanojqd3jie6ermpw",
                     "verifiedDeal": "false",
                     "fastRetrieval": "true",
@@ -754,7 +754,7 @@ Response from POSTMAN
                 "ID": 1,
                 "Name": "daily",
                 "Uuid": "90-da-45-a0-14",
-                "SourceFileName": "minio-data",
+                "SourceFileName": "fs3-data",
                 "MinerId": "t000000",
                 "DealCid": "bafy",
                 "PayloadCid": "QmXv",
