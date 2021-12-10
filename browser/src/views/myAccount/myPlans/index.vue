@@ -370,9 +370,16 @@ export default {
     .bg{
       position: absolute;
       right: 13%;
-      width: 9%;
+      width: 1.1rem;
       top: 0.3rem;
       z-index: 5;
+      @media screen and (max-width:999px){    
+        top: 0.2rem;
+        width: 1.6rem;
+      }
+      @media screen and (max-width:600px){    
+        right: 0.2rem;
+      }
     }
     .fs3_head_text{
       .titleBg{
@@ -405,6 +412,9 @@ export default {
   }
   .fs3_cont{
     padding: 0.4rem 9%;
+    @media screen and (max-width:999px){    
+      padding: 0.6rem 9% 0.4rem;
+    }
     .backupCreate{
       display: flex;
       justify-content: flex-end;

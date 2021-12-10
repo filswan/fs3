@@ -17,7 +17,7 @@
         </div>
         <div class="login_bot">
             <div class="left">{{location}}</div>
-            <router-link to="/minio/login" class="right"><img :src="login_img" /></router-link>
+            <router-link to="/fs3/login" class="right"><img :src="login_img" /></router-link>
         </div>
     </div>
 </template>
@@ -112,10 +112,10 @@ export default {
                         }
 
                         _this.loginLoad=false
-                        sessionStorage.oaxMinioLoginAccessToken = result.token
+                        sessionStorage.fs3MinioLoginAccessToken = result.token
                         _this.$store.state.user.accessToken = result.token
                         console.log('login token: ', _this.$store.state.user.accessToken)
-                        _this.$router.replace({ name: 'minio' })
+                        _this.$router.replace({ name: 'fs3' })
 
                         //Storage account
                         localStorage.removeItem('MinioAccountNumber')

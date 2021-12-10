@@ -1,7 +1,7 @@
 {
-  "name": "minio",
+  "name": "fs3",
   "version": "1.0.0",
-  "description": "minio",
+  "description": "fs3",
   "author": "",
   "private": true,
   "scripts": {

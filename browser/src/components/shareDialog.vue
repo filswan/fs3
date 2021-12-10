@@ -539,7 +539,7 @@ export default {
                   }
               })
 
-              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
+              let postURL = process.env.BASE_API+'miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
               // let postURL = _this.data_api + '/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
               // let postURL = 'https://api.filswan.com/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
 
@@ -569,7 +569,7 @@ export default {
 
               _this.loading = true
               // let postURL = _this.data_api + '/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
-              let postURL = 'http://192.168.88.216:5002/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
+              let postURL = process.env.BASE_API+'miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset='+_this.page*20
               axios.get(postURL).then((response) => {
                   let json = response.data.data.miner
                   json.map(item => {

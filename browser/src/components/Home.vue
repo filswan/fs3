@@ -3,8 +3,8 @@
         <v-slide :class="{'sliMobile': slideShow}"
             :minioListBuckets="minioListBuckets" :currentBucket="currentBucket"
             :homeClick="homeClick" @homeClickFun="homeClickFun" @getshareHome="getshareHome" @getretrievalHome="getretrievalHome"
-            @getminioListBucket="getminioListBucket" @getListBuckets="getListBuckets"></v-slide>
-        <div class="content">
+            @getminioListBucket="getminioListBucket" @getListBuckets="getListBuckets" @getMenuStretch="getMenuStretch"></v-slide>
+        <div class="content" :class="{'content_stretch': menuStretch}">
             <el-row class="headStyle">
                 <el-col :span="6">
                     <el-button class="iconfont icon-ziyuan" @click.stop="slideBtn" v-if="!slideShow"></el-button>
@@ -139,7 +139,8 @@ export default {
             sendApi: 1,
             allDealShow: true,
             retrievalDialog: false,
-            isRouterAlive: true
+            isRouterAlive: true,
+            menuStretch: false
         }
     },
     components: {
@@ -156,6 +157,9 @@ export default {
         },
     },
     methods: {
+        getMenuStretch(stretch) {
+            this.menuStretch = stretch
+        },
         reload () {
             this.isRouterAlive = false;
             this.$nextTick(function () {
@@ -215,7 +219,7 @@ export default {
                 // console.log(error.request.status);
                 if(error.request.status == '401'){
                   _this.$store.dispatch("FedLogOut").then(() => {
-                    _this.$router.push("/minio/login")
+                    _this.$router.push("/fs3/login")
                   })
                 }
             });
@@ -355,9 +359,9 @@ export default {
             _this.aboutListObjects.objects = JSON.parse(JSON.stringify(data))
         },
         getminioListBucket(listName, all, silde, push) {
-          if(push) this.$router.push({name: 'minio'})
+          if(push) this.$router.push({name: 'fs3'})
           if(listName){
-            this.$router.push({name: 'minio'})
+            this.$router.push({name: 'fs3'})
             this.getListObjects(listName)
             this.slideListClick += 1
           }
@@ -384,8 +388,8 @@ export default {
         createHomeBuck(){
             let _this = this
             let path = _this.$route.path
-            if(path.indexOf('/minio') < 0){
-                this.$router.push({name: 'minio'})
+            if(path.indexOf('/fs3') < 0){
+                this.$router.push({name: 'fs3'})
                 this.allDealShow = true
             }
             this.dialogFormVisible = true
@@ -725,6 +729,9 @@ export default {
             margin: 0.2rem 0 0;
           }
         }
+    }
+    .content_stretch{
+        width: calc(100% - 0.65rem);
     }
 }
 @media screen and (max-width:999px){
