@@ -88,7 +88,6 @@ postgres=# create database fs3;                                                /
 postgres=# create user root with encrypted password 'root';                    //create USER and PASSWORD as 'root'
 postgres=# grant all privileges on database fs3 to root;                       //grant privileges
 postgres=# \q                                                                  //logout postgres
-postgres@ubuntu-dev:~$ exit                                                    //continue as the system user
 ```
 
 # Install from Source
