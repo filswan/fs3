@@ -285,6 +285,7 @@ make
 ./minio server ~/fs3-data
 ```
 
+## Open FS3 Browser
 You can test the deployment using the FS3 Browser, an embedded
 web-based object browser built into FS3 Server. Point a web browser running on the host machine to http://127.0.0.1:9000 and log in with the
 root credentials. You can use the Browser to create buckets, upload objects, send deals, retrieve data and browse the contents of the FS3 server.
