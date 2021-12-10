@@ -269,8 +269,10 @@ make
 
 The default FS3 volume address `Fs3VolumeAddress` is set as `~/fs3-data`, which can be changed in `.env`. If the volume address is changed in the future, build up the FS3 server again to make the changes take effect.
 
+#### Access Key and Secret Key
 The FS3 deployment starts using default root credentials `minioadmin:minioadmin` but you can change it with your own credentials.
 
+#### Change your Access Key and Secret Key
 ``` bash
 export MINIO_ROOT_USER= MY_FS3_ACCESS_KEY
 export MINIO_ROOT_PASSWORD=MY_FS3_SECRET_KEY
