@@ -68,10 +68,17 @@ export default {
     color: #fff;
     .bg{
       position: absolute;
-      right: 13%;
-      width: 15%;
+      right: 11%;
+      width: 1.6rem;
       top: 0.3rem;
       z-index: 5;
+      @media screen and (max-width:999px){    
+        right: 0.2rem;
+        width: 1.8rem;
+      }
+      @media screen and (max-width:600px){    
+        top: 1.2rem;
+      }
     }
     .fs3_head_text{
       .titleBg{

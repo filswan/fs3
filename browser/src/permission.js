@@ -7,13 +7,13 @@ NProgress.configure({
   showSpinner: false
 })
 
-const whiteList = ['/minio/login'] //Do not redirect whitelist
+const whiteList = ['/fs3/login'] //Do not redirect whitelist
 router.beforeEach((to, from, next) => {
   NProgress.start()
   store.state.user.linkPageName = null
   store.state.user.linkPageName = to.name
   if (sessionStorage.oaxLoginUserId) {
-    if (to.path === '/minio/login') {
+    if (to.path === '/fs3/login') {
       next({
         path: '/'
       })

@@ -699,9 +699,13 @@ export default {
     .bg{
       position: absolute;
       right: 15%;
-      width: 9%;
-      top: 0.2rem;
+      width: 1.1rem;
+      top: 0.15rem;
       z-index: 5;
+      @media screen and (max-width:999px){    
+        top: 0.2rem;
+        width: 1.6rem;
+      }
     }
     .fs3_head_text{
       .titleBg{
@@ -886,6 +890,7 @@ export default {
       padding: 0.5rem 2% 0.2rem 2%;
       .bg{
         top: 0.2rem;
+        right: 6%;
       }
     }
     .fs3_cont {
@@ -902,7 +907,6 @@ export default {
   .fs3_back{
     .fs3_head{
       .bg{
-        top: 0.6rem;
         right: 0.2rem;
       }
     }

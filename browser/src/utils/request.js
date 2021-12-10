@@ -31,7 +31,7 @@ service.interceptors.response.use(response => {
       // -1:User not logged in;
       if (res.data.code === '-1') {
         store.dispatch('FedLogOut').then(() => {
-			    router.push('/minio/login')
+			    router.push('/fs3/login')
         })
       }
       return response.data

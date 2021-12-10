@@ -76,7 +76,7 @@ router.beforeEach((to, from, next) => {
   if (to.matched.some(record => record.meta.requiresAuth)) {
       if (!localStorage.token) {
           next({
-              path: '/minio/login',
+              path: '/fs3/login',
               query: { redirect: to.fullPath }
           })
       } else {
