@@ -1,21 +1,19 @@
-# minio
+# fs3
 
-> minio
+## Installation dependency
 
-## Build Setup
+Run `npm install` to generate component.
 
-``` bash
-# install dependencies
-npm install
+## Development server
 
-# serve with hot reload at localhost:8080
-npm run dev
+Run `npm run dev` for a dev server. Navigate to `http://localhost:8080/`. The app will automatically reload if you change any of the source files.
 
-# build for production with minification
-npm run build
+## Build project
 
-# build for production and view the bundle analyzer report
-npm run build --report
-```
+Go to the `config/` directory and modify the URL in the `prod.env.js` file.
+
+Run `npm run build` to build the project. The build artifacts will be stored in the `dist/` directory.
+
+## Further help
 
 For a detailed explanation on how things work, check out the [guide](http://vuejs-templates.github.io/webpack/) and [docs for vue-loader](http://vuejs.github.io/vue-loader).

@@ -11,7 +11,7 @@ module.exports = {
     assetsPublicPath: '/',
     proxyTable: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: 'https://calibration-api.filswan.com',
         changeOrigin: true,
         secure: true,
         pathRewrite: {
