@@ -1,0 +1,25 @@
+- hosts: localhost
+
+  tasks:
+    # Create and start fs3 service
+    - name: Copy fs3 system service file
+      copy:
+        src: "{{playbook_dir}}/fs3.service"
+        dest: /lib/systemd/system/fs3.service
+        owner: root
+        group: root
+        mode: 0644
+      become: yes
+    - name: Reload systemd
+      command: systemctl daemon-reload
+      become: yes
+    - name: Enable fs3 service
+      service: 
+        name: fs3 
+        enabled: yes
+      become: yes
+    - name: Start fs3 service
+      service: 
+        name: fs3 
+        state: started
+      become: yes
