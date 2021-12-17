@@ -1,0 +1,55 @@
+- hosts: localhost
+  
+  tasks:
+    # install dependent packages
+    - name: Install software-properties-common to have an abstraction of the used apt repositorie
+      apt:
+        name: software-properties-common
+        state: present
+      become: yes
+    - name: Add golang stable repository from PPA and install its signing key on Ubuntu target
+      apt_repository:
+        repo: ppa:longsleep/golang-backports
+      become: yes        
+    - name: Update and upgrade apt packages
+      apt:
+        upgrade: yes
+        update_cache: yes
+      become: yes   
+    - name: Install apt dependencies
+      apt:
+        name:
+          [
+            "golang-go",
+            "software-properties-common",
+            "libxext-dev",
+            "libpng-dev",
+            "libimlib2-dev",
+            "libglew-dev",
+            "libxrender-dev",
+            "libxrandr-dev",
+            "libglm-dev",
+            "libhwloc-dev"
+          ]
+        state: latest
+      become: yes
+
+    # Configure Go
+    - name: Create directories for Go
+      file: 
+        path: ~/{{item.0}}/{{item.1}} 
+        state: directory
+      with_nested:
+        - ['go', 'bin']
+        - ['go', 'src']
+        - ['go', 'pkg']
+    - name: Add enviromental variables
+      shell:
+        cmd: |
+          echo 'export GOPATH="$HOME/go"' >> ~/.bashrc
+          echo 'export PATH="$PATH:${GOPATH//://bin:}/bin"' >> ~/.bashrc
+          source ~/.bashrc
+      args:
+        executable: /bin/bash
+
+    

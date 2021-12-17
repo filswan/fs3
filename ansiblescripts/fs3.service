@@ -1,0 +1,14 @@
+[Unit]
+Description=FS3 Minio Service
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+ExecStart=/home/filswan/fs3/minio
+Restart=always
+RestartSec=1
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

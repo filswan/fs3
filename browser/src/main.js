@@ -25,7 +25,8 @@ import * as filters from './filters'
 import '@/permission' // Login control
 
 Vue.config.productionTip = false
-Vue.prototype.data_api=process.env.NODE_ENV === 'production' ? `${window.location.protocol}//${window.location.host}` : 'http://192.168.88.41:9000';
+// Vue.prototype.data_api=process.env.NODE_ENV === 'production' ? `${window.location.protocol}//${window.location.host}` : 'http://192.168.88.41:9000';
+Vue.prototype.data_api= `${window.location.protocol}//${window.location.host}`;
 
 Vue.use(Router);
 Vue.use(ElementUI, { locale })

@@ -59,7 +59,7 @@
                               </template>
                               <el-submenu :index="'1-'+n" v-for="(item, n) in locationOptions" :key="n" :attr="'1-'+n">
                                   <template slot="title">
-                                      <span>{{ item.value }}</span>
+                                      <span class="span" @mouseover="handleOpenSubmenu(item.value)">{{ item.value }}</span>
                                   </template>
                                   <el-menu-item :index="'1-'+n+'-1'" :attr="'1-'+n+'-1'">
                                       <!-- <el-table :cell-class-name="tableCellClassName" @cell-click="cellClick" ref="multipleTable" :data="tableData" v-loading="loading" tooltip-effect="dark" style="width: 100%" @selection-change="handleSelectionChange"> -->
@@ -165,7 +165,7 @@
                               </template>
                               <el-submenu :index="'1-'+n" v-for="(item, n) in locationOptions" :key="n" :attr="'1-'+n">
                                   <template slot="title">
-                                      <span>{{ item.value }}</span>
+                                      <span class="span" @mouseover="handleOpenSubmenu(item.value)">{{ item.value }}</span>
                                   </template>
                                   <el-menu-item :index="'1-'+n+'-1'" :attr="'1-'+n+'-1'">
                                       <!-- <el-table :cell-class-name="tableCellClassName" @cell-click="cellClick" ref="multipleTable" :data="tableData" v-loading="loading" tooltip-effect="dark" style="width: 100%" @selection-change="handleSelectionChange"> -->
@@ -525,6 +525,29 @@ export default {
               }
           }
       },
+      handleOpenSubmenu(key) {
+          let _this = this
+          _this.tableData = []
+          _this.loading = true
+          _this.page = 0
+          _this.total = 1
+          _this.parentLi = key
+          _this.parentName = key
+          let postURL = process.env.BASE_API+'miners?location='+key+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
+
+          axios.get(postURL).then((response) => {
+              let json = response.data.data.miner
+              _this.tableData = json
+              _this.loading = false
+              _this.loadSign = true
+              if(response.data.data.total_items > 20){
+                  _this.total = (response.data.data.total_items)/20
+              }
+          }).catch(function (error) {
+              console.log(error);
+              _this.loading = false
+          });
+      },
       handleOpen(key, keyPath) {
           let _this = this
           if(key.indexOf('-') >= 0){
@@ -538,7 +561,6 @@ export default {
                       _this.parentName = item.value
                   }
               })
-
               let postURL = process.env.BASE_API+'miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
               // let postURL = _this.data_api + '/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
               // let postURL = 'https://api.filswan.com/miners?location='+_this.parentName+'&status=&sort_by=score&order=ascending&limit=20&offset=0'
@@ -868,20 +890,32 @@ export default {
                         }
                       }
                       .el-submenu__title{
-                          display: flex;
-                          justify-content: space-between;
-                          align-items: center;
+                          // display: flex;
+                          // justify-content: space-between;
+                          // align-items: center;
+                          position: relative;
                           border: 0;
                           height: 35px;
                           line-height: 35px;
-                          padding: 0 0.1rem;
+                          padding: 0;
                           .el-input{
                              .el-input__inner{
-                                padding: 0;
+                                padding: 0 0 0 0.1rem;
                                 border: 0;
                                 font-size: 14px;
                                 color: #303133;
                              }
+                          }
+                          .span{
+                            position: relative;
+                            padding: 0 0.1rem;
+                            display: block;
+                            z-index: 9;
+                          }
+                          .el-submenu__icon-arrow{
+                            position: absolute;
+                            right: 0.1rem;
+                            z-index: 8;
                           }
                       }
                       .el-menu--horizontal{
