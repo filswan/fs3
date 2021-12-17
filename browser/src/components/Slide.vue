@@ -13,6 +13,7 @@
                     @input="searchBucketFun">
                 </el-input>
                 <el-row>
+                    <div class="title" v-if="minioListBucketsAll.buckets.length>0">My Files</div>
                     <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket && allActive}" @click.native="getListBucket(item.name, true)">
                         <div>
                             <i class="iconfont icon-harddriveyingpan"></i>
@@ -36,7 +37,7 @@
             </div>
             <div class="fs3_backup">
                 <div class="introduce">
-                    <router-link :to="{name: 'backup'}" :style="{'color': introduceColor?'#2f85e5':'#fff'}">FS3 Backup</router-link>
+                    <router-link :to="{name: 'backup'}" :class="{'active': introduceColor}">FS3 Backup</router-link>
                 </div>
                 <div class="introRouter">
                     <router-link :to="{name: 'my_account_dashboard'}" :class="{'active': activeTree == '2'}">Dashboard</router-link>
@@ -48,6 +49,9 @@
                     node-key="id" ref="my-tree" default-expand-all
                     :default-expanded-keys="activeTree?[1]:[]"
                     :current-node-key="activeTree"></el-tree> -->
+                <div class="introduce">
+                    <a href="https://docs.filswan.com/fs3/fs3-user-guide" target="_blank">User Guide</a>
+                </div>
 
             </div>
         </div>
@@ -532,9 +536,9 @@ export default {
         }
     }
     .fs3_backup{
-        margin: 0.1rem 0 0;
+        margin: 0;
         .introduce{
-            margin: 0 0 0.05rem;
+            margin: 0.1rem 0 0.05rem;
             text-indent: 0.2rem;
             background: #002a39;
             // font-family: 'm-semibold';
@@ -543,11 +547,17 @@ export default {
                 display: block;
                 line-height: 3;
                 font-size: 0.14rem;
-                color: #2f85e5;
+                color: #fff;
+                &:hover{
+                    color: #2f85e5;
+                }
                 @media screen and (max-width:999px){
                   font-size: 13px;
                   line-height: 3.5;
                 }
+            }
+            .active{
+                color: #2f85e5;
             }
         }
         .introRouter{
@@ -645,13 +655,25 @@ export default {
             }
         }
         .el-row /deep/{
-            margin-top: 0.2rem;
+            margin-top: 0.1rem;
             margin-left: 0;
             margin-right: 0;
             font-size: 0.13rem;
             // height: calc(100% - 1.3rem);
             // overflow: hidden;
             // overflow-y: scroll;
+            .title{
+                background: #002a39;
+                font-weight: bold;
+                line-height: 3;
+                font-size: 0.14rem;
+                color: #fff;
+                text-indent: 0.2rem;
+                @media screen and (max-width:999px){
+                    font-size: 13px;
+                    line-height: 3.5;
+                }
+            }
             .el-col{
                 position: relative;
                 display: flex;
@@ -807,6 +829,17 @@ export default {
             color: hsla(0,0%,100%,.75);
             font-size: 15px;
             font-weight: 400;
+        }
+        .fesHostLink{
+            display: flex;
+            width: calc(100% - 40px);
+            a{
+                display: block;
+                width: calc(100% - 30px);
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
         }
         .fesHostLogout{
             cursor: pointer;
