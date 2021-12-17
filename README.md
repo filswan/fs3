@@ -24,6 +24,8 @@ __Note__: A Lotus full node is not a must for FS3 if a lite node is already conf
 * Save all the deals information into PostgreSQL database.
 * List all the deals history and status.
 
+__Note__: Please check [FS3 User Guide](https://docs.filswan.com/fs3/fs3-user-guide) on how to use FS3 service.
+
 ## Install Prerequisite Dependencies
 ### IPFS node
 A running IPFS node is needed for CAR file generation and files uploading and storage. You can refer [IPFS Command-line Docs](https://docs.ipfs.io/install/command-line/#official-distributions) for installation instructions and configuration.
