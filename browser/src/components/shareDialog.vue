@@ -36,10 +36,10 @@
                 </el-col>
               </el-row>
 
-              <el-tabs v-model="activeOn" @tab-click="handleClick" tab-position="left" v-if="shareFileShow && sendApi == 1">
+              <!-- <el-tabs v-model="activeOn" @tab-click="handleClick" tab-position="left" v-if="shareFileShow && sendApi == 1">
                 <el-tab-pane label="online" name="online"></el-tab-pane>
                 <el-tab-pane label="offline" name="offline"></el-tab-pane>
-              </el-tabs>
+              </el-tabs> -->
 
               <el-row class="share_right" v-if="shareFileShow && activeOn == 'online'">
                 <el-button class="shareFileCoinSend" @click="submitForm('ruleForm')">Send</el-button>

@@ -5,26 +5,46 @@
             :homeClick="homeClick" @homeClickFun="homeClickFun" @getshareHome="getshareHome" @getretrievalHome="getretrievalHome"
             @getminioListBucket="getminioListBucket" @getListBuckets="getListBuckets" @getMenuStretch="getMenuStretch"></v-slide>
         <div class="content" :class="{'content_stretch': menuStretch}">
-            <el-row class="headStyle">
-                <el-col :span="6">
-                    <el-button class="iconfont icon-ziyuan" @click.stop="slideBtn" v-if="!slideShow"></el-button>
-                    <el-button class="el-icon-back" style="background-color: #484b4e;" @click.stop="slideBtn" v-else></el-button>
-                </el-col>
-                <el-col :span="12">
-                    <img :src="logo" />
-                </el-col>
-                <el-col :span="6"></el-col>
-            </el-row>
-            <transition name="move" mode="out-in">
-                <router-view
-                :aboutServer="aboutServer" :aboutListObjects="aboutListObjects"
-                :slideListClick="slideListClick" :addFileClick="addFileClick" :uploadClick="uploadClick"
-                :dialogFormVisible="dialogFormVisible" :currentBucket="currentBucket" :userd="userd" :allDealShow="allDealShow"
-                @getDialogClose="getDialogClose"
-                @getaboutServer="getMakeBucket"
-                @getRemoveObject="getRemoveObject"
-                @getListObjects="getListObjects"></router-view>
-            </transition>
+            <div class="content_body">
+                <el-row class="headStyle">
+                    <el-col :span="6">
+                        <el-button class="iconfont icon-ziyuan" @click.stop="slideBtn" v-if="!slideShow"></el-button>
+                        <el-button class="el-icon-back" style="background-color: #484b4e;" @click.stop="slideBtn" v-else></el-button>
+                    </el-col>
+                    <el-col :span="12">
+                        <img :src="logo" />
+                    </el-col>
+                    <el-col :span="6"></el-col>
+                </el-row>
+                <transition name="move" mode="out-in">
+                    <router-view
+                    :aboutServer="aboutServer" :aboutListObjects="aboutListObjects"
+                    :slideListClick="slideListClick" :addFileClick="addFileClick" :uploadClick="uploadClick"
+                    :dialogFormVisible="dialogFormVisible" :currentBucket="currentBucket" :userd="userd" :allDealShow="allDealShow"
+                    @getDialogClose="getDialogClose"
+                    @getaboutServer="getMakeBucket"
+                    @getRemoveObject="getRemoveObject"
+                    @getListObjects="getListObjects"></router-view>
+                </transition>
+            </div>
+            <div class="fes-icon">
+                <div class="fes-icon-logo">
+                    <a href="https://filswan.medium.com/" target="_block"><img :src="share_img1" alt=""></a>
+                    <a href="https://twitter.com/filswan1" target="_block"><img :src="share_img2" alt=""></a>
+                    <a href="https://github.com/filswan" target="_block"><img :src="share_img3" alt=""></a>
+                    <a href="https://www.facebook.com/filswan.technology" target="_block"><img :src="share_img5" alt=""></a>
+                    <a href="https://filswan.slack.com" target="_block"><img :src="share_img7" alt=""></a>
+                    <a href="https://youtube.com/channel/UCcvrZdNqFWYl3FwfcHS9xIg" target="_block"><img :src="share_img8" alt=""></a>
+                    <a href="https://t.me/filswan" target="_block"><img :src="share_img9" alt=""></a>
+                    <a href="https://discord.gg/MSXGzVsSYf" target="_block"><img :src="share_img10" alt=""></a>
+                </div>
+                <div class="fes-icon-copy">
+                    <span>© 2021 FilSwan Canada</span>
+                    <el-divider direction="vertical"></el-divider>
+                    <a href="https://www.filswan.com/" target="_block">filswan.com</a>
+
+                </div>
+            </div>
             <div class="addFile">
                 <el-row v-if="addFileShow">
                     <el-col :span="24">
@@ -89,6 +109,15 @@ export default {
         return {
             postUrl: this.data_api + `/minio/webrpc`,
             logo: require("@/assets/images/logo.png"),
+            share_img1: require('@/assets/images/landing/medium.png'),
+            share_img2: require('@/assets/images/landing/twitter.png'),
+            share_img3: require('@/assets/images/landing/github-fill.png'),
+            share_img5: require('@/assets/images/landing/facebook-fill.png'),
+            share_img7: require('@/assets/images/landing/slack.png'),
+            share_img8: require('@/assets/images/landing/youtube.png'),
+            share_img9: require('@/assets/images/landing/telegram.png'),
+            share_img10: require('@/assets/images/landing/discord.png'),
+            share_logo: require('@/assets/images/landing/logo_small.png'),
             bodyWidth: document.body.clientWidth<=1024?true:false,
             addFileShow: false,
             dialogFormVisible: false,
@@ -159,6 +188,7 @@ export default {
     methods: {
         getMenuStretch(stretch) {
             this.menuStretch = stretch
+            console.log(1, stretch, typeof stretch)
         },
         reload () {
             this.isRouterAlive = false;
@@ -576,6 +606,46 @@ export default {
         }
         .el-backtop, .el-calendar-table td.is-today{
             color: #fff;
+        }
+        .content_body{
+            min-height: calc(100% - 65px);
+        }
+        .fes-icon{
+            background-color: #fff;
+            z-index: 8;
+            .fes-icon-logo{
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 10px 0;
+                img{
+                    display: block;
+                    height: 20px;
+                    margin: 0 0.05rem;
+                    @media screen and (max-width: 999px) {
+                        height: 20px;
+                    }
+                }
+            }
+            .fes-icon-copy{
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                padding: 0 0 10px;
+                span, a{
+                    font-size: 12px;
+                    color: #333;
+                    line-height: 15px;
+                }
+                a{
+                    &:hover{
+                        color: #409eff;
+                    }
+                }
+                .el-divider--vertical /deep/{
+                    height: 15px;
+                }
+            }
         }
         .addFile{
             display: flex;

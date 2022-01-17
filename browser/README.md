@@ -10,9 +10,21 @@ Run `npm run dev` for a dev server. Navigate to `http://localhost:8080/`. The ap
 
 ## Build project
 
-Go to the `config/` directory and modify the URL in the `prod.env.js` file.
+```shell
+# install cross-env
+$ npm i cross-env --save
 
-Run `npm run build` to build the project. The build artifacts will be stored in the `dist/` directory.
+# Build test projects
+$ npm run release:test
+
+# Build calibration projects
+$ npm run release:calibration
+
+# Build production projects
+$ npm run release:prod
+```
+
+The build artifacts will be stored in the `release/` directory.
 
 ## Further help
 

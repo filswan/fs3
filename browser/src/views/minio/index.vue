@@ -1580,6 +1580,11 @@ export default {
             color: #fff;
             cursor: pointer;
             font-weight: bold;
+            @media screen and (max-width:600px){
+              width: 20px;
+              height: 20px;
+              font-size: 14px;
+            }
           }
           .iconfont{
             background-color: #afafaf;
