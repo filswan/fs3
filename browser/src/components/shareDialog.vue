@@ -79,10 +79,15 @@
                       </el-menu>
                     </el-form-item>
                     <el-form-item label="Price:" prop="price">
-                      <el-input v-model="ruleForm.price" onkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,20})?).*$/g, '$1')"></el-input> FIL
+                      <el-input v-model="ruleForm.price" onkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,18})?).*$/g, '$1')" @blur="inputBlur(ruleForm.price, 1)" @input="inputChange"></el-input> FIL
+                      <p class="el-form-item__error" v-if="ruleForm.price_tip">The minimum price is 0.000000000000000001FIL</p>
                     </el-form-item>
-                    <el-form-item label="Duration:" prop="duration">
-                      <el-input v-model="ruleForm.duration" onkeyup="value=value.replace(/^(0+)|[^\d]+/g,'')"></el-input> Day
+                    <el-form-item prop="duration">
+                      <template slot="label">
+                          <span style="color: #F56C6C;margin-right: 4px;">*</span>Duration:
+                      </template>
+                      <el-input v-model="ruleForm.duration" onkeyup="value=value.replace(/^(0+)|[^\d]+/g,'')" @blur="calculation"></el-input> Day
+                      <p class="_error" v-if="ruleForm.duration_tip">Duration must be in the range of 180-540 days</p>
                     </el-form-item>
                     <el-form-item label="Verified-Deal:" prop="verified">
                       <el-radio v-model="ruleForm.verified" label="1">True</el-radio>
@@ -109,10 +114,9 @@
               </el-row>
 
 
-              <el-row class="share_right" v-if="shareFileShow && activeOn == 'offline'">
+              <!-- <el-row class="share_right" v-if="shareFileShow && activeOn == 'offline'">
                 <el-button class="shareFileCoinSend" @click="submitofflineForm('offlineForm')">Send</el-button>
                 <el-col :span="24">
-                  <!--h4 v-if="shareObjectShow">Share to Filecoin</h4-->
                   <h4>Backup to Filecoin</h4>
                 </el-col>
                 <el-col :span="24">
@@ -160,7 +164,6 @@
                       <el-menu :default-active="'1'" menu-trigger="click hover" class="el-menu-demo" mode="horizontal" @open="handleOpen" @close="handleClose" :unique-opened="true" v-if="offlineForm.OpenBidType != 1">
                           <el-submenu index="1" popper-class="myMenu" :popper-append-to-body="false">
                               <template slot="title">
-                                  <!-- {{ nameOffline }} -->
                                   <el-input v-model="offlineForm.providerId" placeholder="Please select Provider ID"></el-input>
                               </template>
                               <el-submenu :index="'1-'+n" v-for="(item, n) in locationOptions" :key="n" :attr="'1-'+n">
@@ -168,7 +171,6 @@
                                       <span class="span" @mouseover="handleOpenSubmenu(item.value)">{{ item.value }}</span>
                                   </template>
                                   <el-menu-item :index="'1-'+n+'-1'" :attr="'1-'+n+'-1'">
-                                      <!-- <el-table :cell-class-name="tableCellClassName" @cell-click="cellClick" ref="multipleTable" :data="tableData" v-loading="loading" tooltip-effect="dark" style="width: 100%" @selection-change="handleSelectionChange"> -->
                                       <el-table ref="singleTable" :cell-class-name="tableCellClassName" @cell-click="cellClick" :data="tableData" v-loadmore="loadMore" v-loading="loading" height="255" highlight-current-row @current-change="handleCurrentChange" style="width: 100%">
                                           <el-table-column type="index" width="40">
                                               <template  slot-scope="scope">
@@ -187,7 +189,7 @@
                     </el-form-item>
                   </el-form>
                 </el-col>
-              </el-row>
+              </el-row> -->
           </div>
       </el-dialog>
 
@@ -199,18 +201,30 @@
 </template>
 
 <script>
+let that
 import axios from 'axios'
 import QRCode from 'qrcodejs2'
 export default {
     inject:['reload'],
     data() {
+        var validateDuration = (rule, value, callback) => {
+            value = value.replace(/[^\d.]/g,'')
+            if (!value) {
+                return callback(new Error('Please enter Duration'));
+            }
+            setTimeout(() => {
+                callback()
+            }, 100);
+        };
         return {
             postUrl: this.data_api + `/minio/webrpc`,
             shareFileShowMobile: false,
             ruleForm: {
               minerId: '',
               price: '',
+              price_tip: false,
               duration: '',
+              duration_tip: false,
               verified: '2',
               fastRetirval: '1',
               textarea: 'lotus client',
@@ -221,13 +235,13 @@ export default {
             },
             rules: {
                minerId: [
-                 { required: true, message: 'Please enter Provider ID', trigger: 'blur' }
+                 { required: true, message: 'Please enter Provider ID', trigger: ['blur', 'change'] }
                ],
                price: [
-                 { required: true, message: 'Please enter Price', trigger: 'blur' }
+                 { required: true, message: 'Please enter Price', trigger: ['blur', 'change'] }
                ],
                duration: [
-                 { required: true, message: 'Please enter Duration', trigger: 'blur' }
+                 { validator: validateDuration, trigger: 'blur' }
                ],
             },
             locationOptions: [
@@ -310,6 +324,45 @@ export default {
       },
     },
     methods: {
+      async calculation(type){
+        let _this = this
+          if(Number(_this.ruleForm.duration) > 540){
+              _this.ruleForm.duration = '540'
+          }else if(Number(_this.ruleForm.duration) < 180){
+              _this.ruleForm.duration = '180'
+          }else{
+            return false
+          }
+          _this.ruleForm.duration_tip = true
+          await _this.timeout(3000)
+          _this.ruleForm.duration_tip = false
+
+      },
+      timeout (delay) {
+          return new Promise((res) => setTimeout(res, delay))
+      },
+      async inputChange(val){
+        if(val.indexOf('.') > -1){
+          let array = val.split('.')
+          this.ruleForm.price_tip = array[1].toString().length>18?true:false
+        }else{
+          this.ruleForm.price_tip = false
+        }
+      },
+      inputBlur(val, type){
+        if(type == 1){
+          const regexp=/(?:\.0*|(\.\d+?)0+)$/
+          val = val.replace(/[^\d.]/g,'').replace(regexp,'$1')
+          if(val.indexOf('.') > -1){
+            let array = val.split('.')
+            array[0] = array[0]>0 ? array[0].replace(/\b(0+)/gi,"") : '0'
+            this.ruleForm.price =  array[0] + '.' + array[1]
+          }else{
+            this.ruleForm.price =  val.replace(/\b(0+)/gi,"")
+          }
+          this.ruleForm.price_tip = false
+        }
+      },
       handleClick(tab, event) {
         this.activeOn = tab.name
         this.$refs['ruleForm'].resetFields();
@@ -424,9 +477,8 @@ export default {
                 "FastRetrieval": _this.ruleForm.fastRetirval == '2'? 'false' : 'true',
                 "MinerId": _this.ruleForm.minerId,
                 "Price": _this.ruleForm.price,
-                "Duration": String(_this.ruleForm.duration*24*60*2)   //（The number of days entered by the user on the UI needs to be converted into epoch to the backend. For example, 10 days is 10*24*60*2）
+                "Duration": String(_this.ruleForm.duration.replace(/[^\d.]/g,'')*24*60*2)   //（The number of days entered by the user on the UI needs to be converted into epoch to the backend. For example, 10 days is 10*24*60*2）
             }
-
             axios.post(postUrl, minioDeal, {headers: {
                  'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
@@ -611,7 +663,7 @@ export default {
           //console.log('close');
       },
     },
-    mounted() {},
+    mounted() { that=this },
 };
 </script>
 
@@ -860,6 +912,17 @@ export default {
                       .el-input{
                         width: calc(100% - 40px);
                       }
+                      .el-form-item__error{
+                        padding: 0;
+                        word-break: break-word;
+                      }
+                      ._error{
+                        color: #F56C6C;
+                        font-size: 12px;
+                        line-height: 1.2;
+                        padding: 0;
+                        word-break: break-word;
+                      }
                     }
                   }
                   .lineHeight{
@@ -904,6 +967,8 @@ export default {
                                 border: 0;
                                 font-size: 14px;
                                 color: #303133;
+                                height: 35px;
+                                line-height: 35px;
                              }
                           }
                           .span{

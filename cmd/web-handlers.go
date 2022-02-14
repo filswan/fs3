@@ -3013,6 +3013,7 @@ func (web *webAPIHandlers) RetrieveDeal(w http.ResponseWriter, r *http.Request) 
 	}
 	defer db.Close()
 	fileDealKey := bucket + "_" + object
+
 	fileDeals, err := db.Get([]byte(fileDealKey), nil)
 	if err != nil || fileDeals == nil {
 		logs.GetLogger().Error(err)

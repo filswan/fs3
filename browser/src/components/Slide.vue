@@ -200,7 +200,6 @@ export default {
       menuToggleStreth(stretch) {
         this.menuStretch = stretch
         this.$emit('getMenuStretch', stretch);
-        console.log(stretch, typeof stretch)
       },
       logout() {
         var _this = this;

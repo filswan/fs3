@@ -5,12 +5,13 @@
           <span class="main" v-if="editNameFile" v-for="(item, index) in currentBucketAll" :key="index">
             <a href="javascript:;" @click="buckerAdress(index)">{{item}}</a>
           </span>
-          <a href="javascript:;" class="fe-edit" @click="editFun" v-if="editNameFile">
+          <!-- Adding subfolders -->
+          <!-- <a href="javascript:;" class="fe-edit" @click="editFun" v-if="editNameFile">
             <el-tooltip class="item" effect="dark" content="Choose or create new path" placement="bottom">
               <i class="iconfont icon-tianjiawenjian"></i>
             </el-tooltip>
           </a>
-          <el-input v-model="user.name_file" ref="mark" placeholder="Choose or create new path" v-else @blur="editFileFun"></el-input>
+          <el-input v-model="user.name_file" ref="mark" placeholder="Choose or create new path" v-else @blur="editFileFun"></el-input> -->
         </h2>
         <div class="feh-used">
           <div class="fehu-chart">
@@ -35,7 +36,7 @@
                 <!-- Change Password end -->
                 <li @click="handleFullScreen">
                   <a href="javascript:;">
-                    Fullscreen <i class="iconfont icon-fangda"></i>
+                    {{fullscreen?'Exit Full Screen':'Fullscreen'}} <i class="iconfont icon-fangda"></i>
                   </a>
                 </li>
                 <li @click="openAbout">
@@ -1083,10 +1084,15 @@ export default {
   filters: {
     formatbytes: function (bytes) {
       if (bytes === 0) return '0 B';
+      if (!bytes) return "-";
       var k = 1000, // or 1024
           sizes = ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
           i = Math.floor(Math.log(bytes) / Math.log(k));
 
+      if (Math.round((bytes / Math.pow(k, i))).toString().length > 3) {
+          // 判断大小是999999999左右，解决会显示成1.00e+3科学计数法
+          i += 1
+      }
       return (bytes / Math.pow(k, i)).toPrecision(3) + ' ' + sizes[i];
     },
     slideName: function (name) {
