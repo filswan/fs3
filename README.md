@@ -105,6 +105,8 @@ git checkout <release_branch>
 ```bash
 cd browser
 
+npm install
+
 # install cross-env if not exists
 $ npm i cross-env --save
 
