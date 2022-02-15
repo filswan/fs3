@@ -42,7 +42,9 @@
               </el-tabs> -->
 
               <el-row class="share_right" v-if="shareFileShow && activeOn == 'online'">
-                <el-button class="shareFileCoinSend" @click="submitForm('ruleForm')">Send</el-button>
+                <el-button 
+                  class="shareFileCoinSend" @click="submitForm('ruleForm')" 
+                  :disabled="ruleForm.duration_tip" :style="{'opacity':ruleForm.duration_tip?'0.3':'1'}">Send</el-button>
                 <el-col :span="24">
                   <!--h4 v-if="shareObjectShow">Share to Filecoin</h4-->
                   <h4>Backup to Filecoin</h4>
@@ -326,6 +328,7 @@ export default {
     methods: {
       async calculation(type){
         let _this = this
+          _this.ruleForm.duration = _this.ruleForm.duration.replace(/[^\d.]/g,'')
           if(Number(_this.ruleForm.duration) > 540){
               _this.ruleForm.duration = '540'
           }else if(Number(_this.ruleForm.duration) < 180){
@@ -462,6 +465,7 @@ export default {
           if (valid) {
 
             let _this = this
+            if(_this.ruleForm.duration_tip) return false
             let postUrl = ''
 
             if(_this.sendApi == 1){
@@ -479,6 +483,7 @@ export default {
                 "Price": _this.ruleForm.price,
                 "Duration": String(_this.ruleForm.duration.replace(/[^\d.]/g,'')*24*60*2)   //（The number of days entered by the user on the UI needs to be converted into epoch to the backend. For example, 10 days is 10*24*60*2）
             }
+            
             axios.post(postUrl, minioDeal, {headers: {
                  'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
