@@ -104,9 +104,14 @@ git checkout <release_branch>
 #### 2.1 Build UI
 ```bash
 cd browser
-npm install
-npm run release
+
+# install cross-env if not exists
+$ npm i cross-env --save
+
+# Build production projects
+$ npm run release:prod
 ```
+
 #### 2.2 Install Filecoin dependency
 ```bash
 sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
