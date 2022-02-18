@@ -5,19 +5,21 @@
           <span class="main" v-if="editNameFile" v-for="(item, index) in currentBucketAll" :key="index">
             <a href="javascript:;" @click="buckerAdress(index)">{{item}}</a>
           </span>
-          <a href="javascript:;" class="fe-edit" @click="editFun" v-if="editNameFile">
+          <!-- Adding subfolders -->
+          <!-- <a href="javascript:;" class="fe-edit" @click="editFun" v-if="editNameFile">
             <el-tooltip class="item" effect="dark" content="Choose or create new path" placement="bottom">
               <i class="iconfont icon-tianjiawenjian"></i>
             </el-tooltip>
           </a>
-          <el-input v-model="user.name_file" ref="mark" placeholder="Choose or create new path" v-else @blur="editFileFun"></el-input>
+          <el-input v-model="user.name_file" ref="mark" placeholder="Choose or create new path" v-else @blur="editFileFun"></el-input> -->
         </h2>
         <div class="feh-used">
           <div class="fehu-chart">
             <div style="width: 0px;"></div>
           </div>
           <ul>
-            <li><span>Used: </span>{{userd | formatbytes}}</li>
+            <!-- <li><span>Used: </span>{{userd | formatbytes}}</li> -->
+            <li><span>Used: </span>{{listUserd | formatbytes}}</li>
           </ul>
         </div>
         <ul class="feh-actions">
@@ -35,7 +37,7 @@
                 <!-- Change Password end -->
                 <li @click="handleFullScreen">
                   <a href="javascript:;">
-                    Fullscreen <i class="iconfont icon-fangda"></i>
+                    {{fullscreen?'Exit Full Screen':'Fullscreen'}} <i class="iconfont icon-fangda"></i>
                   </a>
                 </li>
                 <li @click="openAbout">
@@ -357,6 +359,7 @@ export default {
       danger_img: require("@/assets/images/danger.png"),
       bodyWidth: document.body.clientWidth>600?true:false,
       tableData: [],
+      listUserd: '-',
       direction: 'ttb',
       drawIndex: 0,
       signShow: false,
@@ -1078,15 +1081,27 @@ export default {
           _this.$refs.bucketNameRef.$el.querySelector('input').focus()
         })
       }
+    },
+    'tableData': function(){
+      let sizeAll = 0
+      this.tableData.map(element => {
+        sizeAll += element.size
+      });
+      this.listUserd = sizeAll
     }
   },
   filters: {
     formatbytes: function (bytes) {
       if (bytes === 0) return '0 B';
+      if (!bytes) return "-";
       var k = 1000, // or 1024
           sizes = ['bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'],
           i = Math.floor(Math.log(bytes) / Math.log(k));
 
+      if (Math.round((bytes / Math.pow(k, i))).toString().length > 3) {
+          // 判断大小是999999999左右，解决会显示成1.00e+3科学计数法
+          i += 1
+      }
       return (bytes / Math.pow(k, i)).toPrecision(3) + ' ' + sizes[i];
     },
     slideName: function (name) {
@@ -1580,6 +1595,11 @@ export default {
             color: #fff;
             cursor: pointer;
             font-weight: bold;
+            @media screen and (max-width:600px){
+              width: 20px;
+              height: 20px;
+              font-size: 14px;
+            }
           }
           .iconfont{
             background-color: #afafaf;

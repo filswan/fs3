@@ -43,7 +43,8 @@ func SendDealScheduler() {
 		LotusClientAccessToken:       config.GetUserConfig().LotusClientAccessToken,
 		SenderWallet:                 config.GetUserConfig().Fs3WalletAddress,
 		OutputDir:                    expandedVolumeBackUpAddresss,
-		RelativeEpochFromMainNetwork: -858481,
+		RelativeEpochFromMainNetwork: 0, //mainnet
+		//RelativeEpochFromMainNetwork: -858481,                      //testnet
 	}
 	confDeal.DealSourceIds = append(confDeal.DealSourceIds, libconstants.TASK_SOURCE_ID_SWAN_FS3)
 

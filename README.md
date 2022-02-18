@@ -24,6 +24,8 @@ __Note__: A Lotus full node is not a must for FS3 if a lite node is already conf
 * Save all the deals information into PostgreSQL database.
 * List all the deals history and status.
 
+__Note__: Please check [FS3 User Guide](https://docs.filswan.com/fs3/fs3-user-guide) on how to use FS3 service.
+
 ## Install Prerequisite Dependencies
 ### IPFS node
 A running IPFS node is needed for CAR file generation and files uploading and storage. You can refer [IPFS Command-line Docs](https://docs.ipfs.io/install/command-line/#official-distributions) for installation instructions and configuration.
@@ -102,9 +104,16 @@ git checkout <release_branch>
 #### 2.1 Build UI
 ```bash
 cd browser
+
 npm install
-npm run release
+
+# install cross-env if not exists
+$ npm i cross-env --save
+
+# Build production projects
+$ npm run release:prod
 ```
+
 #### 2.2 Install Filecoin dependency
 ```bash
 sudo apt install mesa-opencl-icd ocl-icd-opencl-dev gcc git bzr jq pkg-config curl clang build-essential hwloc libhwloc-dev wget -y && sudo apt upgrade -y
