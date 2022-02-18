@@ -1,7 +1,7 @@
 <template>
   <div>
       <el-dialog title="" top="50px" :visible.sync="shareDialog" :custom-class="{'ShareObjectMobile': shareFileShowMobile, 'ShareObject': 1 === 1}" :before-close="getDiglogChange">
-          <div class="shareContent">
+          <div class="shareContent" v-loading="loadShare">
               <el-row class="share_left" v-if="shareObjectShow">
                 <div class="qrcode" id="qrcode" ref="qrCodeUrl"></div>
                 <el-col :span="24" style="margin-bottom: 0.45rem;">
@@ -57,7 +57,8 @@
                           <el-submenu index="1" popper-class="myMenu" :popper-append-to-body="false">
                               <template slot="title">
                                  <!-- {{ name }} -->
-                                 <el-input v-model="ruleForm.minerId" placeholder="Please select Provider ID"></el-input>
+                                  <el-input v-model="ruleForm.minerId" @blur="inputBlur(ruleForm.minerId, 2)" placeholder="Please select Provider ID"></el-input>
+                                  <p class="el-form-item__error" v-if="ruleForm.minerId_tip">{{ruleForm.minerId_tip}}</p>
                               </template>
                               <el-submenu :index="'1-'+n" v-for="(item, n) in locationOptions" :key="n" :attr="'1-'+n">
                                   <template slot="title">
@@ -223,6 +224,7 @@ export default {
             shareFileShowMobile: false,
             ruleForm: {
               minerId: '',
+              minerId_tip: '',
               price: '',
               price_tip: false,
               duration: '',
@@ -278,6 +280,7 @@ export default {
             ],
             tableData: [],
             loading: false,
+            loadShare: false,
             bodyWidth: document.documentElement.clientWidth < 1024 ? true : false,
             name: 'Please select Provider ID',
             nameOffline: 'Please select Provider ID',
@@ -352,7 +355,7 @@ export default {
           this.ruleForm.price_tip = false
         }
       },
-      inputBlur(val, type){
+      async inputBlur(val, type){
         if(type == 1){
           const regexp=/(?:\.0*|(\.\d+?)0+)$/
           val = val.replace(/[^\d.]/g,'').replace(regexp,'$1')
@@ -364,6 +367,8 @@ export default {
             this.ruleForm.price =  val.replace(/\b(0+)/gi,"")
           }
           this.ruleForm.price_tip = false
+        }else if(type == 2){
+          this.ruleForm.minerId_tip = ''
         }
       },
       handleClick(tab, event) {
@@ -460,14 +465,29 @@ export default {
         this.shareFileShow = !this.shareFileShow
         this.shareFileShowMobile = !this.shareFileShowMobile
       },
+      async sendGetRequest(apilink, jsonObject) {
+          try {
+              const response = await axios.get(apilink)
+              return response.data
+          } catch (err) {
+              console.error(err)
+          }
+      },
       submitForm(formName) {
-        this.$refs[formName].validate((valid) => {
+        this.$refs[formName].validate(async (valid) => {
           if (valid) {
-
             let _this = this
-            if(_this.ruleForm.duration_tip) return false
-            let postUrl = ''
+            _this.loadShare = true
 
+            const minerIDResponse = await _this.sendGetRequest(`${process.env.BASE_API}miner/validate/${this.ruleForm.minerId}`)
+            _this.ruleForm.minerId_tip = minerIDResponse.status == 'fail'?minerIDResponse.message:''
+            
+            if(_this.ruleForm.duration_tip || _this.ruleForm.minerId_tip) {
+              _this.loadShare = false
+              return false
+            }
+
+            let postUrl = ''
             if(_this.sendApi == 1){
               postUrl = _this.data_api + `/minio/deals/` + _this.postAdress
             }else{
@@ -483,7 +503,6 @@ export default {
                 "Price": _this.ruleForm.price,
                 "Duration": String(_this.ruleForm.duration.replace(/[^\d.]/g,'')*24*60*2)   //（The number of days entered by the user on the UI needs to be converted into epoch to the backend. For example, 10 days is 10*24*60*2）
             }
-            
             axios.post(postUrl, minioDeal, {headers: {
                  'Authorization':"Bearer "+ _this.$store.getters.accessToken
             }}).then((response) => {
@@ -498,9 +517,10 @@ export default {
                     _this.$message.error(json.message);
                     return false
                 }
-
+                _this.loadShare = false
             }).catch(function (error) {
                 console.log(error);
+                _this.loadShare = false
             });
 
           } else {
@@ -576,6 +596,7 @@ export default {
               if(_this.activeOn == 'online'){
                 _this.ruleForm.minerId =  val.miner_id
                 _this.name = val.miner_id
+                _this.ruleForm.minerId_tip = ''
               }else{
                 _this.offlineForm.providerId =  val.miner_id
                 _this.nameOffline = val.miner_id

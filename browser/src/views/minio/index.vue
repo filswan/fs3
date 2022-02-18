@@ -18,7 +18,8 @@
             <div style="width: 0px;"></div>
           </div>
           <ul>
-            <li><span>Used: </span>{{userd | formatbytes}}</li>
+            <!-- <li><span>Used: </span>{{userd | formatbytes}}</li> -->
+            <li><span>Used: </span>{{listUserd | formatbytes}}</li>
           </ul>
         </div>
         <ul class="feh-actions">
@@ -358,6 +359,7 @@ export default {
       danger_img: require("@/assets/images/danger.png"),
       bodyWidth: document.body.clientWidth>600?true:false,
       tableData: [],
+      listUserd: '-',
       direction: 'ttb',
       drawIndex: 0,
       signShow: false,
@@ -1079,6 +1081,13 @@ export default {
           _this.$refs.bucketNameRef.$el.querySelector('input').focus()
         })
       }
+    },
+    'tableData': function(){
+      let sizeAll = 0
+      this.tableData.map(element => {
+        sizeAll += element.size
+      });
+      this.listUserd = sizeAll
     }
   },
   filters: {
