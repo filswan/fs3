@@ -13,7 +13,7 @@
                     @input="searchBucketFun">
                 </el-input>
                 <el-row>
-                    <div class="title" v-if="minioListBucketsAll.buckets.length>0">My Files</div>
+                    <div class="title" v-if="minioListBucketsAll.buckets&&minioListBucketsAll.buckets.length>0">My Files</div>
                     <el-col :span="24" v-for="(item, index) in minioListBucketsAll.buckets" :key="index" :class="{'active': item.name == currentBucket && allActive}" @click.native="getListBucket(item.name, true)">
                         <div>
                             <i class="iconfont icon-harddriveyingpan"></i>
@@ -50,7 +50,7 @@
                     :default-expanded-keys="activeTree?[1]:[]"
                     :current-node-key="activeTree"></el-tree> -->
                 <div class="introduce">
-                    <a href="https://docs.filswan.com/fs3/fs3-user-guide" target="_blank">User Guide</a>
+                    <a href="https://docs.filswan.com/fs3/fs3-user-guide" target="_blank">Documentation</a>
                 </div>
 
             </div>
@@ -60,6 +60,7 @@
             <svg t="1639358873000" @click="menuToggleStreth(false)" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="2874" width="200" height="200"><path d="M470.784 690.858667H86.613333c-21.418667 0-38.741333-19.114667-38.741333-42.666667s17.322667-42.666667 38.741333-42.666667h384.085334c21.418667 0 38.741333 19.114667 38.741333 42.666667s-17.322667 42.666667-38.656 42.666667zM470.784 449.877333H86.613333c-21.418667 0-38.741333-19.114667-38.741333-42.666666s17.322667-42.666667 38.741333-42.666667h384.085334c21.418667 0 38.741333 19.114667 38.741333 42.666667s-17.322667 42.666667-38.656 42.666666zM934.058667 208.981333H84.394667c-21.418667 0-38.741333-19.114667-38.741334-42.666666s17.322667-42.666667 38.741334-42.666667h849.664c21.418667 0 38.741333 19.114667 38.741333 42.666667s-17.322667 42.666667-38.741333 42.666666zM931.754667 931.754667H82.090667c-21.418667 0-38.741333-19.114667-38.741334-42.666667s17.322667-42.666667 38.741334-42.666667h849.664c21.418667 0 38.741333 19.114667 38.741333 42.666667s-17.322667 42.666667-38.741333 42.666667zM931.754667 724.992c-5.546667 0-11.093333-1.28-16.298667-3.925333L610.218667 565.418667c-13.738667-6.997333-22.442667-22.101333-22.442667-38.741334 0-16.64 8.789333-31.744 22.442667-38.741333l305.237333-155.648c12.032-6.144 26.026667-5.12 37.12 2.730667 11.178667 7.850667 17.92 21.418667 17.92 35.925333v311.296c0 14.592-6.741333 28.074667-17.92 35.925333-6.229333 4.522667-13.482667 6.826667-20.821333 6.826667z" p-id="2875" fill="#ffffff"></path></svg>
             <!-- <i class="iconfont icon-ziyuan" @click="menuToggleStreth(false)"></i> -->
         </div>
+
         <div class="fes-host">
             <div class="fesHostLink" v-if="!menuStretch">
                 <i class="iconfont icon-diqiu"></i>
@@ -803,9 +804,6 @@ export default {
         // width: calc(3.2rem - 0.4rem);
         width: calc(100% - 0.4rem);
         padding: 0.2rem;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
         color: hsla(0,0%,100%,.75);
         transition: all;
         transition-duration: .3s;

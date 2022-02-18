@@ -7,10 +7,13 @@
   "scripts": {
     "dev": "webpack-dev-server --inline --progress --config build/webpack.dev.conf.js",
     "start": "npm run dev",
-    "release": "node build/build.js"
+    "release:test": "cross-env NODE_ENV=production env_config=test node build/build.js",
+    "release:calibration": "cross-env NODE_ENV=production env_config=calibration node build/build.js",
+    "release:prod": "cross-env NODE_ENV=production env_config=prod node build/build.js"
   },
   "dependencies": {
     "axios": "^0.20.0",
+    "cross-env": "^7.0.3",
     "echarts": "^4.9.0",
     "element-ui": "^2.13.2",
     "jquery": "^3.5.1",
