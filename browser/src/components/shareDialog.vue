@@ -84,7 +84,7 @@
                     </el-form-item>
                     <el-form-item label="Price:" prop="price">
                       <el-input v-model="ruleForm.price" onkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,18})?).*$/g, '$1')" @blur="inputBlur(ruleForm.price, 1)" @input="inputChange"></el-input> FIL
-                      <p class="el-form-item__error" v-if="ruleForm.price_tip">The minimum price is 0.000000000000000001FIL</p>
+                      <!-- <p class="el-form-item__error" v-if="ruleForm.price_tip">The minimum price is 0.000000000000000001FIL</p> -->
                     </el-form-item>
                     <el-form-item prop="duration">
                       <template slot="label">

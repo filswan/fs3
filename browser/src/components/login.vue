@@ -45,8 +45,8 @@ export default {
         return {
             login_img: require('@/assets/images/logo.png'),
             ruleForm: {
-                Accesskey: '',
-                Secretkey: ''
+                Accesskey: 'fs3_demo',
+                Secretkey: 'fs3_demo'
             },
             rules: {
                 Accesskey: [
