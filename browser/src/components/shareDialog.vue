@@ -44,7 +44,8 @@
               <el-row class="share_right" v-if="shareFileShow && activeOn == 'online'">
                 <el-button 
                   class="shareFileCoinSend" @click="submitForm('ruleForm')" 
-                  :disabled="ruleForm.duration_tip" :style="{'opacity':ruleForm.duration_tip?'0.3':'1'}">Send</el-button>
+                  :disabled="ruleForm.duration_tip || ruleForm.request_status" 
+                  :style="{'opacity':ruleForm.duration_tip || ruleForm.request_status?'0.3':'1'}">Send</el-button>
                 <el-col :span="24">
                   <!--h4 v-if="shareObjectShow">Share to Filecoin</h4-->
                   <h4>Backup to Filecoin</h4>
@@ -235,7 +236,8 @@ export default {
               dealCID: '',
               loadSign: true,
               page: 0,
-              total: 1
+              total: 1,
+              request_status: false
             },
             rules: {
                minerId: [
@@ -362,9 +364,13 @@ export default {
           if(val.indexOf('.') > -1){
             let array = val.split('.')
             array[0] = array[0]>0 ? array[0].replace(/\b(0+)/gi,"") : '0'
+            if(!array[1]) {
+              this.ruleForm.price = array[0] 
+              return false
+            }
             this.ruleForm.price =  array[0] + '.' + array[1]
           }else{
-            this.ruleForm.price =  val.replace(/\b(0+)/gi,"")
+            this.ruleForm.price = val > 0 ? val.replace(/\b(0+)/gi,"") : '0'
           }
           this.ruleForm.price_tip = false
         }else if(type == 2){
@@ -503,9 +509,10 @@ export default {
                 "Price": _this.ruleForm.price,
                 "Duration": String(_this.ruleForm.duration.replace(/[^\d.]/g,'')*24*60*2)   //（The number of days entered by the user on the UI needs to be converted into epoch to the backend. For example, 10 days is 10*24*60*2）
             }
+            _this.ruleForm.request_status = true
             axios.post(postUrl, minioDeal, {headers: {
                  'Authorization':"Bearer "+ _this.$store.getters.accessToken
-            }}).then((response) => {
+            }}).then(async (response) => {
                 let json = response.data
                 if (json.status == 'success') {
                   _this.ruleForm.dealCID = json.data.dealCid
@@ -515,12 +522,14 @@ export default {
                   });
                 }else{
                     _this.$message.error(json.message);
-                    return false
                 }
                 _this.loadShare = false
+                await _this.timeout(5000)
+                _this.ruleForm.request_status = false
             }).catch(function (error) {
                 console.log(error);
                 _this.loadShare = false
+                _this.ruleForm.request_status = false
             });
 
           } else {

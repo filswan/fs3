@@ -30,13 +30,13 @@
             <div class="fes-icon">
                 <div class="fes-icon-logo">
                     <a href="https://filswan.medium.com/" target="_block"><img :src="share_img1" alt=""></a>
-                    <a href="https://twitter.com/filswan1" target="_block"><img :src="share_img2" alt=""></a>
+                    <a href="https://discord.com/invite/KKGhy8ZqzK" target="_block"><img :src="share_img10" alt=""></a>
+                    <a href="https://twitter.com/0xfilswan" target="_block"><img :src="share_img2" alt=""></a>
                     <a href="https://github.com/filswan" target="_block"><img :src="share_img3" alt=""></a>
-                    <a href="https://www.facebook.com/filswan.technology" target="_block"><img :src="share_img5" alt=""></a>
+                    <!-- <a href="https://www.facebook.com/filswan.technology" target="_block"><img :src="share_img5" alt=""></a>
                     <a href="https://filswan.slack.com" target="_block"><img :src="share_img7" alt=""></a>
-                    <a href="https://youtube.com/channel/UCcvrZdNqFWYl3FwfcHS9xIg" target="_block"><img :src="share_img8" alt=""></a>
+                    <a href="https://youtube.com/channel/UCcvrZdNqFWYl3FwfcHS9xIg" target="_block"><img :src="share_img8" alt=""></a> -->
                     <a href="https://t.me/filswan" target="_block"><img :src="share_img9" alt=""></a>
-                    <a href="https://discord.gg/MSXGzVsSYf" target="_block"><img :src="share_img10" alt=""></a>
                 </div>
                 <div class="fes-icon-copy">
                     <span>© 2022 FilSwan Canada</span>
@@ -71,12 +71,7 @@
                 <i class="el-icon-plus" :class="{'el-icon-plus-new': addFileShow}" @click.stop="addToggle"></i>
             </div>
 
-            <div class="progressStyle" v-show="drawer">
-                <progress id="progressBar01" value="0" max="100" style="width: 100%;"></progress>
-                <div class="speed">
-                  <span id="time"></span><span id="percentage"></span>
-                </div>
-            </div>
+            <div class="progressStyle" id="progressStyle"></div>
             <el-backtop target=".wrapper"></el-backtop>
         </div>
 
@@ -148,13 +143,15 @@ export default {
                 writable: true
             },
             fileList: [],
+            fileListIndexNow: 0,
             actionUrl: '',
             prefixData: '',
             homeClick: false,
             addArr: [],
             progressArr: {
               ot: 0,
-              oloaded: 0
+              oloaded: 0,
+              percentage_new: 0,
             },
             percentage_new: 0,
             drawer: false,
@@ -429,8 +426,15 @@ export default {
       // console.log('httpRequest', file);
     },
     onChange(file, fileList) {
-        let _this = this
-      // console.log('onChange', file, fileList);
+      let _this = this
+    //   console.log('onChange', file, fileList, fileList.indexOf(fileList.filter(d=>d.name == file.name)[0]));
+      _this.fileListIndexNow += 1
+      let indexNow = _this.fileListIndexNow
+      let progressArr = {
+            ot: 0,
+            oloaded: 0,
+            percentage_new: 0
+        }
       let regexp = /[#\\?]/
       if(regexp.test(file.name)){
         _this.$message.error('The filename cannot contain any of the following characters # ? \\');
@@ -460,7 +464,35 @@ export default {
           let postUrl = _this.data_api + '/minio/upload/' + _this.currentBucket + '/' + prefix + file.name
           let formData = new FormData();  //Create Empty
 
-              document.getElementById("progressBar01").value = 0
+            var evs = {};
+            evs.indexNow = document.createElement('div');
+            var div1 = document.createElement('div');
+            var progress = document.createElement('progress');
+            var span = document.createElement('span');
+            var span1 = document.createElement('span1');
+            evs.indexNow.id= "div" + indexNow
+            evs.indexNow.className= "div"
+            evs.indexNow.style.width = '100%'
+            evs.indexNow.style.margin = '0.1rem 0.2rem'
+
+            div1.id = 'speed' + indexNow
+            div1.className = 'speed'
+
+            progress.id = 'progressBar0' + indexNow
+            progress.value = 0
+            progress.max = 100
+            progress.style.width = '100%'
+
+            span.id= "time" + indexNow
+            span1.id= "percentage" + indexNow
+
+            document.getElementById('progressStyle').appendChild(evs.indexNow);
+            document.getElementById('div' + indexNow).appendChild(progress);
+            document.getElementById('div' + indexNow).appendChild(div1);
+            document.getElementById('speed' + indexNow).appendChild(span);
+            document.getElementById('speed' + indexNow).appendChild(span1);
+
+            //   document.getElementById("progressBar01").value = 0
               let xhr
               xhr = new XMLHttpRequest()
               xhr.open("PUT", postUrl, true)
@@ -522,11 +554,53 @@ export default {
                 //xhr.send(file.raw)
              }
 
-             xhr.upload.onprogress = _this.progressFunction;//Implementation of upload progress call method
+            //  xhr.upload.onprogress = _this.progressFunction;//Implementation of upload progress call method
+             xhr.upload.onprogress = function(evt){
+                    let progressBar = document.getElementById("progressBar0"+indexNow);
+                    let percentageDiv = document.getElementById("percentage"+indexNow);
+                    if (evt.lengthComputable) {//
+                        progressBar.max = evt.total;
+                        progressBar.value = evt.loaded;
+                        progressArr.percentage_new = Math.round(evt.loaded / evt.total * 100);
+                        percentageDiv.innerHTML = "(" + Math.round(evt.loaded / evt.total * 100) + "%)";
+                    }
+
+                    let time = document.getElementById("time"+indexNow);
+                    let nt = new Date().getTime();//Get current time
+                    var pertime = (nt - progressArr.ot)/1000; //Calculate the time difference from the last time this method was called to the present, unit: s
+                    progressArr.ot = new Date().getTime(); //Reassign time for next calculation
+
+                    var perload = evt.loaded - progressArr.oloaded; //Calculate the file size uploaded by this segment, unit B
+                    progressArr.oloaded = evt.loaded;//Reassign the uploaded file size, calculated with the following times
+
+                    //Upload speed calculation
+                    var speed = perload/pertime;//unit b/s
+                    var bspeed = speed;
+                    var units = 'b/s'; //unit
+                    if(speed/1024>1){
+                        speed = speed/1024;
+                        units = 'k/s';
+                    }
+                    if(speed/1024>1){
+                        speed = speed/1024;
+                        units = 'M/s';
+                    }
+                    speed = speed.toFixed(1);
+                    //Remaining time
+                    var resttime = ((evt.total-evt.loaded)/bspeed).toFixed(1);
+                    time.innerHTML = speed+units;
+                    if(bspeed==0)
+                        time.innerHTML = 'Upload cancelled';
+                    if(!resttime || resttime <= 0){
+                        //Notification.closeAll()
+                        document.getElementById('progressStyle').removeChild(evs.indexNow)
+                        return true
+                    }
+             };//Implementation of upload progress call method
              xhr.upload.onloadstart = function(){//Upload start execution method
-                 _this.progressArr.ot = new Date().getTime();   //Set upload start time
-                 _this.progressArr.oloaded = 0;//Set the file size to 0 when uploading starts
-                 _this.percentage_new = 0
+                 progressArr.ot = new Date().getTime();   //Set upload start time
+                 progressArr.oloaded = 0;//Set the file size to 0 when uploading starts
+                 progressArr.percentage_new = 0
                  _this.drawer = true
              };
              xhr.send(file.raw)
@@ -582,6 +656,7 @@ export default {
         let _this = this
         _this.getData()
         localStorage.removeItem('addrWeb')
+        console.log('update time: 2022-03-25')
     },
 };
 </script>
@@ -773,10 +848,13 @@ export default {
           background: #00b7ff none repeat scroll 0% 0%;
           font-size: 14px;
           color: #fff;
-          padding: 0.2rem 0.4rem;
+        //   padding: 0.2rem 0.4rem;
           width: 360px;
           display: flex;
           flex-wrap: wrap;
+          div{
+              margin: 0.1rem 0.2rem;
+          }
           .el-progress /deep/{
             width: 100%;
             .el-progress-bar{
@@ -795,7 +873,7 @@ export default {
             justify-content: center;
             align-items: center;
             width: 100%;
-            margin: 0.2rem 0 0;
+            margin: 0;
           }
         }
     }
