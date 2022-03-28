@@ -92,7 +92,7 @@ a {
 }
 
 .wrapper{
-  width: 16rem;
+  width: 16.6rem;
   max-width: 100%;
   margin: auto;
   overflow: hidden;
@@ -104,6 +104,9 @@ body,
 #app,
 .wrapper {
     font-size: 110px;
+}
+.wrapper{
+    width: 16.4rem;
 }
 }
 

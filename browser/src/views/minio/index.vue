@@ -134,7 +134,13 @@
                       </div>
                     </template>
                   </el-table-column>
-                  <el-table-column prop="data.duration" label="Duration"></el-table-column>
+                  <el-table-column prop="data.duration" label="Duration">
+                    <template slot-scope="scope">
+                      {{exChangeList[scope.$index].data.duration / 2880}} days
+                      <br>
+                      ({{ exChangeList[scope.$index].data.duration_time }})
+                    </template>
+                  </el-table-column>
               </el-table>
             </template>
           </el-table-column>
@@ -478,6 +484,11 @@ export default {
                   if(item.data){
                     item.data.visible = false
                     item.data.visibleDataCid = false
+                    item.data.duration_time = 
+                      item.data.duration?
+                          Moment(new Date(((parseInt(item.data.duration)*30 * 1000 + (item.data.timeStamp/1000))))).format("YYYY-MM-DD HH:mm:ss")
+                          :
+                          '-'
                     item.data.timeStamp = Moment(new Date(item.data.timeStamp/1000)).format('YYYY-MM-DD HH:mm:ss')
                   }
                 })
